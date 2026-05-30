@@ -95,15 +95,24 @@ wait_for_http() {
   return 1
 }
 
-# ── PostgreSQL (Docker or Local) ─────────────────────────────────────────────
-ensure_postgresql() {
+# ── Infrastructure (Docker or Local) ────────────────────────────────────────
+ensure_infrastructure() {
   # Strategy 1: Try Docker if available
   if docker info >/dev/null 2>&1; then
     log_ok "Docker daemon is running"
-    log_info "Starting PostgreSQL via Docker..."
+    log_info "Starting infrastructure containers (--profile infra only)..."
     cd "$ROOT_DIR"
-    if docker compose up -d --wait 2>&1; then
-      log_ok "Docker PostgreSQL is up"
+
+    # Clean up any orphaned containers from previous runs
+    log_info "Cleaning up old containers and orphans..."
+    docker compose --profile infra down --remove-orphans 2>/dev/null || true
+
+    # Start ONLY infrastructure services — NO app build (web-app/frontend)
+    # This avoids the 110-second rebuild of web-app and frontend images
+    # which are NOT needed in local dev (backend + frontend run as local processes).
+    log_info "Starting: postgres, postgres-media, redis, nats, minio, loki, grafana, portainer, dozzle, metabase, traefik..."
+    if docker compose --profile infra up -d 2>&1; then
+      log_ok "Infrastructure containers started"
       cd "$ROOT_DIR"
       return 0
     fi
@@ -230,9 +239,9 @@ main() {
 
   case "$mode" in
     --all|-a)
-      # ── STEP 1: PostgreSQL ──
-      log_info "Step 1/4: PostgreSQL..."
-      ensure_postgresql
+      # ── STEP 1: Infrastructure ──
+      log_info "Step 1/4: Infrastructure (Docker)..."
+      ensure_infrastructure
       wait_for_port "127.0.0.1" "5432" "PostgreSQL" 60
 
       # ── STEP 2: Backend API ──
@@ -264,8 +273,8 @@ main() {
     *)
       # Interactive mode
       echo "Select what to start:"
-      echo "  1) ALL services (Docker + Backend + Frontend + Flutter)"
-      echo "  2) Docker infrastructure only (PostgreSQL)"
+      echo "  1) ALL services (Infra + Backend + Frontend + Flutter)"
+      echo "  2) Docker infrastructure only (PostgreSQL, Redis, etc.)"
       echo "  3) Backend API only (port 8080)"
       echo "  4) React Frontend only (port 5173)"
       echo "  5) Flutter Web only (port 7357)"
@@ -275,7 +284,7 @@ main() {
 
       case "$choice" in
         1)
-          ensure_postgresql
+          ensure_infrastructure
           wait_for_port "127.0.0.1" "5432" "PostgreSQL" 60
           start_backend
           start_frontend
@@ -283,7 +292,7 @@ main() {
           check_all
           ;;
         2)
-          ensure_postgresql
+          ensure_infrastructure
           wait_for_port "127.0.0.1" "5432" "PostgreSQL" 60
           check_all
           ;;

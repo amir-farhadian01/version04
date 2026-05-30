@@ -390,14 +390,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: BottomNav(
               showBizTab: _showBizTab,
               onItemTap: (id) {
-                if (id == 'home')
+                if (id == 'home') {
                   Navigator.pushReplacementNamed(context, '/home');
-                if (id == 'social')
+                }
+                if (id == 'social') {
                   Navigator.pushReplacementNamed(context, '/social');
-                if (id == 'activity')
+                }
+                if (id == 'activity') {
                   Navigator.pushReplacementNamed(context, '/activity');
-                if (id == 'biz')
+                }
+                if (id == 'biz') {
                   Navigator.pushReplacementNamed(context, '/dashboard');
+                }
               },
               items: const [
                 BottomNavItem(id: 'home', label: 'Home', icon: Icons.home),
