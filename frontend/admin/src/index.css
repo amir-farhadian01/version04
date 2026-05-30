@@ -1,0 +1,304 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── NeighborHub Admin Design Tokens ───────────────────────────── */
+    /* Background hierarchy */
+    --nh-admin-bg: #0A0A0F;
+    --nh-admin-surface: #12121A;
+    --nh-admin-surface-elevated: #1A1A26;
+    --nh-admin-surface-hover: #1E1E2D;
+
+    /* Text hierarchy */
+    --nh-admin-text: #FFFFFF;
+    --nh-admin-text-secondary: #9494A8;
+    --nh-admin-text-muted: #5A5A72;
+    --nh-admin-text-inverse: #0A0A0F;
+
+    /* Border */
+    --nh-admin-border: rgba(255, 255, 255, 0.08);
+    --nh-admin-border-hover: rgba(255, 255, 255, 0.14);
+    --nh-admin-border-focus: rgba(79, 142, 247, 0.4);
+
+    /* Brand — Admin professional palette */
+    --nh-admin-primary: #4F8EF7;
+    --nh-admin-primary-hover: #3A7AE4;
+    --nh-admin-primary-dim: #3A7AE4;
+    --nh-admin-primary-bg: rgba(79, 142, 247, 0.12);
+    --nh-admin-primary-border: rgba(79, 142, 247, 0.25);
+
+    /* Semantic colors */
+    --nh-admin-success: #22C55E;
+    --nh-admin-success-bg: rgba(34, 197, 94, 0.12);
+    --nh-admin-warning: #F59E0B;
+    --nh-admin-warning-bg: rgba(245, 158, 11, 0.12);
+    --nh-admin-danger: #EF4444;
+    --nh-admin-danger-bg: rgba(239, 68, 68, 0.12);
+    --nh-admin-info: #06B6D4;
+    --nh-admin-info-bg: rgba(6, 182, 212, 0.12);
+
+    /* Accent colors for variety */
+    --nh-admin-purple: #8B5CF6;
+    --nh-admin-purple-bg: rgba(139, 92, 246, 0.12);
+    --nh-admin-amber: #F59E0B;
+    --nh-admin-amber-bg: rgba(245, 158, 11, 0.12);
+    --nh-admin-orange: #F97316;
+    --nh-admin-orange-bg: rgba(249, 115, 22, 0.12);
+    --nh-admin-rose: #F43F5E;
+    --nh-admin-rose-bg: rgba(244, 63, 94, 0.12);
+    --nh-admin-emerald: #10B981;
+    --nh-admin-emerald-bg: rgba(16, 185, 129, 0.12);
+
+    /* Spacing scale — consistent across admin */
+    --nh-admin-radius-sm: 8px;
+    --nh-admin-radius-md: 12px;
+    --nh-admin-radius-lg: 16px;
+    --nh-admin-radius-xl: 20px;
+    --nh-admin-radius-full: 9999px;
+
+    /* Backdrop overlays */
+    --nh-admin-backdrop: rgba(0, 0, 0, 0.5);
+    --nh-admin-backdrop-light: rgba(0, 0, 0, 0.35);
+
+    /* Shadows */
+    --nh-admin-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --nh-admin-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --nh-admin-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --nh-admin-shadow-glow: 0 0 20px rgba(79, 142, 247, 0.15);
+
+    /* Typography */
+    --nh-admin-font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    --nh-admin-font-heading: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --nh-admin-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  }
+
+  /* ── Dark mode (default) — no overrides needed, root IS dark ──── */
+  /* Light mode considerations reserved for future implementation */
+
+  body {
+    @apply bg-[var(--nh-admin-bg)] text-[var(--nh-admin-text)] antialiased;
+    font-family: var(--nh-admin-font-sans);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--nh-admin-font-heading);
+    @apply tracking-tight;
+  }
+
+  * {
+    @apply border-[var(--nh-admin-border)];
+  }
+
+  /* ── Admin Table Base Styles ──────────────────────────────────── */
+  .nh-admin-table {
+    @apply w-full text-left;
+  }
+
+  .nh-admin-table thead tr {
+    @apply border-b border-[var(--nh-admin-border)] bg-[var(--nh-admin-surface-elevated)];
+  }
+
+  .nh-admin-table thead th {
+    @apply px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--nh-admin-text-muted)];
+  }
+
+  .nh-admin-table tbody {
+    @apply divide-y divide-[var(--nh-admin-border)];
+  }
+
+  .nh-admin-table tbody tr {
+    @apply transition-colors;
+  }
+
+  .nh-admin-table tbody tr:hover {
+    @apply bg-[var(--nh-admin-surface-hover)];
+  }
+
+  .nh-admin-table tbody td {
+    @apply px-4 py-3 text-sm text-[var(--nh-admin-text-secondary)];
+  }
+
+  /* ── Admin Form Base Styles ───────────────────────────────────── */
+  .nh-admin-input {
+    @apply w-full rounded-[var(--nh-admin-radius-md)] border border-[var(--nh-admin-border)] bg-[var(--nh-admin-surface)] px-4 py-2.5 text-sm text-[var(--nh-admin-text)] placeholder-[var(--nh-admin-text-muted)] outline-none transition-all;
+  }
+
+  .nh-admin-input:focus {
+    @apply border-[var(--nh-admin-primary)] ring-1 ring-[var(--nh-admin-primary-bg)];
+  }
+
+  .nh-admin-input:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .nh-admin-select {
+    @apply nh-admin-input appearance-none cursor-pointer;
+  }
+
+  .nh-admin-textarea {
+    @apply nh-admin-input resize-none;
+  }
+
+  .nh-admin-label {
+    @apply block text-sm font-medium text-[var(--nh-admin-text)];
+  }
+
+  .nh-admin-helper {
+    @apply text-xs text-[var(--nh-admin-text-muted)];
+  }
+
+  /* ── Admin Card Base Styles ───────────────────────────────────── */
+  .nh-admin-card {
+    @apply rounded-[var(--nh-admin-radius-xl)] border border-[var(--nh-admin-border)] bg-[var(--nh-admin-surface)] p-6;
+    box-shadow: var(--nh-admin-shadow-sm);
+  }
+
+  .nh-admin-card-interactive {
+    @apply nh-admin-card cursor-pointer transition-all;
+  }
+
+  .nh-admin-card-interactive:hover {
+    @apply border-[var(--nh-admin-primary-border)];
+    box-shadow: var(--nh-admin-shadow-glow);
+  }
+
+  /* ── Admin Modal/Drawer Base Styles ────────────────────────────── */
+  .nh-admin-modal-backdrop {
+    @apply fixed inset-0 z-[200] flex items-center justify-center bg-[var(--nh-admin-backdrop)] backdrop-blur-sm p-4;
+  }
+
+  .nh-admin-modal {
+    @apply w-full max-w-md rounded-[var(--nh-admin-radius-xl)] border border-[var(--nh-admin-border)] bg-[var(--nh-admin-surface)] p-6;
+    box-shadow: var(--nh-admin-shadow-lg);
+  }
+
+  /* ── Admin Button Base Styles ─────────────────────────────────── */
+  .nh-admin-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-[var(--nh-admin-radius-md)] px-4 py-2.5 text-sm font-semibold transition-all;
+  }
+
+  .nh-admin-btn:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .nh-admin-btn-primary {
+    @apply nh-admin-btn bg-[var(--nh-admin-primary)] text-white;
+  }
+
+  .nh-admin-btn-primary:hover:not(:disabled) {
+    @apply bg-[var(--nh-admin-primary-hover)];
+    box-shadow: var(--nh-admin-shadow-glow);
+  }
+
+  .nh-admin-btn-secondary {
+    @apply nh-admin-btn border border-[var(--nh-admin-border)] bg-[var(--nh-admin-surface)] text-[var(--nh-admin-text)];
+  }
+
+  .nh-admin-btn-secondary:hover:not(:disabled) {
+    @apply border-[var(--nh-admin-primary-border)] text-white;
+  }
+
+  .nh-admin-btn-ghost {
+    @apply nh-admin-btn text-[var(--nh-admin-text-secondary)];
+  }
+
+  .nh-admin-btn-ghost:hover:not(:disabled) {
+    @apply bg-[var(--nh-admin-surface-elevated)] text-white;
+  }
+
+  .nh-admin-btn-danger {
+    @apply nh-admin-btn text-[var(--nh-admin-danger)];
+  }
+
+  .nh-admin-btn-danger:hover:not(:disabled) {
+    @apply bg-[var(--nh-admin-danger-bg)];
+  }
+
+  /* ── Admin Badge/Pill Base Styles ─────────────────────────────── */
+  .nh-admin-badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
+  }
+
+  .nh-admin-badge-success {
+    @apply nh-admin-badge bg-[var(--nh-admin-success-bg)] text-[var(--nh-admin-success)];
+  }
+
+  .nh-admin-badge-warning {
+    @apply nh-admin-badge bg-[var(--nh-admin-warning-bg)] text-[var(--nh-admin-warning)];
+  }
+
+  .nh-admin-badge-danger {
+    @apply nh-admin-badge bg-[var(--nh-admin-danger-bg)] text-[var(--nh-admin-danger)];
+  }
+
+  .nh-admin-badge-info {
+    @apply nh-admin-badge bg-[var(--nh-admin-info-bg)] text-[var(--nh-admin-info)];
+  }
+
+  .nh-admin-badge-neutral {
+    @apply nh-admin-badge bg-[var(--nh-admin-border)] text-[var(--nh-admin-text-secondary)];
+  }
+
+  .nh-admin-badge-primary {
+    @apply nh-admin-badge bg-[var(--nh-admin-primary-bg)] text-[var(--nh-admin-primary)];
+  }
+
+  .nh-admin-badge-purple {
+    @apply nh-admin-badge bg-[var(--nh-admin-purple-bg)] text-[var(--nh-admin-purple)];
+  }
+
+  /* ── Page Layout ──────────────────────────────────────────────── */
+  .nh-admin-page {
+    @apply mx-auto max-w-7xl space-y-6 px-4 py-6;
+  }
+
+  .nh-admin-page-header h1 {
+    @apply text-3xl font-black text-[var(--nh-admin-text)];
+  }
+
+  .nh-admin-page-header p {
+    @apply mt-1 text-sm text-[var(--nh-admin-text-secondary)];
+  }
+
+  /* ── Stats Card ───────────────────────────────────────────────── */
+  .nh-admin-stat-card {
+    @apply rounded-[var(--nh-admin-radius-xl)] border border-[var(--nh-admin-border)] bg-[var(--nh-admin-surface)] p-5 transition-all;
+  }
+
+  .nh-admin-stat-card:hover {
+    @apply border-[var(--nh-admin-primary-border)];
+    box-shadow: var(--nh-admin-shadow-glow);
+  }
+
+  .nh-admin-stat-value {
+    @apply text-2xl font-black text-[var(--nh-admin-text)];
+  }
+
+  .nh-admin-stat-label {
+    @apply mt-1 text-[11px] font-medium uppercase tracking-wider text-[var(--nh-admin-text-secondary)];
+  }
+
+  /* ── Scrollbar ────────────────────────────────────────────────── */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  .nh-admin-glow {
+    box-shadow: var(--nh-admin-shadow-glow);
+  }
+
+  .nh-admin-transition {
+    @apply transition-all duration-200 ease-in-out;
+  }
+}

@@ -1,0 +1,14 @@
+{
+    "yaml.schemas": {
+        "file:///c%3A/Users/HP/.vscode/extensions/continue.continue-1.2.22-win32-x64/config-yaml-schema.json": [
+            ".continue/**/*.yaml",
+            "vscode-local:/c%3A/Users/HP/.continue/config.yaml"
+        ]
+    },
+    "dart.flutterHotReloadOnSave": "always",
+    "roo-cline.alwaysAllowExecute": true,
+    "roo-cline.alwaysAllowWrite": true,
+    "roo-cline.alwaysAllowRead": true,
+    "roo-cline.alwaysAllowBrowser": true,
+    "roo-cline.alwaysAllowMcp": true
+}

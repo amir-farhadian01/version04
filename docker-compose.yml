@@ -1,0 +1,360 @@
+services:
+
+  # ─── Reverse Proxy ────────────────────────────────────────────────────────
+  traefik:
+    image: traefik:v3.3
+    container_name: neighborly_traefik
+    user: root
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=neighborly_network"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "9191:8080"       # Traefik dashboard  →  http://localhost:9191
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── Database ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: neighborly_db
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-EagleRock901}
+      POSTGRES_DB: ${DB_NAME:-neighborly_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-neighborly_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── Dedicated media metadata DB ──────────────────────────────────────────
+  postgres-media:
+    image: postgres:16-alpine
+    container_name: neighborly_media_db
+    environment:
+      POSTGRES_USER: ${MEDIA_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${MEDIA_DB_PASSWORD:-EagleRock901}
+      POSTGRES_DB: ${MEDIA_DB_NAME:-media_db}
+    volumes:
+      - postgres_media_data:/var/lib/postgresql/data
+      - ./docker/postgres-media-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MEDIA_DB_USER:-postgres} -d ${MEDIA_DB_NAME:-media_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── Object storage (S3-compatible) ───────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: neighborly_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    ports:
+      - "9002:9000"   # MinIO API
+      - "9003:9001"   # MinIO Console
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio.rule=PathPrefix(`/minio`)"
+      - "traefik.http.routers.minio.entrypoints=web"
+      - "traefik.http.middlewares.minio-strip.stripprefix.prefixes=/minio"
+      - "traefik.http.routers.minio.middlewares=minio-strip"
+      - "traefik.http.services.minio.loadbalancer.server.port=9001"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── Message Bus ──────────────────────────────────────────────────────────
+  nats:
+    image: nats:2.10-alpine
+    container_name: neighborly_bus
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── Redis Cache ──────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: neighborly_redis
+    command: redis-server --appendonly yes --save 60 1
+    volumes:
+      - redis_data:/data
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── Main Web App (React Admin + Express API) ─────────────────────────────
+  web-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: neighborly_web_app
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-EagleRock901}@postgres:5432/${DB_NAME:-neighborly_db}?schema=public
+      MEDIA_DATABASE_URL: postgresql://${MEDIA_DB_USER:-postgres}:${MEDIA_DB_PASSWORD:-EagleRock901}@postgres-media:5432/${MEDIA_DB_NAME:-media_db}
+      NATS_URL: nats://nats:4222
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-media:
+        condition: service_healthy
+      nats:
+        condition: service_started
+      redis:
+        condition: service_started
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    # ports:
+    #   LOCAL DEV NOTE: When running backend locally (npm run dev on :8080):
+    #     - Backend API (8080): handled by local npm run dev — do NOT map
+    #     - Admin Panel (9090): handled by local npm run dev — do NOT map
+    #   Comment BOTH lines below. UNCOMMENT only when running full Docker stack.
+    #   - "8888:8080"                          # Backend API (Docker mode)
+    #   - "${ADMIN_PORT:-9090}:${ADMIN_PORT:-9090}"  # Admin Panel (Docker mode)
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web-app.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.web-app.entrypoints=web"
+      - "traefik.http.routers.web-app.priority=1"
+      - "traefik.http.services.web-app.loadbalancer.server.port=8080"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── Container Management ─────────────────────────────────────────────────
+  portainer:
+    image: portainer/portainer-ce:2.39.2
+    container_name: neighborly_portainer
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # Portainer UI  →  http://localhost:9000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=PathPrefix(`/portainer`)"
+      - "traefik.http.routers.portainer.entrypoints=web"
+      - "traefik.http.middlewares.portainer-strip.stripprefix.prefixes=/portainer"
+      - "traefik.http.routers.portainer.middlewares=portainer-strip"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── Container logs ────────────────────────────────────────────────────────
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: neighborly_dozzle
+    environment:
+      DOZZLE_BASE: /dozzle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    ports:
+      - "8899:8080"   # Dozzle UI  →  http://localhost:8899
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dozzle.rule=PathPrefix(`/dozzle`)"
+      - "traefik.http.routers.dozzle.entrypoints=web"
+      - "traefik.http.routers.dozzle.priority=25"
+      - "traefik.http.services.dozzle.loadbalancer.server.port=8080"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── Log Aggregation ──────────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:latest
+    container_name: neighborly_loki
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+
+  # ─── Monitoring Dashboard ─────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: neighborly_grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - loki
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.localhost`)"
+      - "traefik.http.routers.grafana.entrypoints=web"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── Analytics ────────────────────────────────────────────────────────────
+  metabase:
+    image: metabase/metabase:latest
+    container_name: neighborly_metabase
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase_db
+      MB_DB_USER: ${DB_USER:-postgres}
+      MB_DB_PASS: ${DB_PASSWORD:-EagleRock901}
+      MB_DB_HOST: postgres
+      MB_DB_PORT: 5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    ports:
+      - "3001:3000"   # Metabase UI  →  http://localhost:3001
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.metabase.rule=PathPrefix(`/metabase`)"
+      - "traefik.http.routers.metabase.entrypoints=web"
+      - "traefik.http.middlewares.metabase-strip.stripprefix.prefixes=/metabase"
+      - "traefik.http.routers.metabase.middlewares=metabase-strip"
+      - "traefik.http.services.metabase.loadbalancer.server.port=3000"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+  # ─── React Frontend (Vite dev server) ─────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: neighborly_frontend
+    environment:
+      - VITE_API_URL=http://localhost:8080/api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    # ports:
+    #   LOCAL DEV NOTE: When running frontend locally (npm run dev on :5173):
+    #     - Vite dev server (5173): handled by local npm run dev — do NOT map
+    #   Comment the line below. UNCOMMENT only when running full Docker stack.
+    #   - "5173:5173"   # Vite frontend  →  http://localhost:5173
+    depends_on:
+      - web-app
+    networks:
+      - neighborly_network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/app`) || PathPrefix(`/auth`) || PathPrefix(`/business`) || PathPrefix(`/admin`) || PathPrefix(`/explore`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.priority=10"
+      - "traefik.http.services.frontend.loadbalancer.server.port=5173"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://neighborly_loki:3100/loki/api/v1/push"
+        loki-external-labels: "service={{.Name}}"
+
+networks:
+  neighborly_network:
+    driver: bridge
+    name: neighborly_network
+
+volumes:
+  postgres_data: {}
+  postgres_media_data: {}
+  portainer_data: {}
+  minio_data: {}
+  redis_data: {}
+  loki_data: {}
+  grafana_data: {}

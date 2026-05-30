@@ -1,0 +1,107 @@
+name: Release to neighborly
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    name: CI Validation
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci --legacy-peer-deps
+
+      - run: npx prisma generate
+
+      - run: npx tsc --noEmit
+
+      - run: npm run build
+
+      - id: tag
+        run: echo "value=v$(date +%Y.%m.%d)-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+  release:
+    name: Push to neighborly
+    runs-on: ubuntu-latest
+    needs: validate
+    env:
+      TAG: ${{ needs.validate.outputs.tag }}
+      NEIGHBORLY_TOKEN: ${{ secrets.SYNC_PATNEIGHBORLY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_PATNEIGHBORLY }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Clone neighborly
+        run: |
+          git clone "https://${NEIGHBORLY_TOKEN}@github.com/amir-farhadian01/neighborly.git" /tmp/neighborly
+          git -C /tmp/neighborly config user.name "github-actions[bot]"
+          git -C /tmp/neighborly config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync to neighborly
+        run: |
+          find /tmp/neighborly -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+
+          rsync -a \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            --exclude='.env' \
+            --exclude='.env.local' \
+            ./ /tmp/neighborly/
+
+          rm -f /tmp/neighborly/firebase-applet-config.json
+          rm -f /tmp/neighborly/firebase-blueprint.json
+          rm -f /tmp/neighborly/firestore.rules
+          rm -f /tmp/neighborly/AGENTS.md
+          rm -f /tmp/neighborly/docs/AGENTS.md
+          rm -f /tmp/neighborly/docs/CLAUDE.md
+          rm -f /tmp/neighborly/untitled.tsx
+          find /tmp/neighborly -name '*.save' ! -path '*/.git/*' -delete
+
+          # Remove Merge-only workflows — they must not run in neighborly
+          rm -f /tmp/neighborly/.github/workflows/release-to-neighborly.yml
+          rm -f /tmp/neighborly/.github/workflows/sync-from-version2.yml
+          rm -f /tmp/neighborly/.github/workflows/pr-validation.yml
+
+      - name: Commit and push
+        run: |
+          cd /tmp/neighborly
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+          SHORT_SHA=$(git -C $GITHUB_WORKSPACE rev-parse --short HEAD)
+          git commit -m "release: ${TAG} (Merge@${SHORT_SHA})"
+          git push origin main --force
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_PATNEIGHBORLY }}
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          gh release create "${TAG}" \
+            --repo amir-farhadian01/neighborly \
+            --title "${TAG}" \
+            --notes "Source: Merge@${SHORT_SHA} — deploy: git clone + cp .env.example .env + docker compose up -d" \
+            --latest || true
+
+      - name: Summary
+        run: |
+          echo "Released ${TAG} to neighborly" >> $GITHUB_STEP_SUMMARY

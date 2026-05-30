@@ -1,0 +1,21 @@
+{
+  "version": "5.2",
+  "steps": [
+    {
+      "tag": "AlterTable",
+      "table": "ProviderServicePackage",
+      "addColumns": [
+        {
+          "name": "max_daily_bookings",
+          "type": "Integer",
+          "default": 10
+        },
+        {
+          "name": "slot_duration_minutes",
+          "type": "Integer",
+          "default": 60
+        }
+      ]
+    }
+  ]
+}

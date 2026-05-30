@@ -1,0 +1,21 @@
+{
+  "version": "5.22.0",
+  "steps": [
+    {
+      "tag": "AlterTable",
+      "table": "Order",
+      "addColumns": [
+        {
+          "name": "budget_min",
+          "type": "Int",
+          "nullable": true
+        },
+        {
+          "name": "budget_max",
+          "type": "Int",
+          "nullable": true
+        }
+      ]
+    }
+  ]
+}

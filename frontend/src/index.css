@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  [data-theme='dark'] {
+    /* NeighborHub Dark Theme */
+    --bg: #0A0A0F;
+    --bg2: #12121A;
+    --bg3: #1A1A26;
+    --text: #FFFFFF;
+    --text2: #9494A8;
+    --text3: #5A5A72;
+    --card: #12121A;
+    --card2: #1A1A26;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.12);
+    --primary: #4F8EF7;
+    --secondary: #22C55E;
+    --accent: #ff7a2b;
+    --warn: #ffb800;
+    --red: #ff4d4d;
+    --purple: #8b5cf6;
+    /* NeighborHub aliases */
+    --nh-bg: #0A0A0F;
+    --nh-surface: #12121A;
+    --nh-surface-elevated: #1A1A26;
+    --nh-primary: #4F8EF7;
+    --nh-primary-hover: #3A7AE4;
+    --nh-text: #FFFFFF;
+    --nh-text-secondary: #9494A8;
+    --nh-text-muted: #5A5A72;
+    --nh-border: rgba(255,255,255,0.08);
+    --nh-border-elevated: rgba(255,255,255,0.12);
+    --nh-success: #22C55E;
+    --nh-accent: #ff7a2b;
+    --nh-warning: #ffb800;
+    --nh-danger: #ff4d4d;
+    --nh-purple: #8b5cf6;
+    --nh-card: #12121A;
+    --nh-card-elevated: #1A1A26;
+    --nh-input: #12121A;
+    --nh-category-bg: #1E1E2D;
+  }
+
+  [data-theme='light'] {
+    --bg: #f5f6fa;
+    --bg2: #ebedf5;
+    --bg3: #e0e3ee;
+    --text: #1a1d2e;
+    --text2: #6b7090;
+    --text3: #9ea3c0;
+    --card: #ffffff;
+    --card2: #f0f2f8;
+    --border: #dde0eb;
+    --border2: #c8cce0;
+    --primary: #2b6eff;
+    --secondary: #0fc98a;
+    --accent: #ff7a2b;
+    --warn: #ffb800;
+    --red: #ff4d4d;
+    --purple: #8b5cf6;
+    /* NeighborHub aliases — light */
+    --nh-bg: #f5f6fa;
+    --nh-surface: #ffffff;
+    --nh-surface-elevated: #f0f2f8;
+    --nh-primary: #2b6eff;
+    --nh-primary-hover: #1A5AEE;
+    --nh-text: #1a1d2e;
+    --nh-text-secondary: #6b7090;
+    --nh-text-muted: #9ea3c0;
+    --nh-border: #dde0eb;
+    --nh-border-elevated: #c8cce0;
+    --nh-success: #0fc98a;
+    --nh-accent: #ff7a2b;
+    --nh-warning: #ffb800;
+    --nh-danger: #ff4d4d;
+    --nh-purple: #8b5cf6;
+    --nh-card: #ffffff;
+    --nh-card-elevated: #f0f2f8;
+    --nh-input: #ffffff;
+    --nh-category-bg: #e0e3ee;
+  }
+
+  body {
+    @apply bg-[var(--bg)] text-[var(--text)] antialiased;
+    font-family: 'Inter', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    @apply tracking-tight;
+  }
+
+  * {
+    @apply border-[var(--border)];
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.4s ease-out;
+}

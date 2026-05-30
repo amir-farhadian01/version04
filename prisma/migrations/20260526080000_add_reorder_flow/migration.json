@@ -1,0 +1,16 @@
+{
+  "version": "5.22.0",
+  "steps": [
+    {
+      "tag": "AlterTable",
+      "table": "Order",
+      "addColumns": [
+        {
+          "name": "original_order_id",
+          "type": "Text",
+          "nullable": true
+        }
+      ]
+    }
+  ]
+}

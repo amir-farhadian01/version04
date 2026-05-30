@@ -1,0 +1,9 @@
+{
+  "version": "5.19.0",
+  "steps": [
+    {
+      "tag": "CreateModel",
+      "model": "UserCar"
+    }
+  ]
+}

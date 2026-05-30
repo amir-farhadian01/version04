@@ -1,0 +1,10 @@
+{
+  "version": "5.2",
+  "steps": [
+    {
+      "tag": "AlterEnum",
+      "enum": "BookingMode",
+      "values": ["booking", "direct_booking", "hybrid", "quote_first", "walk_in", "inherit_from_catalog"]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Neighborly Flutter Web (fixed: 0.0.0.0:9088)",
+      "type": "dart",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/flutter_project",
+      "program": "lib/main.dart",
+      "deviceId": "web-server",
+      "toolArgs": [
+        "--web-hostname=0.0.0.0",
+        "--web-port=9088",
+        "--dart-define=API_BASE_URL=http://localhost:8077"
+      ]
+    }
+  ]
+}

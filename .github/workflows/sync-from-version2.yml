@@ -1,0 +1,215 @@
+name: Sync from Version2
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Scheduled daily at 04:30 UTC (~08:00 Iran standard time) or manual dispatch.
+#
+# Steps:
+#   1. Fetch new commits from amirfarhadian01/Version2
+#   2. If behind, create a temporary branch
+#   3. Open a PR with a change summary
+#   4. Note whether Prisma / env / routes / Flutter changed
+#
+# Secret:
+#   SYNC_PATNEIGHBORLY — GitHub PAT with repo access
+#   (Merge repo → Settings → Secrets → Actions)
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    - cron: '30 4 * * *'   # daily ~08:00 Iran (04:30 UTC)
+  workflow_dispatch:        # manual run from GitHub Actions UI
+    inputs:
+      force:
+        description: 'Force PR even if already synced'
+        required: false
+        default: 'false'
+
+jobs:
+  sync:
+    name: Check & Sync from Version2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Merge repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_PATNEIGHBORLY }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add Version2 as upstream remote
+        run: |
+          git remote remove upstream 2>/dev/null || true
+          git remote add upstream "https://${{ secrets.SYNC_PATNEIGHBORLY }}@github.com/amir-farhadian01/Version2.git"
+          git fetch upstream --no-tags
+
+      - name: Check for new commits
+        id: diff_check
+        run: |
+          BEHIND=$(git rev-list HEAD..upstream/main --count)
+          echo "behind=$BEHIND" >> $GITHUB_OUTPUT
+
+          if [[ "$BEHIND" -eq 0 && "${{ github.event.inputs.force }}" != "true" ]]; then
+            echo "up_to_date=true" >> $GITHUB_OUTPUT
+          else
+            echo "up_to_date=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Skip if up to date
+        if: steps.diff_check.outputs.up_to_date == 'true'
+        run: |
+          echo "✓ Merge is already up to date with Version2. Nothing to do."
+
+      - name: Detect what changed
+        if: steps.diff_check.outputs.up_to_date == 'false'
+        id: changes
+        run: |
+          # New commits summary
+          COMMITS=$(git log HEAD..upstream/main --oneline --no-decorate)
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          # Detect sensitive file changes
+          CHANGED=$(git diff HEAD..upstream/main --name-only)
+
+          PRISMA_CHANGED=false
+          ENV_CHANGED=false
+          ROUTES_CHANGED=false
+          FLUTTER_CHANGED=false
+
+          echo "$CHANGED" | grep -q "prisma/schema.prisma" && PRISMA_CHANGED=true || true
+          echo "$CHANGED" | grep -q ".env.example"          && ENV_CHANGED=true    || true
+          echo "$CHANGED" | grep -q "^routes/"              && ROUTES_CHANGED=true || true
+          echo "$CHANGED" | grep -q "^flutter_project/"     && FLUTTER_CHANGED=true || true
+
+          echo "prisma_changed=$PRISMA_CHANGED"   >> $GITHUB_OUTPUT
+          echo "env_changed=$ENV_CHANGED"         >> $GITHUB_OUTPUT
+          echo "routes_changed=$ROUTES_CHANGED"   >> $GITHUB_OUTPUT
+          echo "flutter_changed=$FLUTTER_CHANGED" >> $GITHUB_OUTPUT
+
+          # File diff summary
+          DIFF_SUMMARY=$(git diff HEAD..upstream/main --stat | tail -5)
+          echo "diff_summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$DIFF_SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create sync branch
+        if: steps.diff_check.outputs.up_to_date == 'false'
+        id: branch
+        run: |
+          DATE=$(date +%Y%m%d-%H%M)
+          BRANCH="sync/version2-$DATE"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+          git checkout -b "$BRANCH"
+
+          # Overlay Version2 files without merging (avoids unrelated-history conflicts)
+          git checkout upstream/main -- .
+          # Keep our own CI/CD workflows — don't let Version2 overwrite them
+          git checkout HEAD -- .github/ 2>/dev/null || true
+          # Enforce Prisma ^5.x.x (AGENTS.md rule — never allow v6/v7)
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            let changed = false;
+            if (pkg.devDependencies?.prisma && !pkg.devDependencies.prisma.startsWith('^5')) {
+              pkg.devDependencies.prisma = '^5.22.0'; changed = true;
+            }
+            if (pkg.dependencies?.['@prisma/client'] && !pkg.dependencies['@prisma/client'].startsWith('^5')) {
+              pkg.dependencies['@prisma/client'] = '^5.22.0'; changed = true;
+            }
+            if (changed) {
+              fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+              console.log('Pinned Prisma back to ^5.22.0');
+            }
+          " || true
+          git add package.json 2>/dev/null || true
+
+          if git diff --cached --quiet; then
+            echo "Already in sync, nothing to commit"
+            echo "merge_conflict=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "chore: sync from Version2 ($DATE)"
+            echo "merge_conflict=false" >> $GITHUB_OUTPUT
+            git push origin "$BRANCH"
+          fi
+
+      - name: Open Pull Request
+        if: >
+          steps.diff_check.outputs.up_to_date == 'false' &&
+          steps.branch.outputs.merge_conflict == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.SYNC_PATNEIGHBORLY }}
+          BEHIND: ${{ steps.diff_check.outputs.behind }}
+          COMMITS: ${{ steps.changes.outputs.commits }}
+          DIFF_SUMMARY: ${{ steps.changes.outputs.diff_summary }}
+          PRISMA_CHANGED: ${{ steps.changes.outputs.prisma_changed }}
+          ENV_CHANGED: ${{ steps.changes.outputs.env_changed }}
+          ROUTES_CHANGED: ${{ steps.changes.outputs.routes_changed }}
+          FLUTTER_CHANGED: ${{ steps.changes.outputs.flutter_changed }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
+        run: |
+          F=$(mktemp)
+          echo "## Sync from Version2" >> "$F"
+          echo "" >> "$F"
+          echo "**Commits included ($BEHIND new):**" >> "$F"
+          echo '```' >> "$F"
+          echo "$COMMITS" >> "$F"
+          echo '```' >> "$F"
+          echo "" >> "$F"
+          echo "**Changed files:**" >> "$F"
+          echo '```' >> "$F"
+          echo "$DIFF_SUMMARY" >> "$F"
+          echo '```' >> "$F"
+          echo "" >> "$F"
+          echo "## Pre-merge checklist" >> "$F"
+          echo "" >> "$F"
+          if [[ "$PRISMA_CHANGED" == "true" ]]; then
+            echo "- [ ] **Prisma schema changed** — after merge run:" >> "$F"
+            echo '  ```bash' >> "$F"
+            echo "  npx prisma migrate dev --name describe_change" >> "$F"
+            echo "  npx prisma generate" >> "$F"
+            echo '  ```' >> "$F"
+          else
+            echo "- [x] Prisma schema unchanged" >> "$F"
+          fi
+          if [[ "$ENV_CHANGED" == "true" ]]; then
+            echo "- [ ] **New environment variables** — review .env.example and update .env" >> "$F"
+          else
+            echo "- [x] No new environment variables" >> "$F"
+          fi
+          if [[ "$ROUTES_CHANGED" == "true" ]]; then
+            echo "- [ ] **Routes changed** — confirm requireAuth / public exceptions" >> "$F"
+          else
+            echo "- [x] No route file changes detected" >> "$F"
+          fi
+          if [[ "$FLUTTER_CHANGED" == "true" ]]; then
+            echo "- [ ] **Flutter app changed** — build and smoke-test" >> "$F"
+          else
+            echo "- [x] Flutter app unchanged" >> "$F"
+          fi
+          echo "" >> "$F"
+          echo "---" >> "$F"
+          echo "🤖 Auto-generated by sync-from-version2 workflow" >> "$F"
+
+          gh pr create \
+            --title "chore: sync from Version2 ($(date +%Y-%m-%d))" \
+            --body-file "$F" \
+            --base main \
+            --head "$BRANCH" \
+            --label "sync" || true
+          rm -f "$F"
+
+      - name: Report merge conflict
+        if: >
+          steps.diff_check.outputs.up_to_date == 'false' &&
+          steps.branch.outputs.merge_conflict == 'true'
+        run: |
+          echo "::error::Merge conflict detected! Manual resolution needed."
+          echo "Run locally: ./sync-from-version2.sh"
+          exit 1

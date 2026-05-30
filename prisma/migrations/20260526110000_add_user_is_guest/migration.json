@@ -1,0 +1,15 @@
+{
+  "version": "5.22.0",
+  "steps": [
+    {
+      "tag": "CreateColumn",
+      "column": "is_guest",
+      "table": "User",
+      "schema": "public",
+      "properties": {
+        "type": "Boolean",
+        "default": false
+      }
+    }
+  ]
+}

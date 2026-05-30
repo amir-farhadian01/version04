@@ -1,0 +1,63 @@
+/**
+ * Tests for GET /api/services/search
+ */
+import request from 'supertest';
+import express from 'express';
+import { router as serviceSearchRoutes } from '../serviceSearch.js';
+
+const app = express();
+app.use('/api/services/search', serviceSearchRoutes);
+
+describe('GET /api/services/search', () => {
+  it('returns 400 when q is missing', async () => {
+    const res = await request(app).get('/api/services/search');
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when q is too short (<2 chars)', async () => {
+    const res = await request(app).get('/api/services/search?q=a');
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 200 with paginated structure for valid query', async () => {
+    const res = await request(app).get('/api/services/search?q=hair&limit=20&offset=0');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('data');
+    expect(res.body.data).toHaveProperty('services');
+    expect(res.body.data).toHaveProperty('packages');
+    expect(res.body.data).toHaveProperty('totalServices');
+    expect(res.body.data).toHaveProperty('totalPackages');
+    expect(res.body.data).toHaveProperty('page');
+    expect(res.body.data).toHaveProperty('pageSize');
+    expect(Array.isArray(res.body.data.services)).toBe(true);
+    expect(Array.isArray(res.body.data.packages)).toBe(true);
+    expect(typeof res.body.data.totalServices).toBe('number');
+    expect(typeof res.body.data.totalPackages).toBe('number');
+  });
+
+  it('returns empty arrays for non-matching query', async () => {
+    const res = await request(app).get('/api/services/search?q=xyznonexistent999');
+    expect(res.status).toBe(200);
+    expect(res.body.data.services).toEqual([]);
+    expect(res.body.data.packages).toEqual([]);
+    expect(res.body.data.totalServices).toBe(0);
+    expect(res.body.data.totalPackages).toBe(0);
+  });
+
+  it('supports pagination via limit and offset', async () => {
+    const res = await request(app).get('/api/services/search?q=painting&limit=5&offset=0');
+    expect(res.status).toBe(200);
+    expect(res.body.data.services.length).toBeLessThanOrEqual(5);
+    expect(res.body.data.pageSize).toBe(5);
+    expect(res.body.data.page).toBe(1);
+  });
+
+  it('handles XSS-safe content in query', async () => {
+    const res = await request(app).get('/api/services/search?q=%3Cscript%3Ealert(%27xss%27)%3C%2Fscript%3E');
+    expect(res.status).toBe(200);
+    // Should not crash, should return 200 with empty results
+    expect(res.body.data).toBeDefined();
+  });
+});

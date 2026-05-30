@@ -1,0 +1,44 @@
+node_modules/
+build/
+dist/
+frontend/dist/
+coverage/
+frontend/coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Process ID files
+*.pid
+.backend.pid
+.flutter.pid
+
+# Screenshot files committed by mistake
+*.png
+!docs/**/*.png
+!public/**/*.png
+
+# Windows "Mark of the Web" — NTFS alternate stream shown as a sidecar file under WSL (e.g. foo.ts:Zone.Identifier). Not part of the project; safe to delete.
+**/*Zone.Identifier
+
+# Build artifacts
+frontend/dist/
+flutter_project/build/
+flutter_project/.dart_tool/
+flutter_project/.packages
+flutter_project/.flutter-plugins
+flutter_project/.flutter-plugins-dependencies
+
+# Coverage reports
+frontend/coverage/
+coverage/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Windows
+Thumbs.db

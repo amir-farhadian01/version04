@@ -1,0 +1,139 @@
+{
+  "version": "5.1",
+  "checksum": "placeholder",
+  "steps": [
+    {
+      "tag": "CreateEnum",
+      "enum": "SessionStatus",
+      "values": ["scheduled", "in_progress", "completed", "cancelled"]
+    },
+    {
+      "tag": "AlterTable",
+      "table": "Order",
+      "operations": [
+        {
+          "tag": "AddColumn",
+          "column": {
+            "name": "completed_sessions",
+            "type": "Integer",
+            "default": 0
+          }
+        },
+        {
+          "tag": "AddColumn",
+          "column": {
+            "name": "is_multi_session",
+            "type": "Boolean",
+            "default": false
+          }
+        },
+        {
+          "tag": "AddColumn",
+          "column": {
+            "name": "total_sessions",
+            "type": "Integer",
+            "default": 1
+          }
+        }
+      ]
+    },
+    {
+      "tag": "CreateTable",
+      "table": "order_sessions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "Text",
+          "default": {
+            "name": "cuid"
+          }
+        },
+        {
+          "name": "orderId",
+          "type": "Text"
+        },
+        {
+          "name": "sessionIndex",
+          "type": "Integer"
+        },
+        {
+          "name": "status",
+          "type": "SessionStatus",
+          "default": "scheduled"
+        },
+        {
+          "name": "scheduledAt",
+          "type": "DateTime",
+          "optional": true
+        },
+        {
+          "name": "actualStartAt",
+          "type": "DateTime",
+          "optional": true
+        },
+        {
+          "name": "completedAt",
+          "type": "DateTime",
+          "optional": true
+        },
+        {
+          "name": "cancelledAt",
+          "type": "DateTime",
+          "optional": true
+        },
+        {
+          "name": "cancelReason",
+          "type": "Text",
+          "optional": true
+        },
+        {
+          "name": "durationMinutes",
+          "type": "Integer",
+          "optional": true
+        },
+        {
+          "name": "providerNotes",
+          "type": "Text",
+          "optional": true
+        },
+        {
+          "name": "completionPhotos",
+          "type": "Json",
+          "optional": true
+        },
+        {
+          "name": "createdAt",
+          "type": "DateTime",
+          "default": "now()"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DateTime",
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "columns": ["id"]
+      },
+      "uniqueConstraints": [],
+      "indexes": [
+        {
+          "name": "order_sessions_orderId_idx",
+          "columns": ["orderId"]
+        },
+        {
+          "name": "order_sessions_status_idx",
+          "columns": ["status"]
+        }
+      ],
+      "foreignKeys": [
+        {
+          "columns": ["orderId"],
+          "referencedTable": "Order",
+          "referencedColumns": ["id"],
+          "onDelete": "CASCADE"
+        }
+      ]
+    }
+  ]
+}

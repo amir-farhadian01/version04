@@ -1,0 +1,21 @@
+{
+  "version": "5.2",
+  "steps": [
+    {
+      "tag": "CreateEnum",
+      "enum": "OrderUrgency",
+      "values": ["standard", "urgent", "emergency"]
+    },
+    {
+      "tag": "AlterTable",
+      "table": "Order",
+      "addColumns": [
+        {
+          "name": "urgency",
+          "type": "OrderUrgency",
+          "default": "standard"
+        }
+      ]
+    }
+  ]
+}

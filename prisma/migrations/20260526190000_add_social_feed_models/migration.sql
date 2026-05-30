@@ -1,0 +1,81 @@
+-- AlterTable: Post - restructure for social feed v2
+ALTER TABLE "Post" DROP COLUMN IF EXISTS "type";
+ALTER TABLE "Post" DROP COLUMN IF EXISTS "mediaUrl";
+ALTER TABLE "Post" DROP COLUMN IF EXISTS "thumbnailUrl";
+ALTER TABLE "Post" DROP COLUMN IF EXISTS "serviceId";
+ALTER TABLE "Post" DROP COLUMN IF EXISTS "businessId";
+ALTER TABLE "Post" DROP COLUMN IF EXISTS "location";
+ALTER TABLE "Post" DROP COLUMN IF EXISTS "interests";
+ALTER TABLE "Post" DROP COLUMN IF EXISTS "views";
+ALTER TABLE "Post" ALTER COLUMN "categoryId" SET NOT NULL;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "caption" TEXT;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "locationId" TEXT;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "serviceCatalogId" TEXT;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "isBusinessPost" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "isPromoted" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "likeCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "commentCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "viewCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "saveCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "moderationStatus" TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "publishedAt" TIMESTAMP(3);
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "scheduledAt" TIMESTAMP(3);
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT now();
+
+-- CreateTable: PostMedia
+CREATE TABLE IF NOT EXISTS "PostMedia" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "postId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "thumbnailUrl" TEXT,
+    "duration" INTEGER,
+    "width" INTEGER,
+    "height" INTEGER,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable: PostLocation
+CREATE TABLE IF NOT EXISTS "PostLocation" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "latitude" DOUBLE PRECISION NOT NULL,
+    "longitude" DOUBLE PRECISION NOT NULL,
+    "city" TEXT,
+    "province" TEXT,
+    "country" TEXT DEFAULT 'CA',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable: PostLike
+CREATE TABLE IF NOT EXISTS "PostLike" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "postId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable: PostSave
+CREATE TABLE IF NOT EXISTS "PostSave" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "postId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX IF NOT EXISTS "PostLike_postId_userId_key" ON "PostLike"("postId", "userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "PostSave_postId_userId_key" ON "PostSave"("postId", "userId");
+CREATE INDEX IF NOT EXISTS "PostMedia_postId_idx" ON "PostMedia"("postId");
+CREATE INDEX IF NOT EXISTS "Post_authorId_idx" ON "Post"("authorId");
+CREATE INDEX IF NOT EXISTS "Post_publishedAt_idx" ON "Post"("publishedAt");
+CREATE INDEX IF NOT EXISTS "Post_moderationStatus_idx" ON "Post"("moderationStatus");
+
+-- AddForeignKey
+ALTER TABLE "PostMedia" ADD CONSTRAINT "PostMedia_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Post" ADD CONSTRAINT "Post_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "PostLocation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "PostLike" ADD CONSTRAINT "PostLike_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "PostLike" ADD CONSTRAINT "PostLike_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "PostSave" ADD CONSTRAINT "PostSave_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "PostSave" ADD CONSTRAINT "PostSave_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

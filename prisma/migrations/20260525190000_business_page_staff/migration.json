@@ -1,0 +1,28 @@
+{
+  "version": "5.22.0",
+  "steps": [
+    {
+      "tag": "CreateTable",
+      "table": "package_staff_assignments"
+    },
+    {
+      "tag": "CreateTable",
+      "table": "business_portfolios"
+    },
+    {
+      "tag": "AlterTable",
+      "table": "CompanyUser",
+      "property": "staff_role"
+    },
+    {
+      "tag": "AlterTable",
+      "table": "ProviderServicePackage",
+      "property": "break_time_minutes"
+    },
+    {
+      "tag": "AlterTable",
+      "table": "Schedule",
+      "property": "is_active"
+    }
+  ]
+}

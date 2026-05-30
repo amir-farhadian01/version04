@@ -1,0 +1,15 @@
+---
+description: Roadmap-first protocol — every agent reads /docs/ROADMAP.md before any edit
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Roadmap-First Protocol
+Before doing anything in this repo, READ `/docs/ROADMAP.md`.
+- Identify which phase (F0..F10) the requested change belongs to.
+- Confirm the phase status before writing code; if you change a phase
+  outcome, update its row in the same change.
+- For any new model/route/screen, also update `/docs/ADMIN-PARITY.md`
+  to ensure the admin counterpart is tracked.
+- Architectural decisions go to `/docs/DECISIONS.md` as a new ADR.
+- Run `npm run docs:check` and include its result in your summary.

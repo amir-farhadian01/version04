@@ -1,0 +1,10 @@
+{
+  "version": "5.22.0",
+  "steps": [
+    {
+      "tag": "AlterEnum",
+      "enum": "OrderEntryPoint",
+      "values": ["explorer", "ai_suggestion", "direct", "wizard", "reorder", "guest"]
+    }
+  ]
+}

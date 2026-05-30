@@ -1,0 +1,19 @@
+{
+  "version": "5.22.0",
+  "steps": [
+    {
+      "tag": "CreateEnum",
+      "enum": "PaymentStatus",
+      "values": [
+        "pending",
+        "captured",
+        "refunded",
+        "failed"
+      ]
+    },
+    {
+      "tag": "CreateModel",
+      "model": "Payment"
+    }
+  ]
+}

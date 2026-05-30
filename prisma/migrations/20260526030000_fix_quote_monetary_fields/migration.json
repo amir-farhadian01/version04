@@ -1,0 +1,36 @@
+{
+  "version": "5.2",
+  "steps": [
+    {
+      "tag": "AlterTable",
+      "table": "Order",
+      "addColumns": [
+        {
+          "name": "budget",
+          "type": "Integer"
+        }
+      ]
+    },
+    {
+      "tag": "AlterTable",
+      "table": "quotes",
+      "alterColumns": [
+        {
+          "name": "subtotal",
+          "type": "Integer",
+          "default": 0
+        },
+        {
+          "name": "tax",
+          "type": "Integer",
+          "default": 0
+        },
+        {
+          "name": "total",
+          "type": "Integer",
+          "default": 0
+        }
+      ]
+    }
+  ]
+}

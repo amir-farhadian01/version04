@@ -1,0 +1,812 @@
+import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
+import '../../services/api_service.dart';
+import '../../widgets/service_search_delegate.dart';
+
+/// Explorer tab (TAB 2) with General and Business sub-tabs.
+/// Uses /api/social/posts/feed with infinite scroll and pull-to-refresh.
+class ExplorerScreen extends StatefulWidget {
+  const ExplorerScreen({super.key});
+
+  @override
+  State<ExplorerScreen> createState() => _ExplorerScreenState();
+}
+
+class _ExplorerScreenState extends State<ExplorerScreen> {
+  int _tabIndex = 0;
+  final ApiService _api = ApiService();
+  final ScrollController _scrollController = ScrollController();
+
+  bool _loadingFeed = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  int _currentPage = 1;
+  List<Map<String, dynamic>> _posts = [];
+  List<Map<String, dynamic>> _stories = [];
+
+  String? _errorMessage;
+
+  final String _currentLocation = 'Vaughan, ON';
+  final String _neighbourhoodLocation = 'Vaughan';
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    _loadFeed();
+    _loadStories();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_loadingMore &&
+        _hasMore &&
+        !_loadingFeed) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadFeed() async {
+    setState(() {
+      _loadingFeed = true;
+      _errorMessage = null;
+      _currentPage = 1;
+    });
+    try {
+      final result = await _api.getFeedPosts(page: _currentPage);
+      final data = _extractList(result);
+      final total = result['total'] as int? ?? 0;
+      setState(() {
+        _posts = data;
+        _hasMore = _posts.length < total;
+        _loadingFeed = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loadingFeed = false;
+        _errorMessage = 'Could not load feed.\nCheck your connection and try again.';
+      });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final nextPage = _currentPage + 1;
+      final result = await _api.getFeedPosts(page: nextPage);
+      final data = _extractList(result);
+      final total = result['total'] as int? ?? 0;
+      setState(() {
+        _currentPage = nextPage;
+        _posts.addAll(data);
+        _hasMore = _posts.length < total;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      setState(() => _loadingMore = false);
+    }
+  }
+
+  Future<void> _loadStories() async {
+    try {
+      final result = await _api.getStories();
+      final groups = (result['data'] as List<dynamic>?)
+              ?.cast<Map<String, dynamic>>() ??
+          [];
+      final flat = <Map<String, dynamic>>[];
+      for (final group in groups) {
+        final author = group['author'] as Map<String, dynamic>? ?? {};
+        flat.add({
+          'id': author['id'] ?? '',
+          'name': author['displayName'] ?? 'User',
+          'initial': ((author['displayName'] ?? 'U') as String)
+              .characters
+              .first
+              .toUpperCase(),
+          'seen': false,
+          'avatarUrl': author['avatarUrl'],
+        });
+      }
+      _stories = flat;
+    } catch (_) {
+      // Keep mock stories as fallback
+    }
+    setState(() {});
+  }
+
+  List<Map<String, dynamic>> _extractList(Map<String, dynamic> result) {
+    return (result['data'] as List<dynamic>?)
+            ?.cast<Map<String, dynamic>>() ??
+        [];
+  }
+
+  Future<void> _onRefresh() async {
+    await _loadFeed();
+    await _loadStories();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppColors.bg : AppColorsLight.bg;
+    final text3 = isDark ? AppColors.text3 : AppColorsLight.text3;
+    final border = isDark ? AppColors.border : AppColorsLight.border;
+
+    return Container(
+      color: bg,
+      child: Column(
+        children: [
+          // Tab bar: General | Business
+          Container(
+            decoration: BoxDecoration(
+              color: bg,
+              border: Border(bottom: BorderSide(color: border)),
+            ),
+            child: Row(
+              children: ['Explorer', 'Business Hub']
+                  .asMap()
+                  .entries
+                  .map((e) {
+                final active = e.key == _tabIndex;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _tabIndex = e.key),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color:
+                                active ? AppColors.primary : Colors.transparent,
+                            width: 2.5,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        e.value,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: active ? AppColors.primary : text3,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          // Location bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on,
+                    size: 16, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Text(
+                  _neighbourhoodLocation,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _currentLocation,
+                  style: const TextStyle(fontSize: 11, color: AppColors.text3),
+                ),
+              ],
+            ),
+          ),
+
+          // Search + Filter bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      showSearch(
+                        context: context,
+                        delegate: ServiceSearchDelegate(),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: border),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search,
+                              size: 14, color: AppColors.text3),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Search in $_currentLocation...',
+                              style: const TextStyle(
+                                  fontSize: 13, color: AppColors.text3),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: border),
+                  ),
+                  child: const Icon(Icons.filter_list,
+                      size: 16, color: AppColors.text2),
+                ),
+              ],
+            ),
+          ),
+
+          // Stories row
+          SizedBox(
+            height: 90,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+              children: _stories.map((s) {
+                final seen = s['seen'] as bool? ?? false;
+                return GestureDetector(
+                  onTap: () => Navigator.pushNamed(
+                      context, '/explorer/story',
+                      arguments: s['id']),
+                  child: Container(
+                    width: 64,
+                    margin: const EdgeInsets.only(right: 12),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 58,
+                          height: 58,
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: seen
+                                ? null
+                                : const LinearGradient(
+                                    colors: [
+                                      AppColors.primary,
+                                      AppColors.accent
+                                    ],
+                                  ),
+                            color: seen ? AppColors.border2 : null,
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.card,
+                              border:
+                                  Border.all(color: AppColors.bg2, width: 2),
+                            ),
+                            child: Center(
+                              child: Text(
+                                s['initial'] as String? ?? '?',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.accent,
+                                  fontFamily: 'Space Grotesk',
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          s['name'] as String? ?? '',
+                          style: const TextStyle(
+                              fontSize: 10, color: AppColors.text2),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          // Posts feed with pull-to-refresh and infinite scroll
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _onRefresh,
+              color: AppColors.primary,
+              child: _buildFeedList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedList() {
+    // Initial loading — skeleton cards
+    if (_loadingFeed) {
+      return ListView.builder(
+        padding: EdgeInsets.zero,
+        itemCount: 3,
+        itemBuilder: (_, _) => _skeletonCard(),
+      );
+    }
+
+    // Error state
+    if (_errorMessage != null) {
+      return ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 40),
+            child: Column(
+              children: [
+                const Text('😕', style: TextStyle(fontSize: 48)),
+                const SizedBox(height: 12),
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.text2,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _onRefresh,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Retry',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Empty state
+    if (_posts.isEmpty) {
+      return ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 40),
+            child: Column(
+              children: [
+                const Text('📍', style: TextStyle(fontSize: 48)),
+                const SizedBox(height: 12),
+                const Text(
+                  'No content in your area',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.text2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Be the first to create a post in your neighbourhood!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: AppColors.text3),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Posts list with infinite scroll
+    return ListView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.zero,
+      itemCount: _posts.length + (_hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index >= _posts.length) {
+          // Loading more indicator
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          );
+        }
+        return _postCard(_posts[index]);
+      },
+    );
+  }
+
+  /// Skeleton shimmer card matching PostCard layout
+  Widget _skeletonCard() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.border2,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 12,
+                        width: 140,
+                        decoration: BoxDecoration(
+                          color: AppColors.border2,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        height: 10,
+                        width: 100,
+                        decoration: BoxDecoration(
+                          color: AppColors.border2,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            height: 180,
+            decoration: BoxDecoration(
+              color: AppColors.border2.withValues(alpha: 0.3),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 12,
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.border2,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                Container(
+                  height: 12,
+                  width: 200,
+                  decoration: BoxDecoration(
+                    color: AppColors.border2,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _postCard(Map<String, dynamic> post) {
+    // Extract fields from API response (matches FeedPost shape)
+    final author = post['author'] as Map<String, dynamic>? ?? {};
+    final authorName = (author['displayName'] ?? 'User') as String;
+    final authorInitial = authorName.characters.first.toUpperCase();
+    final category = post['category'] as Map<String, dynamic>? ?? {};
+    final categoryName = (category['name'] ?? 'General') as String;
+    final caption = post['caption'] as String? ?? '';
+    final likeCount = (post['likeCount'] ?? 0) as int;
+    final commentCount = (post['commentCount'] ?? 0) as int;
+    final media = (post['media'] as List<dynamic>?) ?? [];
+    final hasImage = media.isNotEmpty;
+    final createdAt = post['publishedAt'] ?? post['createdAt'] ?? '';
+
+    final timeAgo = _formatTimeAgo(createdAt is String ? createdAt : '');
+    final isBusiness = (post['isBusinessPost'] as bool?) ?? false;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      authorInitial,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontFamily: 'Space Grotesk',
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              authorName,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.text,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isBusiness) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'BUSINESS',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.accent,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      Text(
+                        '$categoryName · $timeAgo',
+                        style:
+                            const TextStyle(fontSize: 11, color: AppColors.text3),
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(
+                      context, '/explorer/comments',
+                      arguments: post['id']),
+                  child: const Text(
+                    '···',
+                    style: TextStyle(fontSize: 20, color: AppColors.text3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Media (lazy via network image)
+          if (hasImage)
+            Container(
+              height: 180,
+              width: double.infinity,
+              color: AppColors.border2.withValues(alpha: 0.2),
+              child: _buildMedia(media.first as Map<String, dynamic>),
+            ),
+
+          // Caption
+          if (caption.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$authorName ',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      caption,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.text,
+                        height: 1.6,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Action bar
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.only(top: 10),
+                  decoration: const BoxDecoration(
+                    border: Border(top: BorderSide(color: AppColors.border)),
+                  ),
+                  child: Row(
+                    children: [
+                      _actionItem(Icons.favorite_border, likeCount.toString()),
+                      const SizedBox(width: 16),
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamed(
+                            context, '/explorer/comments',
+                            arguments: post['id']),
+                        child:
+                            _actionItem(Icons.chat_bubble_outline, commentCount.toString()),
+                      ),
+                      const SizedBox(width: 16),
+                      _actionItem(Icons.share, 'Share'),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () =>
+                            Navigator.pushNamed(context, '/order/new'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.shopping_bag,
+                                  size: 12, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text(
+                                'Order Service',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMedia(Map<String, dynamic> media) {
+    final url = media['url'] as String? ?? '';
+    if (url.isEmpty) {
+      return const Center(
+          child: Icon(Icons.image, size: 48, color: AppColors.text3));
+    }
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value: loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded /
+                    loadingProgress.expectedTotalBytes!
+                : null,
+            strokeWidth: 2,
+            color: AppColors.primary,
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return const Center(
+          child: Icon(Icons.broken_image, size: 40, color: AppColors.text3),
+        );
+      },
+    );
+  }
+
+  Widget _actionItem(IconData icon, String count) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.text3),
+        const SizedBox(width: 5),
+        Text(count, style: const TextStyle(fontSize: 12, color: AppColors.text3)),
+      ],
+    );
+  }
+
+  String _formatTimeAgo(String dateStr) {
+    if (dateStr.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(dateStr);
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 1) return 'just now';
+      if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+      if (diff.inHours < 24) return '${diff.inHours}h ago';
+      if (diff.inDays < 7) return '${diff.inDays}d ago';
+      return '${dt.day}/${dt.month}/${dt.year}';
+    } catch (_) {
+      return '';
+    }
+  }
+}

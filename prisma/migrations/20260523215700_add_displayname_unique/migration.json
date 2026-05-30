@@ -1,0 +1,11 @@
+{
+  "version": "5.19.0",
+  "steps": [
+    {
+      "tag": "CreateUniqueConstraint",
+      "model": "User",
+      "field": "displayName",
+      "constraintName": "User_displayName_key"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "version": "5.22.0",
+  "steps": [
+    {
+      "tag": "AlterTable",
+      "table": "quotes",
+      "addColumns": [
+        {
+          "name": "counter_offer_to",
+          "type": "Text",
+          "nullable": true
+        }
+      ]
+    }
+  ]
+}

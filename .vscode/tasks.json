@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Flutter Web (neighborly) — port 9088",
+      "type": "shell",
+      "command": "flutter run -d web-server --web-hostname=0.0.0.0 --web-port=9088 --dart-define=API_BASE_URL=http://localhost:8077",
+      "options": {
+        "cwd": "${workspaceFolder}/flutter_project"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
