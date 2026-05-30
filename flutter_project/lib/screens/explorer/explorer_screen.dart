@@ -1,10 +1,17 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
+import '../../providers/cache_provider.dart';
+import '../../cache/cache_policy.dart';
+import '../../cache/image_cache_config.dart';
 import '../../services/api_service.dart';
 import '../../widgets/service_search_delegate.dart';
 
 /// Explorer tab (TAB 2) with General and Business sub-tabs.
-/// Uses /api/social/posts/feed with infinite scroll and pull-to-refresh.
+///
+/// Uses the five-layer caching system with pull-to-refresh and infinite scroll.
+/// Images are cached via [ImageCacheConfig].
 class ExplorerScreen extends StatefulWidget {
   const ExplorerScreen({super.key});
 
@@ -60,10 +67,20 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       _errorMessage = null;
       _currentPage = 1;
     });
+
+    final cache = context.read<CacheProvider>();
+
     try {
-      final result = await _api.getFeedPosts(page: _currentPage);
-      final data = _extractList(result);
-      final total = result['total'] as int? ?? 0;
+      final result = await cache.fetch(
+        key: '/social/posts/feed?page=1',
+        group: 'feed',
+        ttl: CachePolicy.feedTtl,
+        fetcher: () => _api.getFeedPosts(page: 1),
+      );
+      final data = (result.data['data'] as List<dynamic>?)
+              ?.cast<Map<String, dynamic>>() ??
+          [];
+      final total = result.data['total'] as int? ?? 0;
       setState(() {
         _posts = data;
         _hasMore = _posts.length < total;
@@ -72,7 +89,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     } catch (e) {
       setState(() {
         _loadingFeed = false;
-        _errorMessage = 'Could not load feed.\nCheck your connection and try again.';
+        _errorMessage =
+            'Could not load feed.\nCheck your connection and try again.';
       });
     }
   }
@@ -83,7 +101,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     try {
       final nextPage = _currentPage + 1;
       final result = await _api.getFeedPosts(page: nextPage);
-      final data = _extractList(result);
+      final data = (result['data'] as List<dynamic>?)
+              ?.cast<Map<String, dynamic>>() ??
+          [];
       final total = result['total'] as int? ?? 0;
       setState(() {
         _currentPage = nextPage;
@@ -108,25 +128,17 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         flat.add({
           'id': author['id'] ?? '',
           'name': author['displayName'] ?? 'User',
-          'initial': ((author['displayName'] ?? 'U') as String)
-              .characters
-              .first
-              .toUpperCase(),
+          'initial':
+              ((author['displayName'] ?? 'U') as String).characters.first.toUpperCase(),
           'seen': false,
           'avatarUrl': author['avatarUrl'],
         });
       }
       _stories = flat;
     } catch (_) {
-      // Keep mock stories as fallback
+      // Keep empty — fallback
     }
     setState(() {});
-  }
-
-  List<Map<String, dynamic>> _extractList(Map<String, dynamic> result) {
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        [];
   }
 
   Future<void> _onRefresh() async {
@@ -266,72 +278,78 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
             ),
           ),
 
-          // Stories row
+          // Stories row — horizontal ListView.builder for performance
           SizedBox(
             height: 90,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-              children: _stories.map((s) {
-                final seen = s['seen'] as bool? ?? false;
-                return GestureDetector(
-                  onTap: () => Navigator.pushNamed(
-                      context, '/explorer/story',
-                      arguments: s['id']),
-                  child: Container(
-                    width: 64,
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 58,
-                          height: 58,
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: seen
-                                ? null
-                                : const LinearGradient(
-                                    colors: [
-                                      AppColors.primary,
-                                      AppColors.accent
-                                    ],
+            child: _stories.isEmpty
+                ? const SizedBox.shrink()
+                : ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+                    itemCount: _stories.length,
+                    itemBuilder: (ctx, i) {
+                      final s = _stories[i];
+                      final seen = s['seen'] as bool? ?? false;
+                      return GestureDetector(
+                        onTap: () => Navigator.pushNamed(
+                            context, '/explorer/story',
+                            arguments: s['id']),
+                        child: Container(
+                          width: 64,
+                          margin: const EdgeInsets.only(right: 12),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 58,
+                                height: 58,
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: seen
+                                      ? null
+                                      : const LinearGradient(
+                                          colors: [
+                                            AppColors.primary,
+                                            AppColors.accent
+                                          ],
+                                        ),
+                                  color:
+                                      seen ? AppColors.border2 : null,
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppColors.card,
+                                    border: Border.all(
+                                        color: AppColors.bg2, width: 2),
                                   ),
-                            color: seen ? AppColors.border2 : null,
-                          ),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.card,
-                              border:
-                                  Border.all(color: AppColors.bg2, width: 2),
-                            ),
-                            child: Center(
-                              child: Text(
-                                s['initial'] as String? ?? '?',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.accent,
-                                  fontFamily: 'Space Grotesk',
+                                  child: Center(
+                                    child: Text(
+                                      s['initial'] as String? ?? '?',
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.accent,
+                                        fontFamily: 'Space Grotesk',
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 6),
+                              Text(
+                                s['name'] as String? ?? '',
+                                style: const TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.text2),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          s['name'] as String? ?? '',
-                          style: const TextStyle(
-                              fontSize: 10, color: AppColors.text2),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              }).toList(),
-            ),
           ),
 
           // Posts feed with pull-to-refresh and infinite scroll
@@ -430,14 +448,14 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       );
     }
 
-    // Posts list with infinite scroll
+    // Posts list with infinite scroll — GridView.builder approach for
+    // masonry-like feel, or ListView.builder for single-column feed.
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.zero,
       itemCount: _posts.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index >= _posts.length) {
-          // Loading more indicator
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Center(
@@ -457,7 +475,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     );
   }
 
-  /// Skeleton shimmer card matching PostCard layout
   Widget _skeletonCard() {
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
@@ -545,7 +562,6 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   }
 
   Widget _postCard(Map<String, dynamic> post) {
-    // Extract fields from API response (matches FeedPost shape)
     final author = post['author'] as Map<String, dynamic>? ?? {};
     final authorName = (author['displayName'] ?? 'User') as String;
     final authorInitial = authorName.characters.first.toUpperCase();
@@ -618,7 +634,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 5, vertical: 2),
                               decoration: BoxDecoration(
-                                color: AppColors.accent.withValues(alpha: 0.15),
+                                color:
+                                    AppColors.accent.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Text(
@@ -635,8 +652,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                       ),
                       Text(
                         '$categoryName · $timeAgo',
-                        style:
-                            const TextStyle(fontSize: 11, color: AppColors.text3),
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.text3),
                       ),
                     ],
                   ),
@@ -654,7 +671,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
             ),
           ),
 
-          // Media (lazy via network image)
+          // Media — cached via ImageCacheConfig
           if (hasImage)
             Container(
               height: 180,
@@ -700,18 +717,20 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                 Container(
                   padding: const EdgeInsets.only(top: 10),
                   decoration: const BoxDecoration(
-                    border: Border(top: BorderSide(color: AppColors.border)),
+                    border:
+                        Border(top: BorderSide(color: AppColors.border)),
                   ),
                   child: Row(
                     children: [
-                      _actionItem(Icons.favorite_border, likeCount.toString()),
+                      _actionItem(
+                          Icons.favorite_border, likeCount.toString()),
                       const SizedBox(width: 16),
                       GestureDetector(
                         onTap: () => Navigator.pushNamed(
                             context, '/explorer/comments',
                             arguments: post['id']),
-                        child:
-                            _actionItem(Icons.chat_bubble_outline, commentCount.toString()),
+                        child: _actionItem(Icons.chat_bubble_outline,
+                            commentCount.toString()),
                       ),
                       const SizedBox(width: 16),
                       _actionItem(Icons.share, 'Share'),
@@ -760,28 +779,20 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       return const Center(
           child: Icon(Icons.image, size: 48, color: AppColors.text3));
     }
-    return Image.network(
-      url,
+    return CachedNetworkImage(
+      imageUrl: url,
       fit: BoxFit.cover,
       width: double.infinity,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Center(
-          child: CircularProgressIndicator(
-            value: loadingProgress.expectedTotalBytes != null
-                ? loadingProgress.cumulativeBytesLoaded /
-                    loadingProgress.expectedTotalBytes!
-                : null,
-            strokeWidth: 2,
-            color: AppColors.primary,
-          ),
-        );
-      },
-      errorBuilder: (context, error, stackTrace) {
-        return const Center(
-          child: Icon(Icons.broken_image, size: 40, color: AppColors.text3),
-        );
-      },
+      cacheManager: ImageCacheConfig.manager,
+      placeholder: (context, url) => const Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: AppColors.primary,
+        ),
+      ),
+      errorWidget: (context, url, error) => const Center(
+        child: Icon(Icons.broken_image, size: 40, color: AppColors.text3),
+      ),
     );
   }
 
@@ -790,7 +801,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       children: [
         Icon(icon, size: 14, color: AppColors.text3),
         const SizedBox(width: 5),
-        Text(count, style: const TextStyle(fontSize: 12, color: AppColors.text3)),
+        Text(count,
+            style:
+                const TextStyle(fontSize: 12, color: AppColors.text3)),
       ],
     );
   }
