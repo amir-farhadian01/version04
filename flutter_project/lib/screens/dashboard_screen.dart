@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_bar.dart';
 import '../widgets/bottom_nav.dart';
+import '../widgets/responsive_scaffold.dart';
 import '../services/auth_service.dart';
 
 /// Phone 5: Business Dashboard screen — AutoFix Vaughan
@@ -24,13 +25,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _checkRole() async {
     final role = await AuthService().getUserRole();
-    if (role != null && (role.toLowerCase() == 'provider' || role.toLowerCase() == 'owner' || role.toLowerCase() == 'platform_admin')) {
+    if (role != null &&
+        (role.toLowerCase() == 'provider' ||
+            role.toLowerCase() == 'owner' ||
+            role.toLowerCase() == 'platform_admin')) {
       setState(() => _showBizTab = true);
     }
   }
 
   static const _stats = [
-    ('5', 'Today\'s Appointments', '↑ +2 vs yesterday', AppColors.primary),
+    ('5', "Today's Appointments", '↑ +2 vs yesterday', AppColors.primary),
     ('2', 'Pending Requests', 'Awaiting your reply', AppColors.warn),
     ('\$1,240', 'Revenue This Week', '↑ 18% vs last week', AppColors.secondary),
     ('4.9 ⭐', 'Avg Rating (184)', '↑ 0.1 this month', AppColors.purple),
@@ -43,8 +47,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ];
 
   static const _orders = [
-    ('Oil Change · Custom Package', 'Mobil 1 Synthetic + K&N Filter', '\$89', 'New offer', AppColors.secondary),
-    ('Winter Prep Package', 'Scheduled for May 12', '\$199', 'Confirmed', AppColors.primary),
+    ('Oil Change · Custom Package', 'Mobil 1 Synthetic + K&N Filter', '\$89',
+        'New offer', AppColors.secondary),
+    ('Winter Prep Package', 'Scheduled for May 12', '\$199', 'Confirmed',
+        AppColors.primary),
   ];
 
   static const _menuItems = [
@@ -100,6 +106,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? AppColors.bg : AppColorsLight.bg;
+    final card = isDark ? AppColors.card : AppColorsLight.card;
+    final text = isDark ? AppColors.text : AppColorsLight.text;
+    final text2 = isDark ? AppColors.text2 : AppColorsLight.text2;
+    final text3 = isDark ? AppColors.text3 : AppColorsLight.text3;
+    final border = isDark ? AppColors.border : AppColorsLight.border;
+
     return Stack(
       children: [
         Column(
@@ -108,18 +122,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             // Dashboard Header
             Container(
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-              decoration: const BoxDecoration(
-                color: AppColors.bg,
-                border: Border(bottom: BorderSide(color: AppColors.border)),
+              decoration: BoxDecoration(
+                color: bg,
+                border: Border(bottom: BorderSide(color: border)),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => setState(() => _menuOpen = true),
-                    child: const Icon(Icons.menu, size: 22, color: AppColors.text),
+                    child: Icon(Icons.menu, size: 22, color: text),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -128,28 +142,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 fontFamily: 'Space Grotesk',
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.text)),
-                        SizedBox(height: 2),
+                                color: text)),
+                        const SizedBox(height: 2),
                         Text('AutoFix Vaughan · Dashboard',
-                            style: TextStyle(fontSize: 12, color: AppColors.text3)),
+                            style: TextStyle(fontSize: 12, color: text3)),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.secondary.withValues(alpha: 0.1),
-                      border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+                      border: Border.all(
+                          color: AppColors.secondary.withValues(alpha: 0.3)),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.circle, size: 8, color: AppColors.secondary),
+                        Icon(Icons.circle,
+                            size: 8, color: AppColors.secondary),
                         SizedBox(width: 4),
                         Text('● Live',
                             style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.secondary)),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.secondary)),
                       ],
                     ),
                   ),
@@ -157,189 +176,246 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // Stats Grid
-                    Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          childAspectRatio: 1.6,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth >= 600;
+                  return SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Stats Grid - responsive columns
+                        Padding(
+                          padding: EdgeInsets.all(isWide ? 20 : 14),
+                          child: ResponsiveGrid(
+                            itemCount: _stats.length,
+                            childAspectRatio: isWide ? 2.0 : 1.6,
+                            itemBuilder: (context, index) {
+                              final stat = _stats[index];
+                              final accent = stat.$4;
+                              return Container(
+                                padding: EdgeInsets.all(isWide ? 18 : 14),
+                                decoration: BoxDecoration(
+                                  color: card,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: border),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(stat.$1,
+                                        style: TextStyle(
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.w700,
+                                            fontFamily: 'Space Grotesk',
+                                            color: accent)),
+                                    const SizedBox(height: 4),
+                                    Text(stat.$2,
+                                        style: TextStyle(
+                                            fontSize: 11, color: text3)),
+                                    const SizedBox(height: 6),
+                                    Text(stat.$3,
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: stat.$3.startsWith('↑')
+                                                ? AppColors.secondary
+                                                : text3)),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                        itemCount: _stats.length,
-                        itemBuilder: (context, index) {
-                          final stat = _stats[index];
-                          final accent = stat.$4;
-                          return Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: AppColors.card,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(stat.$1,
-                                    style: TextStyle(
-                                        fontSize: 26,
-                                        fontWeight: FontWeight.w700,
-                                        fontFamily: 'Space Grotesk',
-                                        color: accent)),
-                                const SizedBox(height: 4),
-                                Text(stat.$2,
-                                    style: const TextStyle(fontSize: 11, color: AppColors.text3)),
-                                const SizedBox(height: 6),
-                                Text(stat.$3,
-                                    style: TextStyle(
-                                        fontSize: 11,
-                                        color: stat.$3.startsWith('↑')
-                                            ? AppColors.secondary
-                                            : AppColors.text3)),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    // Appointments
-                    _buildSection('Today\'s Appointments', [
-                      ..._appointments.map((apt) => Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.card,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border(
-                                left: BorderSide(
-                                  color: _statusColor(apt.$4),
-                                  width: 3,
-                                ),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                SizedBox(
-                                  width: 40,
-                                  child: Text(apt.$1,
-                                      style: const TextStyle(fontSize: 11, color: AppColors.text3, height: 1.3)),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(apt.$2,
-                                          style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.text)),
-                                      const SizedBox(height: 2),
-                                      Text(apt.$3,
-                                          style: const TextStyle(fontSize: 11, color: AppColors.text2)),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: _statusBg(apt.$4),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    _statusLabel(apt.$4),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
+                        // Appointments
+                        _buildSection("Today's Appointments", text, text2,
+                            text3, card, border, [
+                          ..._appointments.map((apt) => Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: card,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border(
+                                    left: BorderSide(
                                       color: _statusColor(apt.$4),
+                                      width: 3,
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                          )),
-                    ]),
-                    // Recent Offers & Orders
-                    _buildSection('Recent Offers & Orders', [
-                      ..._orders.map((order) => Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.card,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(order.$1,
-                                          style: const TextStyle(
-                                              fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
-                                      const SizedBox(height: 2),
-                                      Text(order.$2,
-                                          style: const TextStyle(fontSize: 11, color: AppColors.text3)),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                child: Row(
                                   children: [
-                                    Text(order.$3,
+                                    SizedBox(
+                                      width: 40,
+                                      child: Text(apt.$1,
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              color: text3,
+                                              height: 1.3)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(apt.$2,
+                                              style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: text)),
+                                          const SizedBox(height: 2),
+                                          Text(apt.$3,
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: text2)),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: _statusBg(apt.$4),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        _statusLabel(apt.$4),
                                         style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                            color: order.$5)),
-                                    const SizedBox(height: 2),
-                                    Text(order.$4,
-                                        style: TextStyle(
-                                            fontSize: 10,
-                                            color: order.$5)),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: _statusColor(apt.$4),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
+                              )),
+                        ]),
+                        // Recent Offers & Orders
+                        _buildSection('Recent Offers & Orders', text, text2,
+                            text3, card, border, [
+                          ..._orders.map((order) => Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: card,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: border),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(order.$1,
+                                              style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: text)),
+                                          const SizedBox(height: 2),
+                                          Text(order.$2,
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: text3)),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(order.$3,
+                                            style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: order.$5)),
+                                        const SizedBox(height: 2),
+                                        Text(order.$4,
+                                            style: TextStyle(
+                                                fontSize: 10,
+                                                color: order.$5)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              )),
+                        ]),
+                        // Wide-layout: side-by-side sections
+                        if (isWide)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                    child: _buildSection(
+                                        'Clients', text, text2, text3, card,
+                                        border, [
+                                  _emptyState(
+                                      'No clients yet', 'Add clients here'),
+                                ])),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                    child: _buildSection(
+                                        'Activity Feed', text, text2, text3,
+                                        card, border, [
+                                  _emptyState('No activity',
+                                      'Recent activity appears here'),
+                                ])),
                               ],
                             ),
-                          )),
-                    ]),
-                    const SizedBox(height: 14),
-                  ],
-                ),
+                          ),
+                        SizedBox(
+                            height: isWide ? 40 : 80), // space for nav/bottom
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 80), // space for floating nav
+            if (MediaQuery.of(context).size.width < 600)
+              const SizedBox(height: 80), // extra for floating nav on mobile
           ],
         ),
-        // Floating bottom nav
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 24,
-          child: BottomNav(
-            showBizTab: _showBizTab,
-            onItemTap: (id) {
-              if (id == 'home') Navigator.pushReplacementNamed(context, '/home');
-              if (id == 'social') Navigator.pushReplacementNamed(context, '/social');
-              if (id == 'activity') Navigator.pushReplacementNamed(context, '/activity');
-              if (id == 'biz') Navigator.pushReplacementNamed(context, '/dashboard');
-            },
-            items: const [
-              BottomNavItem(id: 'home', label: 'Home', icon: Icons.home),
-              BottomNavItem(id: 'social', label: 'Social', icon: Icons.people),
-              BottomNavItem(id: 'activity', label: 'Activity', icon: Icons.auto_awesome_motion),
-              BottomNavItem(id: 'biz', label: 'Business', icon: Icons.business, isBiz: true, active: true),
-            ],
+        // Floating bottom nav - only on mobile
+        if (MediaQuery.of(context).size.width < 600)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 24,
+            child: BottomNav(
+              showBizTab: _showBizTab,
+              onItemTap: (id) {
+                if (id == 'home')
+                  Navigator.pushReplacementNamed(context, '/home');
+                if (id == 'social')
+                  Navigator.pushReplacementNamed(context, '/social');
+                if (id == 'activity')
+                  Navigator.pushReplacementNamed(context, '/activity');
+                if (id == 'biz')
+                  Navigator.pushReplacementNamed(context, '/dashboard');
+              },
+              items: const [
+                BottomNavItem(id: 'home', label: 'Home', icon: Icons.home),
+                BottomNavItem(
+                    id: 'social', label: 'Social', icon: Icons.people),
+                BottomNavItem(
+                    id: 'activity',
+                    label: 'Activity',
+                    icon: Icons.auto_awesome_motion),
+                BottomNavItem(
+                    id: 'biz',
+                    label: 'Business',
+                    icon: Icons.business,
+                    isBiz: true,
+                    active: true),
+              ],
+            ),
           ),
-        ),
         // Menu Sidebar
         if (_menuOpen)
           GestureDetector(
@@ -351,14 +427,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             alignment: Alignment.centerLeft,
             child: Container(
               width: 260,
-              color: AppColors.bg,
+              color: bg,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     padding: const EdgeInsets.fromLTRB(18, 52, 18, 20),
-                    decoration: const BoxDecoration(
-                      border: Border(bottom: BorderSide(color: AppColors.border)),
+                    decoration: BoxDecoration(
+                      border: Border(
+                          bottom: BorderSide(color: border)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,18 +465,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 fontFamily: 'Space Grotesk')),
                         const SizedBox(height: 2),
                         const Text('@autofix_vaughan',
-                            style: TextStyle(fontSize: 11, color: AppColors.text3)),
+                            style: TextStyle(
+                                fontSize: 11, color: AppColors.text3)),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: AppColors.secondary.withValues(alpha: 0.15),
+                            color:
+                                AppColors.secondary.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.circle, size: 8, color: AppColors.secondary),
+                              Icon(Icons.circle,
+                                  size: 8, color: AppColors.secondary),
                               SizedBox(width: 4),
                               Text('Active',
                                   style: TextStyle(
@@ -413,48 +494,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   ..._menuItems.map((item) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 13),
                         decoration: BoxDecoration(
-                          color: item.$3 ? AppColors.primary.withValues(alpha: 0.08) : Colors.transparent,
+                          color: item.$3
+                              ? AppColors.primary.withValues(alpha: 0.08)
+                              : Colors.transparent,
                           border: Border(
                             left: BorderSide(
-                              color: item.$3 ? AppColors.primary : Colors.transparent,
+                              color: item.$3
+                                  ? AppColors.primary
+                                  : Colors.transparent,
                               width: 3,
                             ),
                           ),
                         ),
                         child: Row(
                           children: [
-                            Icon(item.$2, size: 18,
-                                color: item.$3 ? AppColors.primary : AppColors.text2),
+                            Icon(item.$2,
+                                size: 18,
+                                color: item.$3
+                                    ? AppColors.primary
+                                    : AppColors.text2),
                             const SizedBox(width: 12),
                             Text(item.$1,
                                 style: TextStyle(
                                     fontSize: 14,
-                                    color: item.$3 ? AppColors.primary : AppColors.text2)),
+                                    color: item.$3
+                                        ? AppColors.primary
+                                        : AppColors.text2)),
                           ],
                         ),
                       )),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 13),
                     child: const Row(
                       children: [
-                        Icon(Icons.settings, size: 18, color: AppColors.text2),
+                        Icon(Icons.settings,
+                            size: 18, color: AppColors.text2),
                         SizedBox(width: 12),
                         Text('Settings',
-                            style: TextStyle(fontSize: 14, color: AppColors.text2)),
+                            style: TextStyle(
+                                fontSize: 14, color: AppColors.text2)),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 13),
                     child: const Row(
                       children: [
                         Icon(Icons.logout, size: 18, color: AppColors.red),
                         SizedBox(width: 12),
                         Text('Logout',
-                            style: TextStyle(fontSize: 14, color: AppColors.red)),
+                            style: TextStyle(
+                                fontSize: 14, color: AppColors.red)),
                       ],
                     ),
                   ),
@@ -467,9 +563,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSection(String title, List<Widget> children) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+  Widget _emptyState(String title, String subtitle) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.inbox, size: 32, color: AppColors.text3),
+          const SizedBox(height: 8),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text)),
+          const SizedBox(height: 4),
+          Text(subtitle,
+              style:
+                  const TextStyle(fontSize: 11, color: AppColors.text3),
+              textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection(
+      String title,
+      Color text,
+      Color text2,
+      Color text3,
+      Color card,
+      Color border,
+      List<Widget> children) {
+    return ResponsivePadding(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -479,8 +608,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(title,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text2)),
+                    style:
+                        TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: text2)),
                 const Text('See all →',
                     style: TextStyle(fontSize: 11, color: AppColors.primary)),
               ],

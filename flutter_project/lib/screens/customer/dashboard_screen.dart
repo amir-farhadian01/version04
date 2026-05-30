@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
+import '../../widgets/responsive_scaffold.dart';
 
 /// Customer Dashboard (TAB 3 — SERVICES)
 /// Shows stats cards, active orders overview, and navigation to orders/messages.
@@ -8,7 +9,8 @@ class CustomerDashboardScreen extends StatefulWidget {
   const CustomerDashboardScreen({super.key});
 
   @override
-  State<CustomerDashboardScreen> createState() => _CustomerDashboardScreenState();
+  State<CustomerDashboardScreen> createState() =>
+      _CustomerDashboardScreenState();
 }
 
 class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
@@ -31,7 +33,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         _stats = statsResult['data'] as Map<String, dynamic>? ?? statsResult;
       });
     } catch (_) {
-      // Stats API may not exist yet — use placeholder
       setState(() {
         _stats = {
           'activeOrders': 2,
@@ -82,7 +83,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.dashboard, size: 20, color: AppColors.primary),
+                const Icon(Icons.dashboard,
+                    size: 20, color: AppColors.primary),
                 const SizedBox(width: 10),
                 Text(
                   'My Services',
@@ -104,119 +106,238 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           Expanded(
             child: _loading
                 ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary))
-                : SingleChildScrollView(
-                    padding: const EdgeInsets.only(bottom: 80),
-                    child: Column(
-                      children: [
-                        // Stats Grid
-                        Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
-                              childAspectRatio: 1.5,
-                            ),
-                            itemCount: _buildStatsList().length,
-                            itemBuilder: (ctx, i) {
-                              final stat = _buildStatsList()[i];
-                              return Container(
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: card,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: border),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      stat.value,
-                                      style: TextStyle(
-                                        fontSize: 26,
-                                        fontWeight: FontWeight.w700,
-                                        fontFamily: 'Space Grotesk',
-                                        color: stat.color,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      stat.label,
-                                      style: TextStyle(
-                                          fontSize: 11, color: text3),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        // Active Orders Section
-                        _buildSection(
-                          title: 'Active Orders',
-                          onTapSeeAll: () => Navigator.pushNamed(
-                              context, '/customer/orders'),
-                          children: _activeOrders.isEmpty
-                              ? [
-                                  _emptyState(
-                                      'No active orders', 'Your ongoing orders will appear here')
-                                ]
-                              : _activeOrders.map((order) {
-                                  final id = order['id'] as String? ?? '';
-                                  final service =
-                                      order['service'] as String? ??
-                                          order['serviceName'] as String? ??
-                                          'Service';
-                                  final status =
-                                      order['status'] as String? ?? 'pending';
-                                  final price = order['price'] ?? order['total'];
-                                  return _orderTile(
-                                    id: id,
-                                    title: service,
-                                    status: status,
-                                    price: price.toString(),
-                                    onTap: () => Navigator.pushNamed(
-                                        context, '/customer/order-detail',
-                                        arguments: id),
-                                  );
-                                }).toList(),
-                          text: text,
-                          text2: text2,
-                          text3: text3,
-                          card: card,
-                          border: border,
-                        ),
-                        // Messages / Inbox
-                        _buildSection(
-                          title: 'Messages',
-                          onTapSeeAll: () =>
-                              Navigator.pushNamed(context, '/customer/messages'),
-                          children: [
-                            _inboxTile(
-                              icon: Icons.inbox,
-                              title: 'Inbox',
-                              subtitle: 'Active conversations',
-                              onTap: () => Navigator.pushNamed(
-                                  context, '/customer/messages'),
-                            ),
-                          ],
-                          text: text,
-                          text2: text2,
-                          text3: text3,
-                          card: card,
-                          border: border,
-                        ),
-                      ],
-                    ),
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary))
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 600;
+                      return SingleChildScrollView(
+                        padding: EdgeInsets.only(
+                            bottom: isWide ? 32 : 80),
+                        child: isWide
+                            ? _buildWideLayout(
+                                text, text2, text3, card, border)
+                            : _buildMobileLayout(
+                                text, text2, text3, card, border),
+                      );
+                    },
                   ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildWideLayout(
+      Color text, Color text2, Color text3, Color card, Color border) {
+    return Column(
+      children: [
+        // Stats Grid — 4 columns on wide
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: ResponsiveGrid(
+            itemCount: _buildStatsList().length,
+            childAspectRatio: 1.8,
+            itemBuilder: (ctx, i) {
+              final stat = _buildStatsList()[i];
+              return Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      stat.value,
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Space Grotesk',
+                        color: stat.color,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      stat.label,
+                      style: TextStyle(fontSize: 11, color: text3),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        // Side by side: Active Orders + Messages
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildSection(
+                  title: 'Active Orders',
+                  onTapSeeAll: () =>
+                      Navigator.pushNamed(context, '/customer/orders'),
+                  children: _activeOrders.isEmpty
+                      ? [
+                          _emptyState('No active orders',
+                              'Your ongoing orders will appear here')
+                        ]
+                      : _activeOrders.map((order) {
+                          final id = order['id'] as String? ?? '';
+                          final service = order['service'] as String? ??
+                              order['serviceName'] as String? ??
+                              'Service';
+                          final status =
+                              order['status'] as String? ?? 'pending';
+                          final price =
+                              order['price'] ?? order['total'];
+                          return _orderTile(
+                            id: id,
+                            title: service,
+                            status: status,
+                            price: price.toString(),
+                            onTap: () => Navigator.pushNamed(
+                                context, '/customer/order-detail',
+                                arguments: id),
+                          );
+                        }).toList(),
+                  text: text,
+                  text2: text2,
+                  text3: text3,
+                  card: card,
+                  border: border,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildSection(
+                  title: 'Messages',
+                  onTapSeeAll: () => Navigator.pushNamed(
+                      context, '/customer/messages'),
+                  children: [
+                    _inboxTile(
+                      icon: Icons.inbox,
+                      title: 'Inbox',
+                      subtitle: 'Active conversations',
+                      onTap: () => Navigator.pushNamed(
+                          context, '/customer/messages'),
+                    ),
+                  ],
+                  text: text,
+                  text2: text2,
+                  text3: text3,
+                  card: card,
+                  border: border,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(
+      Color text, Color text2, Color text3, Color card, Color border) {
+    return Column(
+      children: [
+        // Stats Grid
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: ResponsiveGrid(
+            itemCount: _buildStatsList().length,
+            childAspectRatio: 1.5,
+            itemBuilder: (ctx, i) {
+              final stat = _buildStatsList()[i];
+              return Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      stat.value,
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Space Grotesk',
+                        color: stat.color,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      stat.label,
+                      style: TextStyle(fontSize: 11, color: text3),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        // Active Orders Section
+        _buildSection(
+          title: 'Active Orders',
+          onTapSeeAll: () =>
+              Navigator.pushNamed(context, '/customer/orders'),
+          children: _activeOrders.isEmpty
+              ? [
+                  _emptyState('No active orders',
+                      'Your ongoing orders will appear here')
+                ]
+              : _activeOrders.map((order) {
+                  final id = order['id'] as String? ?? '';
+                  final service = order['service'] as String? ??
+                      order['serviceName'] as String? ??
+                      'Service';
+                  final status =
+                      order['status'] as String? ?? 'pending';
+                  final price = order['price'] ?? order['total'];
+                  return _orderTile(
+                    id: id,
+                    title: service,
+                    status: status,
+                    price: price.toString(),
+                    onTap: () => Navigator.pushNamed(
+                        context, '/customer/order-detail',
+                        arguments: id),
+                  );
+                }).toList(),
+          text: text,
+          text2: text2,
+          text3: text3,
+          card: card,
+          border: border,
+        ),
+        // Messages / Inbox
+        _buildSection(
+          title: 'Messages',
+          onTapSeeAll: () =>
+              Navigator.pushNamed(context, '/customer/messages'),
+          children: [
+            _inboxTile(
+              icon: Icons.inbox,
+              title: 'Inbox',
+              subtitle: 'Active conversations',
+              onTap: () =>
+                  Navigator.pushNamed(context, '/customer/messages'),
+            ),
+          ],
+          text: text,
+          text2: text2,
+          text3: text3,
+          card: card,
+          border: border,
+        ),
+      ],
     );
   }
 
@@ -234,7 +355,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         color: AppColors.secondary,
       ),
       _StatItem(
-        value: '\$${((_stats!['totalSpent'] ?? 0) as num).toStringAsFixed(0)}',
+        value:
+            '\$${((_stats!['totalSpent'] ?? 0) as num).toStringAsFixed(0)}',
         label: 'Total Spent',
         color: AppColors.accent,
       ),
@@ -256,8 +378,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     required Color card,
     required Color border,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+    return ResponsivePadding(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -414,7 +535,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                   color: AppColors.text)),
           const SizedBox(height: 4),
           Text(subtitle,
-              style: const TextStyle(fontSize: 11, color: AppColors.text3),
+              style:
+                  const TextStyle(fontSize: 11, color: AppColors.text3),
               textAlign: TextAlign.center),
         ],
       ),

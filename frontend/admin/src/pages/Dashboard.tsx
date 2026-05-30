@@ -51,7 +51,7 @@ function StatCard({
   trend?: { value: string; positive: boolean }
 }) {
   return (
-    <div className="rounded-2xl border border-nh-admin-border bg-nh-admin-surface p-5 transition-all hover:border-nh-admin-primary-border">
+    <div className="rounded-2xl border border-nh-admin-border bg-nh-admin-surface p-4 sm:p-5 transition-all hover:border-nh-admin-primary-border hover:shadow-nh-admin-glow">
       <div className="flex items-start justify-between">
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${accent}`}>
           {icon}
@@ -64,10 +64,10 @@ function StatCard({
         )}
       </div>
       <div className="mt-4">
-        <p className="text-2xl font-black text-nh-admin-text">
+        <p className="text-xl sm:text-2xl font-black text-nh-admin-text font-heading">
           {typeof value === 'number' ? value.toLocaleString() : value}
         </p>
-        <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-nh-admin-text-secondary">{label}</p>
+        <p className="mt-1 text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-nh-admin-text-secondary">{label}</p>
       </div>
     </div>
   )
@@ -104,7 +104,7 @@ function ActivityItem({ entry }: { entry: AuditLogEntry }) {
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-nh-admin-text">{entry.details ?? entry.action}</p>
+        <p className="text-sm text-nh-admin-text truncate">{entry.details ?? entry.action}</p>
         <p className="text-[11px] text-nh-admin-text-secondary">
           {new Date(entry.createdAt).toLocaleString()}
           {entry.performedBy ? ` — by ${entry.performedBy.name}` : ''}
@@ -130,14 +130,14 @@ function QuickAction({
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-4 rounded-xl border border-nh-admin-border bg-nh-admin-surface p-4 text-left transition-all hover:border-nh-admin-primary hover:bg-nh-admin-surface-hover"
+      className="flex w-full items-center gap-4 rounded-xl border border-nh-admin-border bg-nh-admin-surface p-4 text-left transition-all hover:border-nh-admin-primary hover:bg-nh-admin-surface-hover"
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-nh-admin-primary-bg text-nh-admin-primary">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-nh-admin-text">{label}</p>
-        <p className="text-xs text-nh-admin-text-secondary">{description}</p>
+        <p className="text-xs text-nh-admin-text-secondary truncate">{description}</p>
       </div>
       <ArrowUpRight className="h-4 w-4 shrink-0 text-nh-admin-text-muted" />
     </button>
@@ -203,10 +203,10 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-4 py-6">
+    <div className="mx-auto w-full max-w-7xl space-y-6 sm:space-y-8 px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-black text-nh-admin-text">
+        <h1 className="text-2xl sm:text-3xl font-black text-nh-admin-text font-heading">
           Admin Dashboard
         </h1>
         <p className="mt-1 text-sm text-nh-admin-text-secondary">
@@ -214,8 +214,8 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {/* Stats Grid — responsive columns */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         <StatCard
           label="Total Users"
           value={stats.totalUsers}
@@ -285,34 +285,34 @@ export default function AdminDashboard() {
       </div>
 
       {/* Status Indicators */}
-      <div className="rounded-2xl border border-nh-admin-border bg-nh-admin-surface p-6">
+      <div className="rounded-2xl border border-nh-admin-border bg-nh-admin-surface p-4 sm:p-6">
         <h2 className="mb-4 text-lg font-bold text-nh-admin-text">System Status</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="flex items-center gap-3 rounded-xl border border-nh-admin-border bg-nh-admin-surface-elevated p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-nh-admin-success-bg">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+          <div className="flex items-center gap-3 rounded-xl border border-nh-admin-border bg-nh-admin-surface-elevated p-3 sm:p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-nh-admin-success-bg">
               <CheckCircle2 className="h-5 w-5 text-nh-admin-success" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-nh-admin-text">API Status</p>
-              <p className="text-xs text-nh-admin-success">All systems operational</p>
+              <p className="text-xs text-nh-admin-success truncate">All systems operational</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-nh-admin-border bg-nh-admin-surface-elevated p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-nh-admin-warning-bg">
+          <div className="flex items-center gap-3 rounded-xl border border-nh-admin-border bg-nh-admin-surface-elevated p-3 sm:p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-nh-admin-warning-bg">
               <Clock className="h-5 w-5 text-nh-admin-warning" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-nh-admin-text">Active Disputes</p>
-              <p className="text-xs text-nh-admin-warning">{stats.kycPending} pending reviews</p>
+              <p className="text-xs text-nh-admin-warning truncate">{stats.kycPending} pending reviews</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-nh-admin-border bg-nh-admin-surface-elevated p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-nh-admin-primary-bg">
+          <div className="flex items-center gap-3 rounded-xl border border-nh-admin-border bg-nh-admin-surface-elevated p-3 sm:p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-nh-admin-primary-bg">
               <TrendingUp className="h-5 w-5 text-nh-admin-primary" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-nh-admin-text">Orders Today</p>
-              <p className="text-xs text-nh-admin-primary">{stats.ordersToday} new orders</p>
+              <p className="text-xs text-nh-admin-primary truncate">{stats.ordersToday} new orders</p>
             </div>
           </div>
         </div>
