@@ -67,7 +67,11 @@ export default function PostCard({ post }: PostCardProps) {
     } catch { setSaved(prevSaved) }
   }
 
-  const navigateToBusiness = () => { if (post.isBusinessPost) navigate(`/biz/${post.authorId}`) }
+  const navigateToBusiness = () => {
+    if (!post.isBusinessPost) return;
+    const bizId = post.author.companyId;
+    if (bizId) navigate(`/biz/${bizId}`);
+  }
 
   return (
     <>
@@ -108,7 +112,7 @@ export default function PostCard({ post }: PostCardProps) {
                 <div className="absolute right-0 top-7 z-50 bg-nh-surface rounded-[10px] border border-nh-border shadow-lg min-w-[160px] overflow-hidden">
                   {post.isBusinessPost ? (
                     <>
-                      <div onClick={() => { navigate(`/biz/${post.authorId}`); setShowMenu(false) }} className="px-[14px] py-2.5 text-xs text-nh-text cursor-pointer border-b border-nh-border">View Business Page</div>
+                       <div onClick={() => { const bizId = post.author.companyId; if (bizId) { navigate(`/biz/${bizId}`); } setShowMenu(false) }} className="px-[14px] py-2.5 text-xs text-nh-text cursor-pointer border-b border-nh-border">View Business Page</div>
                       {post.linkedService && (
                         <div onClick={() => { navigate(`/services/${post.linkedService!.id}`); setShowMenu(false) }} className="px-[14px] py-2.5 text-xs text-nh-text cursor-pointer border-b border-nh-border">View Service</div>
                       )}
@@ -192,7 +196,8 @@ export default function PostCard({ post }: PostCardProps) {
                 className="bg-nh-primary text-white rounded-lg px-3 py-2 flex items-center justify-center gap-2 cursor-pointer hover:opacity-90"
                 onClick={(e) => {
                   e.stopPropagation()
-                  navigate(`/biz/${post.authorId}?action=order`)
+                  const bizId = post.author.companyId;
+                  if (bizId) navigate(`/biz/${bizId}?action=order`)
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

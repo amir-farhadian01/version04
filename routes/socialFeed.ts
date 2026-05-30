@@ -189,7 +189,7 @@ router.get('/posts/feed', optionalAuth, async (req: AuthRequest, res: Response) 
       prisma.post.findMany({
         where: where as any,
         include: {
-          author: { select: { id: true, displayName: true, avatarUrl: true } },
+          author: { select: { id: true, displayName: true, avatarUrl: true, companyId: true } },
           category: { select: { id: true, name: true } },
           location: true,
           media: { orderBy: { sortOrder: 'asc' }, take: 4 },

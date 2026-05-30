@@ -15,6 +15,7 @@ export interface PostAuthor {
   displayName: string | null
   avatarUrl: string | null
   bio?: string | null
+  companyId?: string | null
 }
 
 export interface PostCategory {
