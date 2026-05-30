@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import NeighbourhoodBanner from '../../components/home/NeighbourhoodBanner'
 import UtilityIconsRow from '../../components/home/UtilityIconsRow'
@@ -19,16 +18,15 @@ export default function HomePage() {
   const { user } = useAuthStore()
 
   const displayName = user?.displayName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Neighbour'
-  const initial = displayName.charAt(0).toUpperCase()
 
   const handleBannerExpand = () => {
     // Could scroll to banner or track analytics
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-nh-bg">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-nh-bg/90 backdrop-blur-lg border-b border-nh-border">
+    <div className="flex-1 flex flex-col">
+      {/* Greeting */}
+      <div className="bg-nh-bg/90 backdrop-blur-lg border-b border-nh-border">
         <div className="flex items-center justify-between px-4 py-3">
           <div>
             <h1 className="text-lg font-black text-nh-text font-heading">
@@ -36,9 +34,6 @@ export default function HomePage() {
             </h1>
             <p className="text-[11px] text-nh-text-muted mt-0.5">Your neighbourhood, your community</p>
           </div>
-          <Link to="/profile" className="w-9 h-9 rounded-full bg-nh-primary flex items-center justify-center text-sm font-bold text-white cursor-pointer" aria-label="Profile">
-            {initial}
-          </Link>
         </div>
 
         {/* Sub-tabs */}

@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { StatusBar } from '../../components/ui/phone/StatusBar'
-import { BottomNav, NavIcons } from '../../components/ui/phone/BottomNav'
 
 interface StaffMember {
   id: string
@@ -68,9 +66,7 @@ export default function ServiceDetail() {
   const [pkgTab, setPkgTab] = useState(0)
 
   return (
-    <div className="relative h-full flex flex-col bg-nh-bg">
-      <StatusBar title="9:41" showNotifDot />
-
+    <div className="flex-1 flex flex-col">
       {/* Back + Share header */}
       <div className="flex items-center px-4 py-2.5 border-b border-nh-border gap-3 bg-nh-bg">
         <svg width="20" height="20" viewBox="0 0 24 24" className="fill-nh-text-secondary cursor-pointer">
@@ -219,17 +215,6 @@ export default function ServiceDetail() {
         <div className="h-[100px]" /> {/* space for floating nav */}
       </div>
 
-      {/* Floating Bottom Nav */}
-      <div className="absolute left-0 right-0 bottom-6 z-50">
-        <BottomNav
-          items={[
-            { id: 'home', label: 'Home', icon: NavIcons.home },
-            { id: 'social', label: 'Social', icon: NavIcons.social },
-            { id: 'activity', label: 'Activity', icon: NavIcons.activity },
-            { id: 'biz', label: 'Business', isBiz: true, active: true, icon: NavIcons.business },
-          ]}
-        />
-      </div>
     </div>
   )
 }

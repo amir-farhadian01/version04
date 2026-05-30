@@ -1,6 +1,3 @@
-import { StatusBar } from '../../components/ui/phone/StatusBar'
-import { BottomNav, NavIcons } from '../../components/ui/phone/BottomNav'
-
 interface StaffMember {
   id: string
   displayName: string | null
@@ -80,9 +77,7 @@ const ICON_PATHS: Record<string, string> = {
  */
 export default function Activity() {
   return (
-    <div className="relative h-full flex flex-col bg-nh-bg">
-      <StatusBar title="9:41" showNotifDot />
-
+    <div className="flex-1 flex flex-col">
       {/* Header */}
       <div className="px-[18px] py-[14px] bg-nh-bg border-b border-nh-border flex items-center gap-[10px]">
         <svg width="20" height="20" viewBox="0 0 24 24" className="fill-nh-primary">
@@ -142,15 +137,6 @@ export default function Activity() {
         <div className="h-20" />
       </div>
 
-      {/* Floating Bottom Nav */}
-      <BottomNav
-        items={[
-          { id: 'home', label: 'Home', icon: NavIcons.home },
-          { id: 'social', label: 'Social', icon: NavIcons.social },
-          { id: 'activity', label: 'Activity', active: true, icon: NavIcons.activity },
-          { id: 'biz', label: 'Business', isBiz: true, icon: NavIcons.business },
-        ]}
-      />
     </div>
   )
 }

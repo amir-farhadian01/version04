@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { PublicLayout } from '../components/layout/PublicLayout'
 import { CustomerLayout } from '../components/layout/CustomerLayout'
 import { BusinessLayout } from '../components/layout/BusinessLayout'
+import { SimpleLayout } from '../components/layout/SimpleLayout'
 
 import HomePage from '../pages/home/HomePage'
 import Explore from '../pages/public/Explore'
@@ -45,18 +46,13 @@ function RequireAuth({ children, roles }: { children: ReactNode; roles?: string[
 }
 
 export const router = createBrowserRouter([
-  // Public routes (no auth required)
+  // Public routes (no auth required) — with AppShell (header + bottom nav)
   {
     element: <PublicLayout />,
     children: [
       { path: '/', element: <HomePage /> },
       { path: '/explore', element: <Explore /> },
       { path: '/services/:id', element: <ServiceDetail /> },
-      { path: '/auth', element: <Login /> },
-      { path: '/auth/login', element: <Login /> },
-      // Order wizard (guest + authenticated)
-      { path: '/order/new', element: <OrderWizard /> },
-      { path: '/orders/:id', element: <OrderDetail /> },
       // Business public profile
       { path: '/biz/:id', element: <BusinessPage /> },
       // Flutter-compatible public routes
@@ -71,7 +67,17 @@ export const router = createBrowserRouter([
       { path: '/explorer/business', element: <Explore /> },
     ],
   },
-  // Customer routes (auth required)
+  // Standalone routes — no AppShell (no bottom nav, no avatar header)
+  {
+    element: <SimpleLayout />,
+    children: [
+      { path: '/auth', element: <Login /> },
+      { path: '/auth/login', element: <Login /> },
+      { path: '/order/new', element: <OrderWizard /> },
+      { path: '/orders/:id', element: <OrderDetail /> },
+    ],
+  },
+  // Customer routes (auth required) — with AppShell
   {
     element: <RequireAuth roles={['customer', 'provider']}><CustomerLayout /></RequireAuth>,
     children: [
