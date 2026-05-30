@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { runSeedKyc } from "./seed-kyc.js";
 import { seedProviderInventoryAndPackages } from "./seed-provider-inventory.js";
 import { seedPosts } from "./seed-posts.js";
+import { seedComprehensive } from "./seed-comprehensive.js";
 
 const prisma = new PrismaClient();
 
@@ -164,6 +165,9 @@ async function main() {
 
   // Seed 45 demo posts (30 business + 15 general) for feed/explorer UI testing
   await seedPosts(prisma, provider.id);
+
+  // Comprehensive seed: 10 businesses, 45 posts, 10 orders, 15 notifications, 10 reviews
+  await seedComprehensive(prisma, passwordHash);
 
   const ticketCount = await prisma.ticket.count({ where: { creatorId: customer.id } });
   if (ticketCount === 0) {
