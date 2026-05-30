@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
+import '../../providers/cache_provider.dart';
+import '../../cache/cache_policy.dart';
+import '../../cache/cache_manager.dart';
 import '../../services/api_service.dart';
+import '../../widgets/cached_list_view.dart';
 
 /// Customer inbox with Active, Offers, and History tabs.
+///
+/// Uses the five-layer caching system: memory (L1), disk (L2), network (L3).
+/// Only visible items are rendered thanks to [CachedListView]/[ListView.builder].
 class CustomerMessagesScreen extends StatefulWidget {
   const CustomerMessagesScreen({super.key});
 
@@ -14,7 +22,9 @@ class _CustomerMessagesScreenState extends State<CustomerMessagesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final ApiService _api = ApiService();
+
   bool _loading = true;
+  CacheSource _source = CacheSource.network;
   final List<Map<String, dynamic>> _conversations = [];
 
   @override
@@ -32,19 +42,32 @@ class _CustomerMessagesScreenState extends State<CustomerMessagesScreen>
 
   Future<void> _loadInbox() async {
     setState(() => _loading = true);
+
+    final cache = context.read<CacheProvider>();
+
     try {
-      final result = await _api.getInbox();
-      final items = (result['data'] as List<dynamic>?)
+      final result = await cache.fetch(
+        key: '/chat/inbox',
+        group: 'messages',
+        ttl: CachePolicy.messagesTtl,
+        fetcher: () => _api.getInbox(),
+      );
+
+      _source = result.source;
+      final items = (result.data['data'] as List<dynamic>?)
               ?.cast<Map<String, dynamic>>() ??
-          (result['items'] as List<dynamic>?)
+          (result.data['items'] as List<dynamic>?)
                   ?.cast<Map<String, dynamic>>() ??
               _mockConversations();
+
       _conversations.clear();
       _conversations.addAll(items);
     } catch (_) {
       _conversations.clear();
       _conversations.addAll(_mockConversations());
+      _source = CacheSource.disk;
     }
+
     setState(() => _loading = false);
   }
 
@@ -96,6 +119,9 @@ class _CustomerMessagesScreenState extends State<CustomerMessagesScreen>
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: text)),
+                const Spacer(),
+                if (_source != CacheSource.network)
+                  Icon(Icons.cloud_off, size: 14, color: AppColors.warn),
               ],
             ),
           ),
@@ -118,16 +144,14 @@ class _CustomerMessagesScreenState extends State<CustomerMessagesScreen>
             ],
           ),
           Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildConversationList(),
-                      _buildEmptyTab('No offer conversations yet'),
-                      _buildEmptyTab('No message history'),
-                    ],
-                  ),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildConversationList(),
+                _buildEmptyTab('No offer conversations yet'),
+                _buildEmptyTab('No message history'),
+              ],
+            ),
           ),
         ],
       ),
@@ -135,8 +159,11 @@ class _CustomerMessagesScreenState extends State<CustomerMessagesScreen>
   }
 
   Widget _buildConversationList() {
-    if (_conversations.isEmpty) {
-      return Center(
+    return CachedListView(
+      itemCount: _conversations.length,
+      isLoading: _loading,
+      loadingWidget: const Center(child: CircularProgressIndicator()),
+      emptyWidget: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -146,11 +173,8 @@ class _CustomerMessagesScreenState extends State<CustomerMessagesScreen>
                 style: TextStyle(fontSize: 13, color: AppColors.text3)),
           ],
         ),
-      );
-    }
-    return ListView.builder(
+      ),
       padding: const EdgeInsets.all(14),
-      itemCount: _conversations.length,
       itemBuilder: (ctx, i) {
         final c = _conversations[i];
         return _conversationTile(c);

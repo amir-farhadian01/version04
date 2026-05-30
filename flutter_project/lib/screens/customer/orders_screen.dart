@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
+import '../../providers/cache_provider.dart';
+import '../../cache/cache_policy.dart';
+import '../../cache/cache_manager.dart';
 import '../../services/api_service.dart';
+import '../../widgets/cached_list_view.dart';
 
 /// Orders screen with Active and Completed tabs.
+///
+/// Uses the five-layer caching system with stale-while-revalidate strategy
+/// (short 5-min TTL). Only visible items rendered via [CachedListView].
 class CustomerOrdersScreen extends StatefulWidget {
   const CustomerOrdersScreen({super.key});
 
@@ -14,7 +22,10 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final ApiService _api = ApiService();
+
   bool _loading = true;
+  CacheSource _sourceActive = CacheSource.network;
+  CacheSource _sourceCompleted = CacheSource.network;
   List<Map<String, dynamic>> _activeOrders = [];
   List<Map<String, dynamic>> _completedOrders = [];
 
@@ -33,18 +44,39 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen>
 
   Future<void> _loadOrders() async {
     setState(() => _loading = true);
+
+    final cache = context.read<CacheProvider>();
+
+    // Active orders
     try {
-      final active = await _api.getActiveOrders();
-      _activeOrders = _extractList(active);
+      final result = await cache.fetch(
+        key: '/orders/active',
+        group: 'orders',
+        ttl: CachePolicy.ordersTtl,
+        fetcher: () => _api.getActiveOrders(),
+      );
+      _sourceActive = result.source;
+      _activeOrders = _extractList(result.data);
     } catch (_) {
       _activeOrders = _mockActive();
+      _sourceActive = CacheSource.disk;
     }
+
+    // Completed orders
     try {
-      final completed = await _api.getCompletedOrders();
-      _completedOrders = _extractList(completed);
+      final result = await cache.fetch(
+        key: '/orders/completed',
+        group: 'orders',
+        ttl: CachePolicy.ordersTtl,
+        fetcher: () => _api.getCompletedOrders(),
+      );
+      _sourceCompleted = result.source;
+      _completedOrders = _extractList(result.data);
     } catch (_) {
       _completedOrders = _mockCompleted();
+      _sourceCompleted = CacheSource.disk;
     }
+
     setState(() => _loading = false);
   }
 
@@ -123,6 +155,10 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen>
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: text)),
+                const Spacer(),
+                if (_sourceActive != CacheSource.network ||
+                    _sourceCompleted != CacheSource.network)
+                  Icon(Icons.cloud_off, size: 14, color: AppColors.warn),
               ],
             ),
           ),
@@ -146,15 +182,13 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen>
             ],
           ),
           Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildOrderList(_activeOrders, 'No active orders'),
-                      _buildOrderList(_completedOrders, 'No completed orders'),
-                    ],
-                  ),
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOrderList(_activeOrders, 'No active orders'),
+                _buildOrderList(_completedOrders, 'No completed orders'),
+              ],
+            ),
           ),
         ],
       ),
@@ -162,8 +196,11 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen>
   }
 
   Widget _buildOrderList(List<Map<String, dynamic>> orders, String emptyMsg) {
-    if (orders.isEmpty) {
-      return Center(
+    return CachedListView(
+      itemCount: orders.length,
+      isLoading: _loading,
+      loadingWidget: const Center(child: CircularProgressIndicator()),
+      emptyWidget: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -174,11 +211,8 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen>
                     fontSize: 13, color: AppColors.text3)),
           ],
         ),
-      );
-    }
-    return ListView.builder(
+      ),
       padding: const EdgeInsets.all(14),
-      itemCount: orders.length,
       itemBuilder: (ctx, i) {
         final o = orders[i];
         return _orderCard(o);
