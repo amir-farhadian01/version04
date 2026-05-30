@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import { PrismaClient } from "@prisma/client";
 import { runSeedKyc } from "./seed-kyc.js";
 import { seedProviderInventoryAndPackages } from "./seed-provider-inventory.js";
+import { seedPosts } from "./seed-posts.js";
 
 const prisma = new PrismaClient();
 
@@ -161,30 +162,8 @@ async function main() {
     });
   }
 
-  const postsCount = await prisma.post.count({ where: { authorId: provider.id } });
-  if (postsCount === 0) {
-    const defaultCategory = await prisma.category.findFirst({ where: { name: "Cleaning" } });
-    if (defaultCategory) {
-      await prisma.post.createMany({
-        data: [
-          {
-            authorId: provider.id,
-            categoryId: defaultCategory.id,
-            type: "PHOTO",
-            mediaUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=1200&auto=format&fit=crop",
-            caption: "Before/After deep cleaning demo",
-          },
-          {
-            authorId: provider.id,
-            categoryId: defaultCategory.id,
-            type: "VIDEO",
-            mediaUrl: "https://samplelib.com/lib/preview/mp4/sample-5s.mp4",
-            caption: "Video promo sample (upload your own video for real content)",
-          },
-        ],
-      });
-    }
-  }
+  // Seed 45 demo posts (30 business + 15 general) for feed/explorer UI testing
+  await seedPosts(prisma, provider.id);
 
   const ticketCount = await prisma.ticket.count({ where: { creatorId: customer.id } });
   if (ticketCount === 0) {
