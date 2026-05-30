@@ -1085,7 +1085,7 @@ export async function seedComprehensive(prisma: PrismaClient, passwordHash: stri
   console.log(`  ✅ ${notifCount} notifications created`);
 
   // ═══════════════════════════════════════════════════════════════════
-  // STEP 9: Create 10 demo reviews
+  // STEP 9: Create 10 demo reviews (link to each order regardless of status)
   // ═══════════════════════════════════════════════════════════════════
   console.log("\n📋 Step 9: Creating 10 demo reviews...");
   const reviewTexts = [
@@ -1103,9 +1103,9 @@ export async function seedComprehensive(prisma: PrismaClient, passwordHash: stri
   const ratings = [5, 4, 5, 5, 3, 5, 4, 3, 5, 4];
   let reviewCount = 0;
 
-  const completedOrders = orderIds.filter((_, i) => orderStatuses[i] === "completed");
-  for (let i = 0; i < Math.min(completedOrders.length, 10); i++) {
-    const orderId = completedOrders[i];
+  // Create reviews for all 10 orders (not just completed ones)
+  for (let i = 0; i < Math.min(orderIds.length, 10); i++) {
+    const orderId = orderIds[i];
     const order = await prisma.order.findUnique({ where: { id: orderId }, select: { customerId: true } });
     if (!order) continue;
     
