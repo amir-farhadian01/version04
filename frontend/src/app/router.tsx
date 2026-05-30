@@ -81,7 +81,8 @@ export const router = createBrowserRouter([
   {
     element: <RequireAuth roles={['customer', 'provider']}><CustomerLayout /></RequireAuth>,
     children: [
-      { path: '/app/home', element: <CustomerDashboard /> },
+      { path: '/app/home', element: <HomePage /> },
+      { path: '/app/orders', element: <CustomerDashboard /> },
       { path: '/app/services', element: <ServicesPage /> },
       { path: '/app/orders/:id', element: <OrderDetail /> },
       { path: '/app/social', element: <Explore /> },

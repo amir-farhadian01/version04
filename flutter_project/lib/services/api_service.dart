@@ -86,7 +86,7 @@ class ApiService {
   /// Upload a file (image) to the server via multipart POST.
   /// Returns the URL of the uploaded file.
   Future<String> uploadFile(String filePath) async {
-    final uri = Uri.parse('$baseUrl/media/upload');
+    final uri = Uri.parse('$baseUrl/upload');
     final request = http.MultipartRequest('POST', uri);
     if (_accessToken != null) {
       request.headers['Authorization'] = 'Bearer $_accessToken';
@@ -429,7 +429,7 @@ class ApiService {
 
   /// Upload image bytes directly.
   Future<String> uploadImageBytes(String fileName, List<int> bytes) async {
-    final uri = Uri.parse('$baseUrl/media/upload');
+    final uri = Uri.parse('$baseUrl/upload');
     final request = http.MultipartRequest('POST', uri);
     if (_accessToken != null) {
       request.headers['Authorization'] = 'Bearer $_accessToken';

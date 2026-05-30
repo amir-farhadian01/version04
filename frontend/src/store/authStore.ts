@@ -95,6 +95,7 @@ export const useAuthStore = create<AuthState>()(
               displayName: string
               role: string
               companyId?: string | null
+              avatarUrl?: string | null
             }
           }>('/auth/login', { login: payload.email, password: payload.password })
 
@@ -127,6 +128,7 @@ export const useAuthStore = create<AuthState>()(
               displayName: string
               role: string
               companyId?: string | null
+              avatarUrl?: string | null
             }
           }>('/auth/register', {
             email: payload.email,

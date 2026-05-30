@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { PhoneContainer } from '../ui/phone/PhoneContainer'
@@ -18,7 +19,16 @@ import { AccountAvatarBadge } from '../ui/AccountAvatarBadge'
  * from this shell by using different layouts.
  */
 export function AppShell() {
-  const { user } = useAuthStore()
+  const { user, token, refreshUser } = useAuthStore()
+
+  // On mount, refresh user data to ensure avatarUrl and other fields are up to date
+  useEffect(() => {
+    if (token && user) {
+      refreshUser()
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-nh-bg px-4 py-5 pb-10 font-sans">

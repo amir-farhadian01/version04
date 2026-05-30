@@ -105,6 +105,7 @@ router.post('/update-profile', authenticate, async (req: AuthRequest, res: Respo
         phone: user.phone,
         role: user.role,
         companyId: user.companyId,
+        avatarUrl: user.avatarUrl,
       },
     });
   } catch (err: any) {
@@ -168,7 +169,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     res.status(201).json({
       accessToken: tokens.accessToken,
-      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId },
+      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId, avatarUrl: user.avatarUrl },
     });
   } catch (err: any) {
     console.error(err);
@@ -214,7 +215,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     res.json({
       accessToken: tokens.accessToken,
-      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId },
+      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId, avatarUrl: user.avatarUrl },
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -339,7 +340,7 @@ router.post('/google', async (req: Request, res: Response) => {
 
     res.json({
       accessToken: tokens.accessToken,
-      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId },
+      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId, avatarUrl: user.avatarUrl },
     });
   } catch (err: any) {
     console.error('Google auth error:', err.message);
@@ -732,7 +733,7 @@ router.post('/verify-login', async (req: Request, res: Response) => {
       res.json({
         verified: true,
         accessToken: tokens.accessToken,
-        user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId },
+        user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId, avatarUrl: user.avatarUrl },
       });
     } else {
       res.status(400).json({ verified: false });

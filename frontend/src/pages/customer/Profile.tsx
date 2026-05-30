@@ -174,7 +174,7 @@ export default function Profile() {
     const form = new FormData()
     form.append('file', file)
     try {
-      const upload = await api.post('/media/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const upload = await api.post('/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
       const url = upload.data?.url ?? ''
       if (url) {
         await api.put('/auth/me', { avatarUrl: url })
