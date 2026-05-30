@@ -33,6 +33,11 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
 
   String? _errorMessage;
 
+  /// Tracks follow status for each author ID. true = following.
+  final Map<String, bool> _followStatus = {};
+  /// Author IDs currently being toggled (to show loading state).
+  final Set<String> _togglingFollow = {};
+
   final String _currentLocation = 'Vaughan, ON';
   final String _neighbourhoodLocation = 'Vaughan';
 
@@ -86,6 +91,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         _hasMore = _posts.length < total;
         _loadingFeed = false;
       });
+      // Batch-load follow statuses after feed loads
+      _loadFollowStatuses(_posts);
     } catch (e) {
       setState(() {
         _loadingFeed = false;
@@ -111,6 +118,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
         _hasMore = _posts.length < total;
         _loadingMore = false;
       });
+      // Batch-load follow statuses for new posts
+      _loadFollowStatuses(data);
     } catch (_) {
       setState(() => _loadingMore = false);
     }
@@ -144,6 +153,50 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   Future<void> _onRefresh() async {
     await _loadFeed();
     await _loadStories();
+  }
+
+  /// Batch-check follow status for all visible post authors.
+  Future<void> _loadFollowStatuses(List<Map<String, dynamic>> posts) async {
+    final authorIds = <String>[];
+    for (final p in posts) {
+      final author = p['author'] as Map<String, dynamic>? ?? {};
+      final id = author['id'];
+      if (id is String && id.isNotEmpty) {
+        authorIds.add(id);
+      }
+    }
+    final uniqueIds = authorIds.toSet().toList();
+    for (final id in uniqueIds) {
+      if (!_followStatus.containsKey(id)) {
+        try {
+          final isFollowing = await _api.getFollowStatus(id);
+          if (mounted) {
+            setState(() => _followStatus[id] = isFollowing);
+          }
+        } catch (_) {
+          // Silently ignore — UI just won't show follow state
+        }
+      }
+    }
+  }
+
+  /// Toggle follow/unfollow for an author.
+  Future<void> _toggleFollow(String authorId) async {
+    if (_togglingFollow.contains(authorId)) return;
+    setState(() => _togglingFollow.add(authorId));
+    try {
+      final result = await _api.toggleFollow(authorId);
+      final following = result['data']?['following'] as bool? ?? false;
+      if (mounted) {
+        setState(() => _followStatus[authorId] = following);
+      }
+    } catch (_) {
+      // Silently ignore toggle failures
+    } finally {
+      if (mounted) {
+        setState(() => _togglingFollow.remove(authorId));
+      }
+    }
   }
 
   @override
@@ -563,6 +616,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
 
   Widget _postCard(Map<String, dynamic> post) {
     final author = post['author'] as Map<String, dynamic>? ?? {};
+    final authorId = author['id'] as String? ?? '';
     final authorName = (author['displayName'] ?? 'User') as String;
     final authorInitial = authorName.characters.first.toUpperCase();
     final category = post['category'] as Map<String, dynamic>? ?? {};
@@ -573,9 +627,12 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     final media = (post['media'] as List<dynamic>?) ?? [];
     final hasImage = media.isNotEmpty;
     final createdAt = post['publishedAt'] ?? post['createdAt'] ?? '';
+    final postId = post['id'] as String? ?? '';
 
     final timeAgo = _formatTimeAgo(createdAt is String ? createdAt : '');
     final isBusiness = (post['isBusinessPost'] as bool?) ?? false;
+    final isFollowing = authorId.isNotEmpty ? (_followStatus[authorId] ?? false) : false;
+    final isToggling = _togglingFollow.contains(authorId);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
@@ -658,10 +715,30 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                     ],
                   ),
                 ),
+                // Follow/Unfollow button
+                if (authorId.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => _toggleFollow(authorId),
+                    child: isToggling
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        : Icon(
+                            isFollowing ? Icons.person_remove : Icons.person_add,
+                            size: 18,
+                            color: isFollowing ? AppColors.red : AppColors.primary,
+                          ),
+                  ),
+                if (authorId.isNotEmpty) const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () => Navigator.pushNamed(
                       context, '/explorer/comments',
-                      arguments: post['id']),
+                      arguments: postId),
                   child: const Text(
                     '···',
                     style: TextStyle(fontSize: 20, color: AppColors.text3),
@@ -735,6 +812,46 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                       const SizedBox(width: 16),
                       _actionItem(Icons.share, 'Share'),
                       const Spacer(),
+                      // Follow/unfollow action button in action bar
+                      if (authorId.isNotEmpty)
+                        GestureDetector(
+                          onTap: () => _toggleFollow(authorId),
+                          child: isToggling
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.primary,
+                                  ),
+                                )
+                              : Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: isFollowing
+                                        ? AppColors.red.withValues(alpha: 0.1)
+                                        : AppColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: isFollowing
+                                          ? AppColors.red.withValues(alpha: 0.3)
+                                          : AppColors.primary.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    isFollowing ? 'Following' : 'Follow',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isFollowing
+                                          ? AppColors.red
+                                          : AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      if (authorId.isNotEmpty) const SizedBox(width: 8),
                       GestureDetector(
                         onTap: () =>
                             Navigator.pushNamed(context, '/order/new'),

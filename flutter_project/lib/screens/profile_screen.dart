@@ -25,6 +25,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = true;
   bool _showBizTab = false;
 
+  /// Follow counts for the current user.
+  int _followerCount = 0;
+  int _followingCount = 0;
+
   final _displayNameController = TextEditingController();
   final _emailController = TextEditingController();
 
@@ -58,17 +62,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final api = ApiService();
       final fresh = await api.get('/auth/me');
+      final userId = fresh['id'] as String? ?? '';
       setState(() {
         _userData = fresh;
         _loading = false;
       });
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_user_data', jsonEncode(fresh));
+      // Load follow counts
+      if (userId.isNotEmpty) {
+        _loadFollowCounts(userId);
+      }
     } catch (_) {
       setState(() {
         _userData = userData;
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _loadFollowCounts(String userId) async {
+    try {
+      final counts = await ApiService().getFollowCounts(userId);
+      if (mounted) {
+        setState(() {
+          _followerCount = counts['followers'] ?? 0;
+          _followingCount = counts['following'] ?? 0;
+        });
+      }
+    } catch (_) {
+      // Silently ignore — counts stay at 0
     }
   }
 
@@ -487,7 +510,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          // Name + Email + Edit
+          // Name + Email + Follow stats
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -503,6 +526,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.text3)),
+                const SizedBox(height: 6),
+                // Follower / Following counts
+                Row(
+                  children: [
+                    _followStat(Icons.people_outline, '$_followerCount', 'followers'),
+                    const SizedBox(width: 16),
+                    _followStat(Icons.person_add_outlined, '$_followingCount', 'following'),
+                  ],
+                ),
               ],
             ),
           ),
@@ -667,6 +699,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
       color: AppColors.border.withValues(alpha: 0.5),
       indent: 50,
       endIndent: 16,
+    );
+  }
+
+  Widget _followStat(IconData icon, String count, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppColors.text3),
+        const SizedBox(width: 4),
+        Text(
+          count,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text,
+          ),
+        ),
+        const SizedBox(width: 3),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: AppColors.text3,
+          ),
+        ),
+      ],
     );
   }
 

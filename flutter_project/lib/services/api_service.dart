@@ -213,12 +213,24 @@ class ApiService {
         body: {'mediaUrl': mediaUrl, 'mediaType': mediaType});
   }
 
-  Future<Map<String, dynamic>> followUser(String userId) async {
+  /// Toggle follow/unfollow for a user. Returns { following: true/false }.
+  Future<Map<String, dynamic>> toggleFollow(String userId) async {
     return await post('/social/users/$userId/follow');
   }
 
+  /// Legacy alias for toggleFollow.
+  Future<Map<String, dynamic>> followUser(String userId) async {
+    return await toggleFollow(userId);
+  }
+
+  /// Get follow status for a specific user. Returns { following: true/false }.
+  Future<bool> getFollowStatus(String userId) async {
+    final result = await get('/follow/status/$userId');
+    return (result['following'] as bool?) ?? false;
+  }
+
   Future<List<Map<String, dynamic>>> getFollowers(String userId) async {
-    final result = await get('/social/users/$userId/followers');
+    final result = await get('/follow/$userId/followers');
     return (result['data'] as List<dynamic>?)
             ?.cast<Map<String, dynamic>>() ??
         (result['items'] as List<dynamic>?)
@@ -227,12 +239,27 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getFollowing(String userId) async {
-    final result = await get('/social/users/$userId/following');
+    final result = await get('/follow/$userId/following');
     return (result['data'] as List<dynamic>?)
             ?.cast<Map<String, dynamic>>() ??
         (result['items'] as List<dynamic>?)
                 ?.cast<Map<String, dynamic>>() ??
             [];
+  }
+
+  /// Get follower/following counts for a user.
+  /// Returns { followers: number, following: number }.
+  Future<Map<String, int>> getFollowCounts(String userId) async {
+    final results = await Future.wait([
+      getFollowers(userId),
+      getFollowing(userId),
+    ]);
+    final followers = results[0];
+    final following = results[1];
+    return {
+      'followers': followers.length,
+      'following': following.length,
+    };
   }
 
   Future<Map<String, dynamic>> getMyPosts() async {
