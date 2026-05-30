@@ -45,7 +45,7 @@ export function BottomNav({ items }: BottomNavProps) {
 
     switch (item.id) {
       case 'home':
-        navigate('/app/home')
+        navigate('/')
         break
       case 'social':
         navigate('/explorer')

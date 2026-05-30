@@ -54,7 +54,7 @@ describe('BottomNav', () => {
     )
 
     fireEvent.click(screen.getByText('Home'))
-    expect(mockNavigate).toHaveBeenCalledWith('/app/home')
+    expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 
   it('navigates to social on social click', () => {
