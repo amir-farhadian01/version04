@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
 import { PhoneContainer } from '../ui/phone/PhoneContainer'
-import { StatusBar } from '../ui/phone/StatusBar'
 import { BottomNav, NavIcons } from '../ui/phone/BottomNav'
 import { AccountAvatarBadge } from '../ui/AccountAvatarBadge'
 
@@ -36,8 +35,7 @@ export function AppShell() {
         <div className="relative h-full flex flex-col bg-nh-bg">
           {/* ── Header ── */}
           <div className="sticky top-0 z-50 bg-nh-bg/90 backdrop-blur-lg border-b border-nh-border shrink-0">
-            <div className="flex items-center justify-between px-4 py-2">
-              <StatusBar title="9:41" showNotifDot />
+            <div className="flex items-center justify-end px-4 py-2">
               {user && (
                 <AccountAvatarBadge user={user} size="sm" />
               )}
