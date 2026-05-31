@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { StatusBar } from '../../components/ui/phone/StatusBar'
 import { NavIcons } from '../../components/ui/phone/BottomNav'
 import { useAuthStore } from '../../store/authStore'
 import api from '../../lib/api'
@@ -84,14 +83,34 @@ const icons = {
       <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" /><circle cx="12" cy="13" r="4" />
     </svg>
   ),
+  share: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+    </svg>
+  ),
   chevron: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-nh-text-muted" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="9 18 15 12 9 6" />
     </svg>
   ),
+  chevronDown: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  ),
   logout: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  ),
+  qr: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><line x1="14" y1="14" x2="14" y2="14.01" /><line x1="18" y1="14" x2="18" y2="14.01" /><line x1="21" y1="14" x2="21" y2="14.01" /><line x1="14" y1="18" x2="14" y2="18.01" /><line x1="18" y1="18" x2="18" y2="18.01" /><line x1="21" y1="18" x2="21" y2="18.01" />
+    </svg>
+  ),
+  copy: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
     </svg>
   ),
 }
@@ -146,14 +165,26 @@ export default function Profile() {
   // Clear cache
   const [showClearCache, setShowClearCache] = useState(false)
 
+  // Personal Info accordion
+  const [personalInfoOpen, setPersonalInfoOpen] = useState(false)
+
+  // Share dialog
+  const [showShare, setShowShare] = useState(false)
+  const [copied, setCopied] = useState(false)
+
   const userData = (user as any) ?? {}
   const displayName = userData?.displayName || `${userData?.firstName ?? ''} ${userData?.lastName ?? ''}`.trim() || 'User'
   const email = userData?.email ?? ''
   const avatarUrl = userData?.avatarUrl ?? ''
+  const userId = userData?.id ?? ''
   const initial = displayName.charAt(0).toUpperCase()
   const hasBizRole = user?.roles?.some((role: string) =>
     ['provider', 'owner', 'platform_admin', 'developer', 'support', 'finance'].includes(role.toLowerCase())
   ) ?? false
+
+  const profileDeepLink = `neighborly://user/${userId}`
+  const shareText = `Add me on Neighborly! My profile: ${profileDeepLink}`
+  const supportsWebShare = typeof navigator !== 'undefined' && !!navigator.share
 
   /* ─── Data Loading ───────────────────────────────────────────────────── */
   const loadAddresses = async () => {
@@ -212,7 +243,6 @@ export default function Profile() {
 
   /* ─── Clear Cache ────────────────────────────────────────────────────── */
   const handleClearCache = () => {
-    // Clear specific caches, keep auth token and dark mode
     const keysToKeep = ['neighborly-auth', 'neighborly-dark-mode']
     const allKeys = Object.keys(localStorage)
     for (const key of allKeys) {
@@ -220,7 +250,6 @@ export default function Profile() {
         localStorage.removeItem(key)
       }
     }
-    // Clear session storage
     sessionStorage.clear()
     setShowClearCache(false)
     showSnack('Cache cleared successfully')
@@ -301,9 +330,60 @@ export default function Profile() {
   const openAddresses = () => { setShowAddresses(true); loadAddresses() }
   const openCars = () => { setShowCars(true); loadCars() }
 
+  /* ─── Share handlers ─────────────────────────────────────────────────── */
+  const handleCopyProfileId = async () => {
+    try {
+      await navigator.clipboard.writeText(profileDeepLink)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { showSnack('Failed to copy') }
+  }
+
+  const handleNativeShare = async () => {
+    try {
+      await navigator.share({ title: 'Neighborly Profile', text: shareText, url: profileDeepLink })
+    } catch { /* user cancelled or unsupported */ }
+  }
+
+  /* ─── Simple QR Code Generator (inline SVG) ──────────────────────────── */
+  const renderQRCode = () => {
+    // Simple grid-based QR placeholder showing the deep link
+    const encoded = btoa(profileDeepLink).slice(0, 40)
+    const size = 8
+    const cells: boolean[][] = []
+    for (let r = 0; r < size; r++) {
+      cells[r] = []
+      for (let c = 0; c < size; c++) {
+        const charCode = (encoded.charCodeAt((r * size + c) % encoded.length) || 65)
+        cells[r][c] = charCode % 2 === 0
+      }
+    }
+    const cellSize = 24
+    const total = size * cellSize
+    return (
+      <svg width={total} height={total} viewBox={`0 0 ${total} ${total}`} className="block mx-auto">
+        {/* White background */}
+        <rect width={total} height={total} fill="white" rx="8" />
+        {/* Finder patterns (top-left, top-right, bottom-left) */}
+        {[{ x: 0, y: 0 }, { x: (size - 3) * cellSize, y: 0 }, { x: 0, y: (size - 3) * cellSize }].map((fp, i) => (
+          <g key={i}>
+            <rect x={fp.x} y={fp.y} width={3 * cellSize} height={3 * cellSize} fill="black" rx="2" />
+            <rect x={fp.x + cellSize} y={fp.y + cellSize} width={cellSize} height={cellSize} fill="white" rx="1" />
+          </g>
+        ))}
+        {/* Data cells */}
+        {cells.map((row, r) =>
+          row.map((on, c) =>
+            on ? <rect key={`${r}-${c}`} x={c * cellSize} y={r * cellSize} width={cellSize} height={cellSize} fill="black" rx="1" /> : null
+          )
+        )}
+      </svg>
+    )
+  }
+
   /* ─── Menu Item Component ────────────────────────────────────────────── */
   const MenuItem = ({ icon, title, badge, onClick }: { icon: React.ReactNode; title: string; badge?: string; onClick: () => void }) => (
-    <div onClick={onClick} className="flex items-center gap-[14px] px-4 py-[14px] cursor-pointer hover:bg-white/[0.02] transition-colors">
+    <div onClick={onClick} className="flex items-center gap-[14px] px-4 py-[14px] cursor-pointer hover:bg-white/[0.02] active:scale-[0.98] transition-all duration-150">
       {icon}
       <span className="flex-1 font-medium text-sm text-nh-text">{title}</span>
       {badge && (
@@ -315,11 +395,18 @@ export default function Profile() {
 
   const Divider = () => <div className="h-px bg-nh-border/50 ml-[50px] mr-4" />
 
+  /* ─── Section Header Component ────────────────────────────────────────── */
+  const SectionHeader = ({ title }: { title: string }) => (
+    <div className="mx-[18px] mt-5 mb-2 first:mt-0">
+      <h4 className="text-[13px] font-semibold text-[#888] tracking-[0.8px] uppercase mb-2">{title}</h4>
+      <div className="border-b border-nh-border/40" />
+    </div>
+  )
+
   /* ─── Render: Sub-screens ────────────────────────────────────────────── */
   if (showAddresses) {
     return (
       <div className="flex flex-col h-full bg-nh-bg text-nh-text font-sans">
-        <StatusBar title="9:41" />
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-nh-border bg-nh-bg">
           <button onClick={() => setShowAddresses(false)} className="text-nh-text-secondary bg-transparent border-0 p-0 cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="15 18 9 12 15 6" /></svg>
@@ -348,7 +435,6 @@ export default function Profile() {
             </button>
           </div>
         )}
-        {/* Address Modal */}
         {addrModal && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setAddrModal(null)}>
             <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
@@ -366,7 +452,6 @@ export default function Profile() {
             </div>
           </div>
         )}
-        {/* Delete Confirm */}
         {confirmDelete && <ConfirmDeleteModal onConfirm={() => confirmDelete.type === 'address' ? deleteAddress(confirmDelete.id) : deleteCar(confirmDelete.id)} onCancel={() => setConfirmDelete(null)} label={confirmDelete.label} />}
       </div>
     )
@@ -375,7 +460,6 @@ export default function Profile() {
   if (showCars) {
     return (
       <div className="flex flex-col h-full bg-nh-bg text-nh-text font-sans">
-        <StatusBar title="9:41" />
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-nh-border bg-nh-bg">
           <button onClick={() => setShowCars(false)} className="text-nh-text-secondary bg-transparent border-0 p-0 cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="15 18 9 12 15 6" /></svg>
@@ -429,53 +513,87 @@ export default function Profile() {
   /* ─── Main Profile Screen ────────────────────────────────────────────── */
   return (
     <div className="relative h-full flex flex-col bg-nh-bg text-nh-text font-sans">
-      <StatusBar title="9:41" />
-
-      {/* Header */}
-      <div className="px-4 py-2.5 border-b border-nh-border bg-nh-bg">
-        <div className="flex items-center gap-3">
-          <button onClick={() => window.history.back()} className="text-nh-text-secondary bg-transparent border-0 p-0 cursor-pointer">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-          </button>
-          <h2 className="font-display font-semibold text-base">Profile</h2>
-        </div>
-      </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto pb-28">
-        {/* Profile Header */}
-        <div className="flex items-center gap-4 px-5 pt-6 pb-6">
-          <label className="relative cursor-pointer group shrink-0">
-            <div className="w-[72px] h-[72px] rounded-full bg-nh-primary-dim border-2 border-nh-primary overflow-hidden">
-              {avatarUrl ? <img src={avatarUrl} className="w-full h-full object-cover" alt="" /> :
-                <span className="flex items-center justify-center w-full h-full text-[28px] font-bold font-display text-nh-primary">{initial}</span>}
-            </div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-6 h-6 bg-nh-primary rounded-full flex items-center justify-center border-2 border-nh-bg">
-              {icons.camera}
-            </div>
-            <input type="file" accept="image/*" className="hidden" onChange={handleUploadAvatar} />
-          </label>
-          <div className="flex-1">
-            <h3 className="font-display font-bold text-xl text-nh-text">{displayName}</h3>
-            <p className="text-[13px] text-nh-text-muted mt-1">{email}</p>
+      <div className="flex-1 overflow-y-auto pb-28 pt-8">
+        {/* ═══ Profile Avatar Section (centered, with glow) ═══ */}
+        <div className="flex flex-col items-center px-5 pb-6">
+          <div className="relative inline-block mb-4">
+            <label className="relative cursor-pointer group block">
+              <div
+                className="w-24 h-24 rounded-full bg-nh-primary-dim border-2 border-nh-primary overflow-hidden"
+                style={{ boxShadow: '0 0 20px rgba(79,142,247,0.3)', animation: 'pulse-glow 2s ease-in-out infinite' }}
+              >
+                {avatarUrl ? <img src={avatarUrl} className="w-full h-full object-cover" alt="" /> :
+                  <span className="flex items-center justify-center w-full h-full text-[32px] font-bold font-display text-nh-primary">{initial}</span>}
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-7 h-7 bg-nh-primary rounded-full flex items-center justify-center border-2 border-nh-bg">
+                {icons.camera}
+              </div>
+              <input type="file" accept="image/*" className="hidden" onChange={handleUploadAvatar} />
+            </label>
+            {/* Share button floating on avatar */}
+            <button
+              onClick={() => setShowShare(true)}
+              className="absolute -top-1 -right-1 w-8 h-8 bg-nh-surface border border-nh-border rounded-full flex items-center justify-center cursor-pointer hover:bg-nh-surface-elevated transition-colors"
+              title="Share Profile"
+            >
+              {icons.share}
+            </button>
           </div>
-          <button onClick={openEditProfile} className="w-10 h-10 rounded-[10px] bg-nh-primary-dim flex items-center justify-center border-0 cursor-pointer">
-            {icons.edit}
+          <h3 className="font-display font-bold text-xl text-nh-text text-center">{displayName}</h3>
+          <p className="text-[13px] text-nh-text-muted mt-1 text-center">{email}</p>
+          <button onClick={openEditProfile} className="mt-3 px-4 py-1.5 rounded-lg bg-nh-primary-dim text-nh-primary text-sm font-medium border-0 cursor-pointer flex items-center gap-1.5 hover:bg-nh-primary-dim/80 transition-colors">
+            {icons.edit} Edit Profile
           </button>
         </div>
 
-        {/* Menu Section */}
-        <div className="mx-[18px] bg-nh-surface rounded-[14px] border border-nh-border overflow-hidden">
+        {/* ═══ Section 1: MY SERVICES ═══ */}
+        <SectionHeader title="My Services" />
+        <div className="mx-[18px] bg-nh-surface rounded-[14px] border border-nh-border overflow-hidden animate-fade-in" style={{ animationDelay: '0ms' }}>
           <MenuItem icon={icons.calendar} title="My Appointments" onClick={() => {/* navigate */}} />
           <Divider />
           <MenuItem icon={icons.heart} title="Saved Businesses" onClick={() => {/* navigate */}} />
           <Divider />
           <MenuItem icon={icons.wallet} title="Payments & Wallet" onClick={() => {/* navigate */}} />
-          <Divider />
-          <MenuItem icon={icons.location} title="My Addresses" onClick={openAddresses} />
-          <Divider />
-          <MenuItem icon={icons.car} title="My Cars" onClick={openCars} />
-          <Divider />
+        </div>
+
+        {/* ═══ Section 2: PERSONAL INFO (Accordion) ═══ */}
+        <SectionHeader title="Personal Info" />
+        <div className="mx-[18px] bg-nh-surface rounded-[14px] border border-nh-border overflow-hidden animate-fade-in" style={{ animationDelay: '100ms' }}>
+          {/* Accordion Header */}
+          <div
+            onClick={() => setPersonalInfoOpen(!personalInfoOpen)}
+            className="flex items-center gap-[14px] px-4 py-[14px] cursor-pointer hover:bg-white/[0.02] active:scale-[0.98] transition-all duration-150"
+          >
+            <div className="w-[44px] h-[44px] rounded-[12px] bg-nh-purple/15 flex items-center justify-center shrink-0">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-nh-purple" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
+              </svg>
+            </div>
+            <span className="flex-1 font-medium text-sm text-nh-text">My Addresses & Cars</span>
+            <span className={`transition-transform duration-300 ${personalInfoOpen ? 'rotate-180' : ''}`}>
+              {icons.chevronDown}
+            </span>
+          </div>
+          {/* Accordion Content */}
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${personalInfoOpen ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0'}`}
+          >
+            <Divider />
+            <div className={`transition-opacity duration-200 ${personalInfoOpen ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: personalInfoOpen ? '100ms' : '0ms' }}>
+              <MenuItem icon={icons.location} title="My Addresses" onClick={openAddresses} />
+            </div>
+            <Divider />
+            <div className={`transition-opacity duration-200 ${personalInfoOpen ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: personalInfoOpen ? '150ms' : '0ms' }}>
+              <MenuItem icon={icons.car} title="My Cars" onClick={openCars} />
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ Section 3: SETTINGS & SUPPORT ═══ */}
+        <SectionHeader title="Settings & Support" />
+        <div className="mx-[18px] bg-nh-surface rounded-[14px] border border-nh-border overflow-hidden animate-fade-in" style={{ animationDelay: '200ms' }}>
           <MenuItem icon={icons.bell} title="Notifications" badge="3" onClick={() => {/* navigate */}} />
           <Divider />
           <MenuItem icon={icons.help} title="Help & Support" onClick={() => {/* navigate */}} />
@@ -483,14 +601,14 @@ export default function Profile() {
           <MenuItem icon={icons.trash} title="Clear Cache" onClick={() => setShowClearCache(true)} />
         </div>
 
-        {/* Bottom Section */}
-        <div className="mt-4 mx-[18px]">
+        {/* ═══ Bottom Section ═══ */}
+        <div className="mt-4 mx-[18px] mb-4 animate-fade-in" style={{ animationDelay: '300ms' }}>
           <div className="bg-nh-surface rounded-[14px] border border-nh-border overflow-hidden">
             <MenuItem icon={icons.settings} title="Settings" onClick={() => {/* navigate */}} />
           </div>
           <button
             onClick={() => { logout(); window.location.href = '/auth/login' }}
-            className="w-full mt-3 py-[14px] bg-nh-danger/5 border border-nh-danger rounded-[12px] text-nh-danger font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full mt-3 py-[14px] bg-nh-danger/5 border border-nh-danger rounded-[12px] text-nh-danger font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer hover:bg-nh-danger/10 transition-colors"
           >
             {icons.logout} Logout
           </button>
@@ -535,6 +653,49 @@ export default function Profile() {
               <button onClick={() => setEditOpen(false)} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
               <button onClick={saveEditProfile} className="px-5 py-2 rounded-lg bg-nh-primary text-white text-sm font-semibold">Save</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Share Profile Dialog ── */}
+      {showShare && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setShowShare(false)}>
+          <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-nh-text font-display font-semibold text-lg">Share Profile</h3>
+              <button onClick={() => setShowShare(false)} className="text-nh-text-muted bg-transparent border-0 p-1 cursor-pointer">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+
+            {/* A — QR Code */}
+            <div className="bg-white rounded-2xl p-5 mb-4 flex flex-col items-center">
+              <div className="bg-white rounded-xl p-3 mb-3">
+                {renderQRCode()}
+              </div>
+              <p className="text-gray-700 text-xs text-center break-all">{profileDeepLink}</p>
+            </div>
+
+            {/* B — Copy Profile ID */}
+            <button
+              onClick={handleCopyProfileId}
+              className="w-full flex items-center gap-3 px-4 py-3 bg-nh-bg border border-nh-border rounded-xl mb-2 cursor-pointer hover:bg-nh-surface-elevated transition-colors"
+            >
+              {icons.copy}
+              <span className="text-nh-text text-sm font-medium">{copied ? 'Copied!' : 'Copy Profile ID'}</span>
+              {copied && <span className="ml-auto text-nh-success text-xs">✓</span>}
+            </button>
+
+            {/* C — Native Share (only if supported) */}
+            {supportsWebShare && (
+              <button
+                onClick={handleNativeShare}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-nh-bg border border-nh-border rounded-xl cursor-pointer hover:bg-nh-surface-elevated transition-colors"
+              >
+                {icons.share}
+                <span className="text-nh-text text-sm font-medium">Share via...</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -594,6 +755,21 @@ export default function Profile() {
       {/* ── Confirm Delete Dialog ── */}
       {confirmDelete && <ConfirmDeleteModal onConfirm={() => confirmDelete.type === 'address' ? deleteAddress(confirmDelete.id) : deleteCar(confirmDelete.id)} onCancel={() => setConfirmDelete(null)} label={confirmDelete.label} />}
 
+      {/* ── CSS Keyframes injected via style tag ── */}
+      <style>{`
+        @keyframes pulse-glow {
+          0%, 100% { box-shadow: 0 0 10px rgba(79,142,247,0.2); }
+          50% { box-shadow: 0 0 30px rgba(79,142,247,0.45); }
+        }
+        @keyframes fade-in-up {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          opacity: 0;
+          animation: fade-in-up 0.4s ease-out forwards;
+        }
+      `}</style>
     </div>
   )
 }
