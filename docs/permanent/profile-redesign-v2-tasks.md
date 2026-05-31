@@ -2,6 +2,12 @@
 
 > Created: 2026-05-31T05:37:09.105Z
 > Total tasks: 14
+> ⛔ **HARD RULE:** Tasks 11 & 12 (Playwright verification) are GATES.
+>   - They CANNOT be marked "completed" without real browser screenshots
+>   - If database/postgres is down, you MUST start it first: `docker compose up -d postgres`
+>   - If login fails, you MUST register a test user first via API or fix auth
+>   - "API works" ≠ task complete. Only browser screenshots count.
+>   - Any attempt to skip = task FAILURE. Restart from task 11.
 
 ---
 
