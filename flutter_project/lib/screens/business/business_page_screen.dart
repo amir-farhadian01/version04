@@ -276,15 +276,33 @@ class _BusinessPageScreenState extends State<BusinessPageScreen>
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700,
                     fontFamily: 'Space Grotesk', color: AppColors.primary)),
             const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(8)),
-              child: const Text('Book Now', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+            GestureDetector(
+              onTap: () => _onBookNow(s),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(8)),
+                child: const Text('Book Now', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+              ),
             ),
           ]),
         ]),
       ]),
     );
+  }
+
+  /// Handle "Book Now" tap — navigate to NewOrderScreen with pre-filled service data
+  void _onBookNow(Map<String, dynamic> service) {
+    final args = <String, dynamic>{
+      'serviceCatalogId': service['id'] as String? ?? service['serviceCatalogId'] as String? ?? '',
+      'packageId': service['packageId'] as String?,
+      'providerId': widget.businessId,
+      'prefill': <String, dynamic>{
+        'name': service['name'],
+        'desc': service['desc'],
+        'price': service['price'],
+      },
+    };
+    Navigator.pushNamed(context, '/order/new', arguments: args);
   }
 
   Widget _buildReviewsTab() {

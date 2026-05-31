@@ -355,6 +355,28 @@ class ApiService {
     return await get('/orders/$orderId');
   }
 
+  /// Create a draft order — Phase 1 (Intent Capture)
+  /// Body: { serviceCatalogId, entryPoint, description?, address?, scheduledAt?, ... }
+  Future<Map<String, dynamic>> createDraftOrder(Map<String, dynamic> body) async {
+    return await post('/orders/draft', body: body);
+  }
+
+  /// Submit a draft order — Phase 2 (triggers matching engine)
+  Future<Map<String, dynamic>> submitDraftOrder(String orderId, Map<String, dynamic> body) async {
+    return await post('/orders/$orderId/submit-draft', body: body);
+  }
+
+  /// Get eligible providers preview for a draft order
+  Future<Map<String, dynamic>> getMatchedProviders(String orderId) async {
+    return await get('/orders/$orderId/matched-providers');
+  }
+
+  /// Walk-in booking — Mode 5 (skip matching)
+  /// Body: { providerId, serviceCatalogId, packageId?, description, addressId, urgency? }
+  Future<Map<String, dynamic>> createWalkInOrder(Map<String, dynamic> body) async {
+    return await post('/orders/walk-in', body: body);
+  }
+
   Future<Map<String, dynamic>> getInbox() async {
     return await get('/chat/inbox');
   }
