@@ -177,12 +177,13 @@ export default function Profile() {
   const email = userData?.email ?? ''
   const avatarUrl = userData?.avatarUrl ?? ''
   const userId = userData?.id ?? ''
+  const username = userData?.username ?? userId
   const initial = displayName.charAt(0).toUpperCase()
   const hasBizRole = user?.roles?.some((role: string) =>
     ['provider', 'owner', 'platform_admin', 'developer', 'support', 'finance'].includes(role.toLowerCase())
   ) ?? false
 
-  const profileDeepLink = `neighborly://user/${userId}`
+  const profileDeepLink = `neighborly://user/${username}`
   const shareText = `Add me on Neighborly! My profile: ${profileDeepLink}`
   const supportsWebShare = typeof navigator !== 'undefined' && !!navigator.share
 
@@ -532,20 +533,20 @@ export default function Profile() {
               </div>
               <input type="file" accept="image/*" className="hidden" onChange={handleUploadAvatar} />
             </label>
-            {/* Share button floating on avatar */}
-            <button
-              onClick={() => setShowShare(true)}
-              className="absolute -top-1 -right-1 w-8 h-8 bg-nh-surface border border-nh-border rounded-full flex items-center justify-center cursor-pointer hover:bg-nh-surface-elevated transition-colors"
-              title="Share Profile"
-            >
-              {icons.share}
-            </button>
           </div>
-          <h3 className="font-display font-bold text-xl text-nh-text text-center">{displayName}</h3>
-          <p className="text-[13px] text-nh-text-muted mt-1 text-center">{email}</p>
-          <button onClick={openEditProfile} className="mt-3 px-4 py-1.5 rounded-lg bg-nh-primary-dim text-nh-primary text-sm font-medium border-0 cursor-pointer flex items-center gap-1.5 hover:bg-nh-primary-dim/80 transition-colors">
-            {icons.edit} Edit Profile
-          </button>
+           <h3 className="font-display font-bold text-xl text-nh-text text-center">{displayName}</h3>
+           <p className="text-[13px] text-nh-text-muted mt-1 text-center">{email}</p>
+           <div className="flex items-center justify-center gap-3 mt-3">
+             <button onClick={openEditProfile} className="px-4 py-2 rounded-[12px] bg-nh-primary text-white text-sm font-medium border-0 cursor-pointer flex items-center gap-1.5 hover:bg-nh-primary/90 active:scale-[0.95] transition-all duration-150">
+               {icons.edit} Edit
+             </button>
+             <button
+               onClick={() => setShowShare(true)}
+               className="px-4 py-2 rounded-[12px] bg-nh-primary text-white text-sm font-medium border-0 cursor-pointer flex items-center gap-1.5 hover:bg-nh-primary/90 active:scale-[0.95] transition-all duration-150"
+             >
+               {icons.share} Share
+             </button>
+           </div>
         </div>
 
         {/* ═══ Section 1: MY SERVICES ═══ */}

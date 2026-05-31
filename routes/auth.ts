@@ -14,6 +14,12 @@ import { authenticate, AuthRequest } from '../lib/auth.middleware.js';
 import { publish } from '../lib/bus.js';
 import { authLimiter } from '../lib/rateLimiter.js';
 import { blacklistToken } from '../lib/tokenBlacklist.js';
+import {
+  normalizeUsername,
+  isValidUsername,
+  generateUsername,
+  suggestUsername,
+} from '../lib/username.js';
 
 const router = Router();
 
@@ -115,7 +121,7 @@ router.post('/update-profile', authenticate, async (req: AuthRequest, res: Respo
 
 // ─── Register ────────────────────────────────────────────────────────────────
 router.post('/register', async (req: Request, res: Response) => {
-  const { email, password, displayName, role = 'customer', phone } = req.body;
+  const { email, password, displayName, role = 'customer', phone, username, firstName, lastName } = req.body;
   if (!email || !password || !displayName)
     return res.status(400).json({ error: 'Missing required fields' });
 
@@ -131,12 +137,41 @@ router.post('/register', async (req: Request, res: Response) => {
     // Check for duplicate displayName (case-insensitive)
     const normalizedDisplayName = displayName.toLowerCase();
     const existingDisplayName = await prisma.user.findUnique({ where: { normalizedDisplayName } });
-    if (existingDisplayName) return res.status(409).json({ error: 'Username already taken' });
+    if (existingDisplayName) return res.status(409).json({ error: 'Display name already taken' });
 
     // Check for duplicate phone (if provided)
     if (phone) {
       const existingPhone = await prisma.user.findUnique({ where: { phone } });
       if (existingPhone) return res.status(409).json({ error: 'Phone number already registered' });
+    }
+
+    // ─── Username generation ──────────────────────────────────────────────
+    let chosenUsername: string;
+    if (username && typeof username === 'string' && username.trim()) {
+      chosenUsername = normalizeUsername(username);
+      if (!isValidUsername(chosenUsername)) {
+        return res.status(400).json({ error: 'Invalid username format. Use 3-30 characters, letters/numbers/dashes only.' });
+      }
+      // Check uniqueness against users and history
+      const existingUserByUsername = await prisma.user.findUnique({ where: { normalizedUsername: chosenUsername } });
+      if (existingUserByUsername) return res.status(409).json({ error: 'Username already taken' });
+      const existingHistory = await prisma.usernameHistory.findUnique({ where: { username: chosenUsername } });
+      if (existingHistory) return res.status(409).json({ error: 'Username already taken (reserved)' });
+    } else {
+      // Auto-generate from firstName/lastName/displayName
+      const baseFirstName = firstName || (displayName ? displayName.split(' ')[0] : '');
+      const baseLastName = lastName || (displayName ? displayName.split(' ').slice(1).join(' ') : '');
+      chosenUsername = generateUsername(baseFirstName, baseLastName || undefined);
+      // Check uniqueness, append suffix if needed
+      let existingCheck = await prisma.user.findUnique({ where: { normalizedUsername: chosenUsername } });
+      let historyCheck = await prisma.usernameHistory.findUnique({ where: { username: chosenUsername } });
+      let attempts = 0;
+      while ((existingCheck || historyCheck) && attempts < 10) {
+        chosenUsername = suggestUsername(chosenUsername);
+        existingCheck = await prisma.user.findUnique({ where: { normalizedUsername: chosenUsername } });
+        historyCheck = await prisma.usernameHistory.findUnique({ where: { username: chosenUsername } });
+        attempts++;
+      }
     }
 
     const hashed = await bcrypt.hash(password, 12);
@@ -150,6 +185,10 @@ router.post('/register', async (req: Request, res: Response) => {
         password: hashed,
         displayName,
         normalizedDisplayName,
+        username: chosenUsername,
+        normalizedUsername: chosenUsername,
+        firstName: firstName || null,
+        lastName: lastName || null,
         phone: phone || null,
         role: assignedRole as any,
         isVerified: email === OWNER_EMAIL,
@@ -157,7 +196,17 @@ router.post('/register', async (req: Request, res: Response) => {
       },
     });
 
-    const tokens = generateTokenPair({ userId: user.id, email: user.email, role: user.role });
+    // Record username in history
+    await prisma.usernameHistory.create({
+      data: { userId: user.id, username: chosenUsername, isActive: true },
+    });
+
+    const tokens = generateTokenPair({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      username: user.username ?? undefined,
+    });
     await prisma.user.update({ where: { id: user.id }, data: { refreshToken: tokens.refreshToken } });
 
     await publish('user.registered', { userId: user.id, email: user.email, role: user.role });
@@ -169,7 +218,15 @@ router.post('/register', async (req: Request, res: Response) => {
 
     res.status(201).json({
       accessToken: tokens.accessToken,
-      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId, avatarUrl: user.avatarUrl },
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        username: user.username,
+        role: user.role,
+        companyId: user.companyId,
+        avatarUrl: user.avatarUrl,
+      },
     });
   } catch (err: any) {
     console.error(err);
@@ -204,7 +261,12 @@ router.post('/login', async (req: Request, res: Response) => {
 
     if (user.status === 'suspended') return res.status(403).json({ error: 'Account suspended' });
 
-    const tokens = generateTokenPair({ userId: user.id, email: user.email, role: user.role });
+    const tokens = generateTokenPair({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      username: user.username ?? undefined,
+    });
     await prisma.user.update({ where: { id: user.id }, data: { refreshToken: tokens.refreshToken } });
     await touchUserSessionOnAuth(req, user.id);
 
@@ -215,7 +277,15 @@ router.post('/login', async (req: Request, res: Response) => {
 
     res.json({
       accessToken: tokens.accessToken,
-      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId, avatarUrl: user.avatarUrl },
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        username: user.username,
+        role: user.role,
+        companyId: user.companyId,
+        avatarUrl: user.avatarUrl,
+      },
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -431,7 +501,8 @@ router.get('/me', authenticate, async (req: AuthRequest, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },
       select: {
-        id: true, email: true, firstName: true, lastName: true, displayName: true, role: true, status: true,
+        id: true, email: true, firstName: true, lastName: true, displayName: true, username: true,
+        role: true, status: true,
         companyId: true, isVerified: true, avatarUrl: true, bio: true, location: true, phone: true, address: true,
         mfaEnabled: true, createdAt: true, googleId: true, accountPreferences: true,
       },

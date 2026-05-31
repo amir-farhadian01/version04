@@ -3,6 +3,11 @@ import bcrypt from 'bcrypt';
 import prisma from '../lib/db.js';
 import { authenticate, requireRole, AuthRequest } from '../lib/auth.middleware.js';
 import { setUserLocation } from '../lib/locationCache.js';
+import {
+  normalizeUsername,
+  isValidUsername,
+  suggestUsername,
+} from '../lib/username.js';
 
 const router = Router();
 
@@ -245,6 +250,158 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Validate Username ──────────────────────────────────────────────────────
+// GET /api/users/validate-username?username=value
+router.get('/validate-username', async (req: AuthRequest, res: Response) => {
+  const raw = (req.query.username as string) || '';
+  const normalized = normalizeUsername(raw);
+
+  if (!normalized || !isValidUsername(normalized)) {
+    return res.json({
+      available: false,
+      normalized,
+      error: 'Invalid username format. Use 3-30 characters, letters/numbers/dashes only.',
+    });
+  }
+
+  try {
+    // Check against current users (exclude current user if logged in)
+    const currentUserId = req.user?.userId ?? null;
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        normalizedUsername: normalized,
+        ...(currentUserId ? { NOT: { id: currentUserId } } : {}),
+      },
+    });
+
+    // Check against username history (burned usernames)
+    const existingHistory = await prisma.usernameHistory.findUnique({
+      where: { username: normalized },
+    });
+
+    if (existingUser || existingHistory) {
+      const suggestion = suggestUsername(normalized);
+      return res.json({
+        available: false,
+        normalized,
+        suggestion,
+      });
+    }
+
+    return res.json({
+      available: true,
+      normalized,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Update Username ────────────────────────────────────────────────────────
+// PATCH /api/users/username
+router.patch('/username', authenticate, async (req: AuthRequest, res: Response) => {
+  const { username: newUsername } = req.body as { username?: string };
+
+  if (!newUsername || typeof newUsername !== 'string') {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  const normalized = normalizeUsername(newUsername);
+
+  if (!isValidUsername(normalized)) {
+    return res.status(400).json({
+      error: 'Invalid username format. Use 3-30 characters, letters/numbers/dashes only.',
+    });
+  }
+
+  try {
+    const userId = req.user!.userId;
+
+    // Get current user
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // If unchanged, return success
+    if (currentUser.username === normalized) {
+      return res.json({
+        success: true,
+        newUsername: normalized,
+        oldUsername: currentUser.username,
+      });
+    }
+
+    // Check uniqueness against users
+    const existingUser = await prisma.user.findUnique({
+      where: { normalizedUsername: normalized },
+    });
+    if (existingUser) {
+      return res.status(409).json({ error: 'Username already taken' });
+    }
+
+    // Check against history (burned usernames)
+    const existingHistory = await prisma.usernameHistory.findUnique({
+      where: { username: normalized },
+    });
+    if (existingHistory) {
+      return res.status(409).json({
+        error: 'This username has been permanently reserved and cannot be reused',
+      });
+    }
+
+    // Perform the update in a transaction
+    const oldUsername = currentUser.username;
+    const result = await prisma.$transaction(async (tx) => {
+      // Deactivate old username in history
+      if (oldUsername) {
+        await tx.usernameHistory.create({
+          data: {
+            userId,
+            username: oldUsername,
+            isActive: false,
+            releasedAt: new Date(),
+          },
+        });
+      }
+
+      // Update user with new username
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data: {
+          username: normalized,
+          normalizedUsername: normalized,
+        },
+        select: { username: true },
+      });
+
+      // Add new username to history as active
+      await tx.usernameHistory.create({
+        data: {
+          userId,
+          username: normalized,
+          isActive: true,
+        },
+      });
+
+      return updated;
+    });
+
+    res.json({
+      success: true,
+      newUsername: result.username,
+      oldUsername,
+    });
+  } catch (err: any) {
+    console.error('Username update error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

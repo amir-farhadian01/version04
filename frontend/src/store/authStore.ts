@@ -8,6 +8,7 @@ export interface User {
   firstName: string
   lastName: string
   displayName?: string | null
+  username?: string | null
   roles: string[]
   avatarUrl?: string | null
   phone?: string | null
@@ -25,6 +26,7 @@ interface RegisterPayload {
   firstName: string
   lastName: string
   phone: string
+  username?: string
 }
 
 interface AuthState {
@@ -49,6 +51,7 @@ function mapBackendUser(backendUser: {
   displayName?: string | null
   firstName?: string | null
   lastName?: string | null
+  username?: string | null
   role?: string
   roles?: string[]
   avatarUrl?: string | null
@@ -66,6 +69,7 @@ function mapBackendUser(backendUser: {
     firstName,
     lastName,
     displayName: backendUser.displayName,
+    username: (backendUser as Record<string, unknown>).username as string ?? null,
     roles,
     avatarUrl: backendUser.avatarUrl ?? null,
     phone: backendUser.phone ?? null,
@@ -93,6 +97,7 @@ export const useAuthStore = create<AuthState>()(
               id: string
               email: string
               displayName: string
+              username?: string | null
               role: string
               companyId?: string | null
               avatarUrl?: string | null
@@ -126,6 +131,7 @@ export const useAuthStore = create<AuthState>()(
               id: string
               email: string
               displayName: string
+              username?: string | null
               role: string
               companyId?: string | null
               avatarUrl?: string | null
@@ -135,6 +141,7 @@ export const useAuthStore = create<AuthState>()(
             password: payload.password,
             displayName: `${payload.firstName} ${payload.lastName}`.trim(),
             phone: payload.phone || undefined,
+            username: payload.username || undefined,
           })
 
           const user = mapBackendUser(data.user)

@@ -209,6 +209,8 @@ model User {
   lastName            String?
   displayName         String?
   normalizedDisplayName String?   @unique
+  username            String?     @unique
+  normalizedUsername  String?     @unique
   role                UserRole    @default(customer)
   staffRole           StaffRole?
   status              Status      @default(active)
@@ -292,6 +294,17 @@ model User {
   following              Follow[]                @relation("Follower")
   packageStaffAssignments PackageStaffAssignment[]
   reviewerReviews       OrderReview[]           @relation("ReviewerUser")
+  usernameHistory       UsernameHistory[]
+}
+
+model UsernameHistory {
+  id         String    @id @default(cuid())
+  userId     String?
+  username   String    @unique
+  claimedAt  DateTime  @default(now())
+  releasedAt DateTime?
+  isActive   Boolean   @default(true)
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model WebAuthnCredential {
