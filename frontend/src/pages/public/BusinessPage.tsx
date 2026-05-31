@@ -297,7 +297,10 @@ export default function BusinessPage() {
                     </div>
                   )}
                 </div>
-                <div className="absolute bottom-[14px] right-[14px] bg-nh-primary rounded-lg px-[14px] py-1.5 text-[11px] font-bold text-white cursor-pointer">
+                <div
+                  onClick={() => navigate(`/order/new?packageId=${pkg.id}&businessId=${id}`)}
+                  className="absolute bottom-[14px] right-[14px] bg-nh-primary rounded-lg px-[14px] py-1.5 text-[11px] font-bold text-white cursor-pointer hover:bg-nh-primary/90 transition-colors"
+                >
                   Book Now
                 </div>
               </div>
