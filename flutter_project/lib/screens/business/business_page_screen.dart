@@ -38,7 +38,24 @@ class _BusinessPageScreenState extends State<BusinessPageScreen>
   Future<void> _loadProfile() async {
     try {
       final result = await _api.getBusinessProfile(widget.businessId);
-      _profile = result['data'] as Map<String, dynamic>? ?? result;
+      // Backend returns: { company: {...}, trust: {...}, portfolio: {...}, stats: {...} }
+      final company = result['company'] as Map<String, dynamic>? ?? {};
+      final trust = result['trust'] as Map<String, dynamic>? ?? {};
+      final stats = result['stats'] as Map<String, dynamic>? ?? {};
+      _profile = {
+        'id': company['id'],
+        'name': company['name'],
+        'username': '@${company['slug'] ?? widget.businessId}',
+        'slogan': company['slogan'],
+        'category': company['type'] ?? '',
+        'rating': trust['avgRating'] ?? 0,
+        'reviewCount': stats['totalReviews'] ?? 0,
+        'yearsActive': trust['experienceYears'] ?? 0,
+        'location': company['location'] ?? company['address'] ?? '',
+        'verified': trust['kycVerified'] == true,
+        'insured': trust['hasLiabilityInsurance'] == true,
+        'license': trust['licenseNumber'],
+      };
     } catch (_) {
       _profile = _mockProfile();
     }
@@ -247,7 +264,10 @@ class _BusinessPageScreenState extends State<BusinessPageScreen>
 
   Widget _serviceCard(Map<String, dynamic> s) {
     final price = (s['price'] as num?) ?? 0;
-    final tag = s['tag'] as String?;
+    final duration = s['durationMinutes'] as int?;
+    final photoRequired = s['photoRequired'] == true;
+    final bookingMode = s['bookingMode'] as String?;
+    final description = s['description'] as String? ?? s['desc'] as String?;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -256,35 +276,65 @@ class _BusinessPageScreenState extends State<BusinessPageScreen>
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
-      child: Stack(children: [
-        if (tag != null)
-          Positioned(top: 0, right: 0, child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-            child: Text(tag, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary)),
-          )),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(s['name'] as String? ?? '',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text)),
-          if (s['desc'] != null) ...[
-            const SizedBox(height: 4),
-            Text(s['desc'].toString(), style: const TextStyle(fontSize: 11, color: AppColors.text3)),
-          ],
-          const SizedBox(height: 8),
-          Row(children: [
-            Text('\$${(price / 100).toStringAsFixed(0)}',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700,
-                    fontFamily: 'Space Grotesk', color: AppColors.primary)),
-            const Spacer(),
-            GestureDetector(
-              onTap: () => _onBookNow(s),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(8)),
-                child: const Text('Book Now', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(s['name'] as String? ?? '',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text)),
+              if (description != null && description.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(description, style: const TextStyle(fontSize: 11, color: AppColors.text3)),
+              ],
+            ]),
+          ),
+          if (photoRequired)
+            Container(
+              margin: const EdgeInsets.only(left: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.warn.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
               ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.camera_alt, size: 10, color: AppColors.warn),
+                SizedBox(width: 3),
+                Text('Photo Required', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.warn)),
+              ]),
             ),
-          ]),
+        ]),
+        const SizedBox(height: 8),
+        Row(children: [
+          Text('\$${(price / 100).toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700,
+                  fontFamily: 'Space Grotesk', color: AppColors.primary)),
+          if (duration != null) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.access_time, size: 11, color: AppColors.text3.withValues(alpha: 0.6)),
+            const SizedBox(width: 3),
+            Text('${duration}min', style: const TextStyle(fontSize: 10, color: AppColors.text3)),
+          ],
+          if (bookingMode != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.bg3,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(bookingMode == 'auto_appointment' ? 'Instant' : 'Negotiate',
+                  style: TextStyle(fontSize: 9, color: AppColors.text2.withValues(alpha: 0.7))),
+            ),
+          ],
+          const Spacer(),
+          GestureDetector(
+            onTap: () => _onBookNow(s),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(8)),
+              child: const Text('Book Now', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+            ),
+          ),
         ]),
       ]),
     );
@@ -293,12 +343,12 @@ class _BusinessPageScreenState extends State<BusinessPageScreen>
   /// Handle "Book Now" tap — navigate to NewOrderScreen with pre-filled service data
   void _onBookNow(Map<String, dynamic> service) {
     final args = <String, dynamic>{
-      'serviceCatalogId': service['id'] as String? ?? service['serviceCatalogId'] as String? ?? '',
-      'packageId': service['packageId'] as String?,
+      'serviceCatalogId': service['serviceCatalogId'] as String? ?? service['id'] as String? ?? '',
+      'packageId': service['id'] as String?,
       'providerId': widget.businessId,
       'prefill': <String, dynamic>{
         'name': service['name'],
-        'desc': service['desc'],
+        'desc': service['description'] ?? service['desc'],
         'price': service['price'],
       },
     };
@@ -320,6 +370,12 @@ class _BusinessPageScreenState extends State<BusinessPageScreen>
   }
 
   Widget _reviewCard(Map<String, dynamic> r) {
+    // Backend returns: { id, rating, reviewText, createdAt, customer: { displayName, ... }, serviceName }
+    final customerName = (r['customer'] is Map)
+        ? ((r['customer'] as Map)['displayName'] as String? ?? 'User')
+        : 'User';
+    final reviewText = r['reviewText'] as String? ?? r['text'] as String?;
+    final time = _formatReviewDate(r['createdAt'] as String?);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -334,26 +390,42 @@ class _BusinessPageScreenState extends State<BusinessPageScreen>
             width: 32, height: 32,
             decoration: BoxDecoration(color: AppColors.primaryDim, borderRadius: BorderRadius.circular(8)),
             child: Center(child: Text(
-              ((r['userName'] as String? ?? 'U')[0]).toUpperCase(),
+              customerName[0].toUpperCase(),
               style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary, fontSize: 14),
             )),
           ),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(r['userName'] as String? ?? '',
+            Text(customerName,
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
             _starRow((r['rating'] as num?)?.toInt() ?? 0),
           ])),
-          Text(r['time'] as String? ?? '',
+          Text(time,
               style: const TextStyle(fontSize: 10, color: AppColors.text3)),
         ]),
-        if (r['text'] != null) ...[
+        if (reviewText != null && reviewText.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Text(r['text'].toString(),
+          Text(reviewText,
               style: const TextStyle(fontSize: 12, color: AppColors.text2, height: 1.5)),
         ],
       ]),
     );
+  }
+
+  String _formatReviewDate(String? isoDate) {
+    if (isoDate == null) return '';
+    try {
+      final dt = DateTime.parse(isoDate);
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inDays == 0) return 'Today';
+      if (diff.inDays == 1) return 'Yesterday';
+      if (diff.inDays < 7) return '${diff.inDays}d ago';
+      if (diff.inDays < 30) return '${(diff.inDays / 7).floor()}w ago';
+      return '${dt.month}/${dt.year}';
+    } catch (_) {
+      return '';
+    }
   }
 
   Widget _buildAboutTab() {

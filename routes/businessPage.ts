@@ -241,6 +241,7 @@ router.get('/:companyId/services', async (req: AuthRequest, res: Response) => {
       breakTimeMinutes: pkg.breakTimeMinutes,
       bookingMode: pkg.bookingMode,
       photoRequired: pkg.photoRequired,
+      serviceCatalogId: pkg.serviceCatalogId,
       assignedStaff: pkg.staffAssignments.map((a) => ({
         id: a.staff.id,
         displayName: a.staff.displayName,

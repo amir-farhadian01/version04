@@ -395,12 +395,12 @@ class ApiService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Future<Map<String, dynamic>> getBusinessProfile(String businessId) async {
-    return await get('/business/$businessId');
+    return await get('/business-page/$businessId');
   }
 
   Future<List<Map<String, dynamic>>> getBusinessServices(
       String businessId) async {
-    final result = await get('/business/$businessId/services');
+    final result = await get('/business-page/$businessId/services');
     return (result['data'] as List<dynamic>?)
             ?.cast<Map<String, dynamic>>() ??
         (result['items'] as List<dynamic>?)
@@ -410,7 +410,7 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> getBusinessReviews(
       String businessId) async {
-    final result = await get('/business/$businessId/reviews');
+    final result = await get('/business-page/$businessId/reviews');
     return (result['data'] as List<dynamic>?)
             ?.cast<Map<String, dynamic>>() ??
         (result['items'] as List<dynamic>?)
