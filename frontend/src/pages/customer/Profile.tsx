@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
 import { NavIcons } from '../../components/ui/phone/BottomNav'
 import { useAuthStore } from '../../store/authStore'
 import api from '../../lib/api'
@@ -172,6 +173,31 @@ export default function Profile() {
   const [showShare, setShowShare] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Username editing
+  const [editUsername, setEditUsername] = useState('')
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
+  const [usernameChecking, setUsernameChecking] = useState(false)
+  const [usernameSuggestion, setUsernameSuggestion] = useState<string | null>(null)
+
+  // Debounced username check
+  const checkUsername = useCallback(async (val: string) => {
+    if (val.length < 3) { setUsernameAvailable(null); setUsernameSuggestion(null); return }
+    setUsernameChecking(true)
+    try {
+      const res = await api.get(`/users/validate-username?username=${encodeURIComponent(val)}`)
+      setUsernameAvailable(res.data?.available ?? false)
+      setUsernameSuggestion(res.data?.suggestion ?? null)
+    } catch {
+      setUsernameAvailable(null)
+    }
+    setUsernameChecking(false)
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => { if (editUsername) checkUsername(editUsername) }, 500)
+    return () => clearTimeout(timer)
+  }, [editUsername, checkUsername])
+
   const userData = (user as any) ?? {}
   const displayName = userData?.displayName || `${userData?.firstName ?? ''} ${userData?.lastName ?? ''}`.trim() || 'User'
   const email = userData?.email ?? ''
@@ -220,6 +246,9 @@ export default function Profile() {
   const openEditProfile = () => {
     setEditName(displayName)
     setEditEmail(email)
+    setEditUsername(username as string || '')
+    setUsernameAvailable(null)
+    setUsernameSuggestion(null)
     setEditOpen(true)
   }
   const saveEditProfile = async () => {
@@ -238,6 +267,14 @@ export default function Profile() {
         await refreshUser()
         showSnack('Email updated')
       } catch { showSnack('Failed to update email') }
+    }
+    // Username update
+    if (editUsername && editUsername !== (username as string)) {
+      try {
+        await api.patch('/users/username', { username: editUsername })
+        await refreshUser()
+        showSnack('Username updated')
+      } catch { showSnack('Failed to update username') }
     }
     setEditOpen(false)
   }
@@ -346,41 +383,6 @@ export default function Profile() {
     } catch { /* user cancelled or unsupported */ }
   }
 
-  /* ─── Simple QR Code Generator (inline SVG) ──────────────────────────── */
-  const renderQRCode = () => {
-    // Simple grid-based QR placeholder showing the deep link
-    const encoded = btoa(profileDeepLink).slice(0, 40)
-    const size = 8
-    const cells: boolean[][] = []
-    for (let r = 0; r < size; r++) {
-      cells[r] = []
-      for (let c = 0; c < size; c++) {
-        const charCode = (encoded.charCodeAt((r * size + c) % encoded.length) || 65)
-        cells[r][c] = charCode % 2 === 0
-      }
-    }
-    const cellSize = 24
-    const total = size * cellSize
-    return (
-      <svg width={total} height={total} viewBox={`0 0 ${total} ${total}`} className="block mx-auto">
-        {/* White background */}
-        <rect width={total} height={total} fill="white" rx="8" />
-        {/* Finder patterns (top-left, top-right, bottom-left) */}
-        {[{ x: 0, y: 0 }, { x: (size - 3) * cellSize, y: 0 }, { x: 0, y: (size - 3) * cellSize }].map((fp, i) => (
-          <g key={i}>
-            <rect x={fp.x} y={fp.y} width={3 * cellSize} height={3 * cellSize} fill="black" rx="2" />
-            <rect x={fp.x + cellSize} y={fp.y + cellSize} width={cellSize} height={cellSize} fill="white" rx="1" />
-          </g>
-        ))}
-        {/* Data cells */}
-        {cells.map((row, r) =>
-          row.map((on, c) =>
-            on ? <rect key={`${r}-${c}`} x={c * cellSize} y={r * cellSize} width={cellSize} height={cellSize} fill="black" rx="1" /> : null
-          )
-        )}
-      </svg>
-    )
-  }
 
   /* ─── Menu Item Component ────────────────────────────────────────────── */
   const MenuItem = ({ icon, title, badge, onClick }: { icon: React.ReactNode; title: string; badge?: string; onClick: () => void }) => (
@@ -551,7 +553,7 @@ export default function Profile() {
 
         {/* ═══ Section 1: MY SERVICES ═══ */}
         <SectionHeader title="My Services" />
-        <div className="mx-[18px] bg-nh-surface rounded-[14px] border border-nh-border overflow-hidden animate-fade-in" style={{ animationDelay: '0ms' }}>
+        <div className="mx-[18px] bg-[#1A1A1A] rounded-[20px] border-[0.5px] border-[#2A2A2A] overflow-hidden animate-fade-in" style={{ animationDelay: '0ms' }}>
           <MenuItem icon={icons.calendar} title="My Appointments" onClick={() => {/* navigate */}} />
           <Divider />
           <MenuItem icon={icons.heart} title="Saved Businesses" onClick={() => {/* navigate */}} />
@@ -561,7 +563,7 @@ export default function Profile() {
 
         {/* ═══ Section 2: PERSONAL INFO (Accordion) ═══ */}
         <SectionHeader title="Personal Info" />
-        <div className="mx-[18px] bg-nh-surface rounded-[14px] border border-nh-border overflow-hidden animate-fade-in" style={{ animationDelay: '100ms' }}>
+        <div className="mx-[18px] bg-[#1A1A1A] rounded-[20px] border-[0.5px] border-[#2A2A2A] overflow-hidden animate-fade-in" style={{ animationDelay: '100ms' }}>
           {/* Accordion Header */}
           <div
             onClick={() => setPersonalInfoOpen(!personalInfoOpen)}
@@ -594,7 +596,7 @@ export default function Profile() {
 
         {/* ═══ Section 3: SETTINGS & SUPPORT ═══ */}
         <SectionHeader title="Settings & Support" />
-        <div className="mx-[18px] bg-nh-surface rounded-[14px] border border-nh-border overflow-hidden animate-fade-in" style={{ animationDelay: '200ms' }}>
+        <div className="mx-[18px] bg-[#1A1A1A] rounded-[20px] border-[0.5px] border-[#2A2A2A] overflow-hidden animate-fade-in" style={{ animationDelay: '200ms' }}>
           <MenuItem icon={icons.bell} title="Notifications" badge="3" onClick={() => {/* navigate */}} />
           <Divider />
           <MenuItem icon={icons.help} title="Help & Support" onClick={() => {/* navigate */}} />
@@ -604,7 +606,7 @@ export default function Profile() {
 
         {/* ═══ Bottom Section ═══ */}
         <div className="mt-4 mx-[18px] mb-4 animate-fade-in" style={{ animationDelay: '300ms' }}>
-          <div className="bg-nh-surface rounded-[14px] border border-nh-border overflow-hidden">
+          <div className="bg-[#1A1A1A] rounded-[20px] border-[0.5px] border-[#2A2A2A] overflow-hidden">
             <MenuItem icon={icons.settings} title="Settings" onClick={() => {/* navigate */}} />
           </div>
           <button
@@ -649,6 +651,27 @@ export default function Profile() {
                 className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none" />
               <input value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="Email" type="email"
                 className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none" />
+              <div>
+                <label className="text-xs text-nh-text-muted mb-1 block">Username</label>
+                <input
+                  value={editUsername}
+                  onChange={e => setEditUsername(e.target.value)}
+                  placeholder="your-username"
+                  maxLength={30}
+                  className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none"
+                />
+                <div className="flex items-center gap-1 mt-1">
+                  {usernameChecking && <span className="text-xs text-nh-text-muted">Checking...</span>}
+                  {!usernameChecking && usernameAvailable === true && <span className="text-xs text-nh-success">✓ Available</span>}
+                  {!usernameChecking && usernameAvailable === false && <span className="text-xs text-nh-danger">✗ Taken</span>}
+                  {!usernameChecking && usernameSuggestion && usernameAvailable === false && (
+                    <span className="text-xs text-nh-warning">Try: <span className="font-mono">{usernameSuggestion}</span></span>
+                  )}
+                  {editUsername && editUsername !== (username as string) && (
+                    <span className="text-xs text-nh-text-muted ml-auto">Old username will be permanently reserved</span>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="flex justify-end gap-3 mt-5">
               <button onClick={() => setEditOpen(false)} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
@@ -671,10 +694,8 @@ export default function Profile() {
 
             {/* A — QR Code */}
             <div className="bg-white rounded-2xl p-5 mb-4 flex flex-col items-center">
-              <div className="bg-white rounded-xl p-3 mb-3">
-                {renderQRCode()}
-              </div>
-              <p className="text-gray-700 text-xs text-center break-all">{profileDeepLink}</p>
+              <QRCodeSVG value={profileDeepLink} size={200} bgColor="#ffffff" fgColor="#000000" level="M" includeMargin={false} />
+              <p className="text-gray-700 text-xs text-center break-all mt-3">{profileDeepLink}</p>
             </div>
 
             {/* B — Copy Profile ID */}
