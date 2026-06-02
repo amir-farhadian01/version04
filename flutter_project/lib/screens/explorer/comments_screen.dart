@@ -97,7 +97,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
       _commentPage = 1;
     });
     try {
-      final result = await _api.get('/social/posts/${widget.postId}/comments?page=1') as Map<String, dynamic>;
+      final result = await _api.get('/social/posts/${widget.postId}/comments?page=1');
       final data = (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
       final total = result['total'] as int? ?? 0;
       if (mounted) {
@@ -151,9 +151,9 @@ class _CommentsScreenState extends State<CommentsScreen> {
     if (state.replies.isEmpty) {
       setState(() => state.loading = true);
       try {
-        final result = await _api.getReplies(widget.postId, commentId);
-        final data = (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
-        final total = result['total'] as int? ?? 0;
+        final List<Map<String, dynamic>> result = await _api.getReplies(widget.postId, commentId);
+        final data = result;
+        final int total = result.length;
         if (mounted) {
           setState(() {
             state.replies = data;
@@ -395,10 +395,10 @@ class _CommentsScreenState extends State<CommentsScreen> {
               imageUrl: (media.first as Map<String, dynamic>)['url'] as String? ?? '',
               fit: BoxFit.cover,
               cacheManager: ImageCacheConfig.manager,
-              placeholder: (_, __) => const Center(
+              placeholder: (_, _) => const Center(
                 child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
               ),
-              errorWidget: (_, __, ___) => const Center(
+              errorWidget: (_, _, _) => const Center(
                 child: Icon(Icons.broken_image, size: 40, color: AppColors.text3),
               ),
             ),
@@ -431,7 +431,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(authorName as String,
+                        Text(authorName,
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text)),
                         Text(timeAgo,
                           style: const TextStyle(fontSize: 11, color: AppColors.text3)),
@@ -443,7 +443,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     children: [
                       const Icon(Icons.favorite, size: 12, color: AppColors.red),
                       const SizedBox(width: 4),
-                      Text('${likeCount}',
+                      Text('$likeCount',
                         style: const TextStyle(fontSize: 11, color: AppColors.text2)),
                     ],
                   ),
@@ -601,7 +601,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(authorName as String,
+                        Text(authorName,
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text)),
                         const SizedBox(width: 8),
                         Text(timeAgo,
@@ -636,7 +636,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                         const SizedBox(width: 16),
                         // Reply button
                         GestureDetector(
-                          onTap: () => _startReply(commentId, authorName as String),
+                          onTap: () => _startReply(commentId, authorName),
                           child: const Text('Reply',
                             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.text3)),
                         ),
@@ -726,7 +726,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
               children: [
                 Row(
                   children: [
-                    Text(authorName as String,
+                    Text(authorName,
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.text)),
                     const SizedBox(width: 6),
                     Text(timeAgo,
