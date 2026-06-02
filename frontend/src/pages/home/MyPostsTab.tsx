@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   useMyPosts,
   useSavedPosts,
@@ -38,6 +39,7 @@ function getMediaThumb(post: FeedPost): string | null {
 }
 
 export default function MyPostsTab() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabKey>('posts')
   const [viewMode, setViewMode] = useState<ViewMode>('list')
 
@@ -54,6 +56,10 @@ export default function MyPostsTab() {
     } catch {
       // silently fail
     }
+  }
+
+  const handlePostClick = (post: FeedPost) => {
+    navigate(`/explorer/comments`, { state: { postId: post.id } })
   }
 
   const renderPostList = (
@@ -110,10 +116,11 @@ export default function MyPostsTab() {
         {posts.map((post) => (
           <div
             key={post.id}
+            onClick={() => handlePostClick(post)}
             className={`rounded-xl border border-nh-border bg-nh-surface ${
               viewMode === 'grid'
-                ? 'p-2 flex flex-col'
-                : 'p-3 flex gap-3 items-center'
+                ? 'p-2 flex flex-col cursor-pointer hover:border-nh-primary transition-colors'
+                : 'p-3 flex gap-3 items-center cursor-pointer hover:border-nh-primary transition-colors'
             }`}
           >
             {/* Thumbnail */}
@@ -147,7 +154,7 @@ export default function MyPostsTab() {
             {/* Delete action — hidden in grid mode */}
             {showDelete && viewMode !== 'grid' && (
               <button
-                onClick={() => handleDelete(post.id)}
+                onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }}
                 className="text-nh-text-muted hover:text-nh-danger transition-colors p-1"
                 title="Delete post"
               >
@@ -207,8 +214,8 @@ export default function MyPostsTab() {
         )}
       </div>
 
-      {/* Tab Content — all tabs get pt-6 so content clears the sticky tab bar */}
-      <div className="pt-6">
+      {/* Tab Content — pt-10 gives generous clearance from sticky tab bar */}
+      <div className="pt-10">
         {activeTab === 'posts' &&
           renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
         {activeTab === 'stories' && (

@@ -41,6 +41,10 @@ export default function MyPostsPage() {
     try { await deletePost.mutateAsync(postId) } catch { /* silently fail */ }
   }
 
+  const handlePostClick = (post: FeedPost) => {
+    navigate(`/explorer/comments`, { state: { postId: post.id } })
+  }
+
   const getMediaThumb = (post: FeedPost): string | null => {
     if (post.media && post.media.length > 0) return post.media[0].url
     return null
@@ -84,11 +88,14 @@ export default function MyPostsPage() {
     return (
       <div className={`${viewMode === 'grid' ? 'px-[14px] py-2 grid grid-cols-2 gap-2' : 'px-[14px] py-2'}`}>
         {posts.map((post) => (
-          <div key={post.id} className={`bg-nh-surface rounded-xl border border-nh-border ${
-            viewMode === 'grid'
-              ? 'p-2 flex flex-col'
-              : 'p-3 my-2 flex gap-3 items-center'
-          }`}>
+          <div
+            key={post.id}
+            onClick={() => handlePostClick(post)}
+            className={`bg-nh-surface rounded-xl border border-nh-border ${
+              viewMode === 'grid'
+                ? 'p-2 flex flex-col cursor-pointer hover:border-nh-primary transition-colors'
+                : 'p-3 my-2 flex gap-3 items-center cursor-pointer hover:border-nh-primary transition-colors'
+            }`}>
             <div className={`${viewMode === 'grid' ? 'w-full aspect-square' : 'w-16 h-16'} rounded-[10px] flex items-center justify-center text-2xl text-nh-text-muted overflow-hidden shrink-0`} style={{
               background: getMediaThumb(post) ? `url(${getMediaThumb(post)}) center/cover` : undefined,
               backgroundColor: getMediaThumb(post) ? undefined : 'var(--nh-surface-elevated)',
@@ -107,7 +114,7 @@ export default function MyPostsPage() {
               </div>
             </div>
             {showDelete && !(viewMode === 'grid') && (
-              <div onClick={() => handleDelete(post.id)} className="text-sm text-nh-text-muted cursor-pointer p-1" title="Delete post">🗑</div>
+              <div onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }} className="text-sm text-nh-text-muted hover:text-nh-danger cursor-pointer p-1" title="Delete post">🗑</div>
             )}
           </div>
         ))}
@@ -158,7 +165,7 @@ export default function MyPostsPage() {
           </div>
         ))}
       </div>
-      <div className="flex-1 overflow-auto pt-6">
+      <div className="flex-1 overflow-auto pt-10">
         {activeTab === 'posts' && renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
         {activeTab === 'stories' && (
           <div className="px-[14px] py-10 text-center">
