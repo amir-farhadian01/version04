@@ -103,14 +103,28 @@ export interface StoryGroup {
   stories: StoryItem[]
 }
 
+export interface CommentAttachment {
+  id: string
+  url: string
+  type: 'image' | 'video' | 'file'
+  thumbnailUrl: string | null
+  fileName: string | null
+  fileSize: number | null
+}
+
 export interface PostComment {
   id: string
   postId: string
   authorId: string
+  parentId: string | null
   text: string
+  likeCount: number
+  replyCount: number
+  isLiked: boolean
   moderationStatus: string
   createdAt: string
   author: PostAuthor
+  attachments: CommentAttachment[]
 }
 
 export interface CreatePostInput {
@@ -303,6 +317,49 @@ export function useDeleteComment() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: feedKeys.comments(variables.postId) })
+    },
+  })
+}
+
+// ─── Comment Likes ─────────────────────────────────────────────────────────
+
+export function useToggleCommentLike() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ postId, commentId }: { postId: string; commentId: string }) => {
+      const { data } = await api.post(`/social/posts/${postId}/comments/${commentId}/like`)
+      return data.data as { liked: boolean; commentId: string }
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: feedKeys.comments(variables.postId) })
+    },
+  })
+}
+
+// ─── Comment Replies ────────────────────────────────────────────────────────
+
+export function usePostReplies(postId: string, commentId: string) {
+  return useQuery({
+    queryKey: [...feedKeys.comments(postId), 'replies', commentId],
+    queryFn: async () => {
+      const { data } = await api.get<PaginatedResponse<PostComment>>(`/social/posts/${postId}/comments/${commentId}/replies`)
+      return data
+    },
+    enabled: !!postId && !!commentId,
+  })
+}
+
+export function useCreateReply() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ postId, parentId, text }: { postId: string; parentId: string; text: string }) => {
+      const { data } = await api.post(`/social/posts/${postId}/comments`, { text, parentId })
+      return data
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: feedKeys.comments(variables.postId) })
+      queryClient.invalidateQueries({ queryKey: [...feedKeys.comments(variables.postId), 'replies', variables.parentId] })
+      queryClient.invalidateQueries({ queryKey: ['social', 'feed'] })
     },
   })
 }

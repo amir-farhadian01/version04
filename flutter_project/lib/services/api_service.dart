@@ -199,8 +199,23 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> addComment(
-      String postId, String text) async {
-    return await post('/social/posts/$postId/comments', body: {'text': text});
+      String postId, String text, {String? parentId}) async {
+    final body = <String, dynamic>{'text': text};
+    if (parentId != null) body['parentId'] = parentId;
+    return await post('/social/posts/$postId/comments', body: body);
+  }
+
+  Future<List<Map<String, dynamic>>> getReplies(
+      String postId, String commentId) async {
+    final result = await get('/social/posts/$postId/comments/$commentId/replies');
+    return (result['data'] as List<dynamic>?)
+            ?.cast<Map<String, dynamic>>() ??
+        [];
+  }
+
+  Future<Map<String, dynamic>> toggleCommentLike(
+      String postId, String commentId) async {
+    return await post('/social/posts/$postId/comments/$commentId/like');
   }
 
   Future<Map<String, dynamic>> getStories() async {

@@ -265,6 +265,7 @@ model User {
   postLikes           PostLike[]
   postSaves           PostSave[]
   postComments        PostComment[]
+  commentLikes        CommentLike[]
   notifications       Notification[]
   chatMessages        ChatMessage[]
   requestsAsCustomer  Request[]   @relation("CustomerRequests")
@@ -949,12 +950,20 @@ model PostComment {
   post             Post                 @relation(fields: [postId], references: [id])
   authorId         String
   author           User                 @relation(fields: [authorId], references: [id])
+  parentId         String?
+  parent           PostComment?         @relation("CommentReplies", fields: [parentId], references: [id])
+  replies          PostComment[]        @relation("CommentReplies")
   text             String
+  likeCount        Int                  @default(0)
+  replyCount       Int                  @default(0)
   moderationStatus PostModerationStatus @default(pending)
   createdAt        DateTime             @default(now())
   archivedAt       DateTime?
+  likes            CommentLike[]
+  attachments      CommentAttachment[]
 
   @@index([postId])
+  @@index([parentId])
 }
 
 model PostLike {
@@ -977,6 +986,35 @@ model PostSave {
   createdAt DateTime @default(now())
 
   @@unique([postId, userId])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  comment   PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([commentId, userId])
+  @@index([commentId])
+}
+
+model CommentAttachment {
+  id           String   @id @default(cuid())
+  commentId    String
+  comment      PostComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  url          String
+  type         String   // 'image' | 'video' | 'file'
+  thumbnailUrl String?
+  fileName     String?
+  fileSize     Int?     // bytes
+  width        Int?
+  height       Int?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([commentId])
 }
 
 enum StoryVisibility {

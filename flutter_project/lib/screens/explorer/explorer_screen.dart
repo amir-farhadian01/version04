@@ -41,6 +41,14 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   final String _currentLocation = 'Vaughan, ON';
   final String _neighbourhoodLocation = 'Vaughan';
 
+  /// Tracks like status for each post ID. true = liked.
+  final Map<String, bool> _likedPosts = {};
+  /// Tracks save status for each post ID. true = saved.
+  final Map<String, bool> _savedPosts = {};
+  /// Posts currently being toggled (to show loading state).
+  final Set<String> _togglingLike = {};
+  final Set<String> _togglingSave = {};
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +101,16 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       });
       // Batch-load follow statuses after feed loads
       _loadFollowStatuses(_posts);
+      // Populate like/save state from feed data
+      for (final p in _posts) {
+        final pid = p['id'] as String? ?? '';
+        final liked = p['isLiked'] as bool? ?? false;
+        final saved = p['isSaved'] as bool? ?? false;
+        if (pid.isNotEmpty) {
+          _likedPosts[pid] = liked;
+          _savedPosts[pid] = saved;
+        }
+      }
     } catch (e) {
       setState(() {
         _loadingFeed = false;
@@ -177,6 +195,44 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
           // Silently ignore — UI just won't show follow state
         }
       }
+    }
+  }
+
+  /// Toggle like/unlike with optimistic update
+  Future<void> _toggleLike(String postId) async {
+    if (_togglingLike.contains(postId)) return;
+    final prev = _likedPosts[postId] ?? false;
+    setState(() {
+      _likedPosts[postId] = !prev;
+      _togglingLike.add(postId);
+    });
+    try {
+      final result = await _api.toggleLike(postId);
+      final liked = result['data']?['liked'] as bool? ?? !prev;
+      if (mounted) setState(() => _likedPosts[postId] = liked);
+    } catch (_) {
+      if (mounted) setState(() => _likedPosts[postId] = prev);
+    } finally {
+      if (mounted) setState(() => _togglingLike.remove(postId));
+    }
+  }
+
+  /// Toggle save/unsave with optimistic update
+  Future<void> _toggleSave(String postId) async {
+    if (_togglingSave.contains(postId)) return;
+    final prev = _savedPosts[postId] ?? false;
+    setState(() {
+      _savedPosts[postId] = !prev;
+      _togglingSave.add(postId);
+    });
+    try {
+      final result = await _api.toggleSave(postId);
+      final saved = result['data']?['saved'] as bool? ?? !prev;
+      if (mounted) setState(() => _savedPosts[postId] = saved);
+    } catch (_) {
+      if (mounted) setState(() => _savedPosts[postId] = prev);
+    } finally {
+      if (mounted) setState(() => _togglingSave.remove(postId));
     }
   }
 
@@ -633,6 +689,10 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     final isBusiness = (post['isBusinessPost'] as bool?) ?? false;
     final isFollowing = authorId.isNotEmpty ? (_followStatus[authorId] ?? false) : false;
     final isToggling = _togglingFollow.contains(authorId);
+    final isLiked = _likedPosts[postId] ?? false;
+    final isSaved = _savedPosts[postId] ?? false;
+    final likeToggling = _togglingLike.contains(postId);
+    final saveToggling = _togglingSave.contains(postId);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
@@ -799,15 +859,43 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                   ),
                   child: Row(
                     children: [
-                      _actionItem(
-                          Icons.favorite_border, likeCount.toString()),
+                      // Like button
+                      GestureDetector(
+                        onTap: () => _toggleLike(postId),
+                        child: likeToggling
+                            ? const SizedBox(
+                                width: 14, height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              )
+                            : _interactiveActionItem(
+                                isLiked ? Icons.favorite : Icons.favorite_border,
+                                likeCount.toString(),
+                                isLiked ? AppColors.red : AppColors.text3,
+                              ),
+                      ),
                       const SizedBox(width: 16),
+                      // Comment button
                       GestureDetector(
                         onTap: () => Navigator.pushNamed(
                             context, '/explorer/comments',
                             arguments: post['id']),
                         child: _actionItem(Icons.chat_bubble_outline,
                             commentCount.toString()),
+                      ),
+                      const SizedBox(width: 16),
+                      // Save button
+                      GestureDetector(
+                        onTap: () => _toggleSave(postId),
+                        child: saveToggling
+                            ? const SizedBox(
+                                width: 14, height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              )
+                            : _interactiveActionItem(
+                                isSaved ? Icons.bookmark : Icons.bookmark_border,
+                                '',
+                                isSaved ? AppColors.warn : AppColors.text3,
+                              ),
                       ),
                       const SizedBox(width: 16),
                       _actionItem(Icons.share, 'Share'),
@@ -910,6 +998,19 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       errorWidget: (context, url, error) => const Center(
         child: Icon(Icons.broken_image, size: 40, color: AppColors.text3),
       ),
+    );
+  }
+
+  Widget _interactiveActionItem(IconData icon, String count, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        if (count.isNotEmpty) ...[
+          const SizedBox(width: 5),
+          Text(count,
+              style: TextStyle(fontSize: 12, color: color)),
+        ],
+      ],
     );
   }
 

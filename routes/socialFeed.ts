@@ -641,38 +641,102 @@ router.post('/posts/:id/save', authenticate, async (req: AuthRequest, res: Respo
 
 // ─── COMMENTS ──────────────────────────────────────────────────────────────
 
-// GET /api/social/posts/:id/comments — List comments (paginated)
-router.get('/posts/:id/comments', async (req: AuthRequest, res: Response) => {
+// Helper: Build comment include with author, likes check, and reply count
+const commentInclude = (userId?: string) => ({
+  author: { select: { id: true, displayName: true, avatarUrl: true } },
+  likes: userId
+    ? { where: { userId }, select: { id: true } }
+    : false,
+  _count: { select: { likes: true, replies: true } },
+  attachments: { orderBy: { sortOrder: 'asc' } as const },
+});
+
+// Helper: Map a comment row to the API shape with `isLiked` from pre-loaded likes
+function mapComment(c: Record<string, unknown>, userId?: string) {
+  const hasLikes = userId && Array.isArray((c as any).likes);
+  return {
+    id: c.id,
+    postId: c.postId,
+    authorId: c.authorId,
+    parentId: (c as any).parentId ?? null,
+    text: c.text,
+    likeCount: c.likeCount,
+    replyCount: c.replyCount,
+    isLiked: hasLikes ? ((c as any).likes.length > 0) : false,
+    moderationStatus: c.moderationStatus,
+    createdAt: c.createdAt,
+    author: (c as any).author,
+    attachments: (c as any).attachments ?? [],
+  };
+}
+
+// GET /api/social/posts/:id/comments — List top-level comments (paginated)
+router.get('/posts/:id/comments', optionalAuth, async (req: AuthRequest, res: Response) => {
   try {
     const postId = req.params.id;
     const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
     const pageSize = Math.min(50, Math.max(1, parseInt(String(req.query.pageSize ?? '20'), 10) || 20));
+    const userId = req.user?.userId; // from optionalAuth
 
     const [comments, total] = await Promise.all([
       prisma.postComment.findMany({
-        where: { postId, archivedAt: null },
-        include: {
-          author: { select: { id: true, displayName: true, avatarUrl: true } },
-        },
+        where: { postId, parentId: null, archivedAt: null },
+        include: commentInclude(userId),
         orderBy: { createdAt: 'asc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      prisma.postComment.count({ where: { postId, archivedAt: null } }),
+      prisma.postComment.count({ where: { postId, parentId: null, archivedAt: null } }),
     ]);
 
-    res.json({ data: comments, total, page, pageSize });
+    res.json({
+      data: comments.map((c: Record<string, unknown>) => mapComment(c, userId)),
+      total,
+      page,
+      pageSize,
+    });
   } catch (error) {
     res.status(500).json({ code: 'COMMENTS_ERROR', message: 'Failed to load comments' });
   }
 });
 
-// POST /api/social/posts/:id/comments — Add comment
+// GET /api/social/posts/:id/comments/:commentId/replies — List replies for a comment
+router.get('/posts/:id/comments/:commentId/replies', async (req: AuthRequest, res: Response) => {
+  try {
+    const commentId = req.params.commentId;
+    const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
+    const pageSize = Math.min(30, Math.max(1, parseInt(String(req.query.pageSize ?? '10'), 10) || 10));
+    const userId = req.user?.userId;
+
+    const [replies, total] = await Promise.all([
+      prisma.postComment.findMany({
+        where: { parentId: commentId, archivedAt: null },
+        include: commentInclude(userId),
+        orderBy: { createdAt: 'asc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.postComment.count({ where: { parentId: commentId, archivedAt: null } }),
+    ]);
+
+    res.json({
+      data: replies.map((r: Record<string, unknown>) => mapComment(r, userId)),
+      total,
+      page,
+      pageSize,
+    });
+  } catch (error) {
+    res.status(500).json({ code: 'REPLIES_ERROR', message: 'Failed to load replies' });
+  }
+});
+
+// POST /api/social/posts/:id/comments — Add comment (or reply if parentId is provided)
 router.post('/posts/:id/comments', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.userId;
     const postId = req.params.id;
     const input = createCommentSchema.parse(req.body);
+    const parentId = (req.body as any).parentId as string | undefined;
 
     const post = await prisma.post.findUnique({
       where: { id: postId },
@@ -680,6 +744,20 @@ router.post('/posts/:id/comments', authenticate, async (req: AuthRequest, res: R
     });
     if (!post || post.archivedAt) {
       return res.status(404).json({ code: 'POST_NOT_FOUND', message: 'Post not found' });
+    }
+
+    // If parentId provided, verify parent comment exists and belongs to same post
+    if (parentId) {
+      const parent = await prisma.postComment.findUnique({
+        where: { id: parentId },
+        select: { id: true, postId: true, archivedAt: true },
+      });
+      if (!parent || parent.archivedAt) {
+        return res.status(404).json({ code: 'PARENT_NOT_FOUND', message: 'Parent comment not found' });
+      }
+      if (parent.postId !== postId) {
+        return res.status(400).json({ code: 'PARENT_MISMATCH', message: 'Parent comment does not belong to this post' });
+      }
     }
 
     // PII moderation on comment
@@ -697,29 +775,39 @@ router.post('/posts/:id/comments', authenticate, async (req: AuthRequest, res: R
       data: {
         postId,
         authorId: userId,
+        parentId: parentId ?? null,
         text: moderationResult.displayText,
         moderationStatus,
       },
       include: {
         author: { select: { id: true, displayName: true, avatarUrl: true } },
+        attachments: true,
       },
     });
 
-    // Update comment count on post
-    await prisma.post.update({
-      where: { id: postId },
-      data: { commentCount: { increment: 1 } },
-    });
+    // Update comment count on post, and reply count on parent if it's a reply
+    if (parentId) {
+      await prisma.postComment.update({
+        where: { id: parentId },
+        data: { replyCount: { increment: 1 } },
+      });
+    } else {
+      await prisma.post.update({
+        where: { id: postId },
+        data: { commentCount: { increment: 1 } },
+      });
+    }
 
     publish('social.post.commented', {
       postId,
       commentId: comment.id,
+      parentId: parentId ?? null,
       userId,
       postAuthorId: post.authorId,
     }).catch(() => {});
 
     res.status(201).json({
-      data: comment,
+      data: { ...comment, isLiked: false, replyCount: 0 },
       moderationWarnings: moderationResult.reasons.length > 0 ? moderationResult.reasons : undefined,
     });
   } catch (error) {
@@ -727,6 +815,47 @@ router.post('/posts/:id/comments', authenticate, async (req: AuthRequest, res: R
       return res.status(400).json({ code: 'VALIDATION_ERROR', message: error.issues[0].message });
     }
     res.status(500).json({ code: 'COMMENT_ERROR', message: 'Failed to add comment' });
+  }
+});
+
+// POST /api/social/posts/:id/comments/:commentId/like — Toggle comment like
+router.post('/posts/:id/comments/:commentId/like', authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.userId;
+    const commentId = req.params.commentId;
+
+    const comment = await prisma.postComment.findUnique({
+      where: { id: commentId },
+      select: { id: true, archivedAt: true },
+    });
+    if (!comment || comment.archivedAt) {
+      return res.status(404).json({ code: 'COMMENT_NOT_FOUND', message: 'Comment not found' });
+    }
+
+    const existing = await prisma.commentLike.findUnique({
+      where: { commentId_userId: { commentId, userId } },
+    });
+
+    if (existing) {
+      // Unlike
+      await prisma.commentLike.delete({ where: { id: existing.id } });
+      await prisma.postComment.update({
+        where: { id: commentId },
+        data: { likeCount: { decrement: 1 } },
+      });
+      return res.json({ data: { liked: false, commentId } });
+    }
+
+    // Like
+    await prisma.commentLike.create({ data: { commentId, userId } });
+    await prisma.postComment.update({
+      where: { id: commentId },
+      data: { likeCount: { increment: 1 } },
+    });
+
+    res.status(201).json({ data: { liked: true, commentId } });
+  } catch (error) {
+    res.status(500).json({ code: 'COMMENT_LIKE_ERROR', message: 'Failed to toggle comment like' });
   }
 });
 
@@ -755,11 +884,18 @@ router.delete('/posts/:id/comments/:commentId', authenticate, async (req: AuthRe
       data: { archivedAt: new Date() },
     });
 
-    // Decrement comment count
-    await prisma.post.update({
-      where: { id: comment.postId },
-      data: { commentCount: { decrement: 1 } },
-    });
+    // Decrement comment count on post (if top-level) or replyCount on parent
+    if (comment.parentId) {
+      await prisma.postComment.update({
+        where: { id: comment.parentId },
+        data: { replyCount: { decrement: 1 } },
+      });
+    } else {
+      await prisma.post.update({
+        where: { id: comment.postId },
+        data: { commentCount: { decrement: 1 } },
+      });
+    }
 
     res.json({ data: { id: commentId, deleted: true } });
   } catch (error) {

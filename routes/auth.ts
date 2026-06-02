@@ -23,9 +23,6 @@ import {
 
 const router = Router();
 
-// Apply auth rate limiter to all auth routes
-router.use(authLimiter);
-
 function getRequestIp(req: Request): string | undefined {
   const x = req.headers['x-forwarded-for'];
   if (typeof x === 'string' && x) return x.split(',')[0]!.trim();
@@ -120,7 +117,7 @@ router.post('/update-profile', authenticate, async (req: AuthRequest, res: Respo
 });
 
 // ─── Register ────────────────────────────────────────────────────────────────
-router.post('/register', async (req: Request, res: Response) => {
+router.post('/register', authLimiter, async (req: Request, res: Response) => {
   const { email, password, displayName, role = 'customer', phone, username, firstName, lastName } = req.body;
   if (!email || !password || !displayName)
     return res.status(400).json({ error: 'Missing required fields' });
@@ -235,7 +232,7 @@ router.post('/register', async (req: Request, res: Response) => {
 });
 
 // ─── Login ───────────────────────────────────────────────────────────────────
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', authLimiter, async (req: Request, res: Response) => {
   const { login, password } = req.body;
   if (!login || !password) return res.status(400).json({ error: 'Missing credentials' });
 
@@ -293,7 +290,7 @@ router.post('/login', async (req: Request, res: Response) => {
 });
 
 // ─── Forgot / Reset Password ────────────────────────────────────────────────
-router.post('/forgot-password', async (req: Request, res: Response) => {
+router.post('/forgot-password', authLimiter, async (req: Request, res: Response) => {
   const { email } = req.body as { email?: string };
   if (!email) return res.status(400).json({ error: 'Email is required' });
 
@@ -309,7 +306,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/reset-password', async (req: Request, res: Response) => {
+router.post('/reset-password', authLimiter, async (req: Request, res: Response) => {
   const { email, newPassword } = req.body as { email?: string; newPassword?: string };
   if (!email || !newPassword) return res.status(400).json({ error: 'Email and newPassword are required' });
   if (newPassword.length < 8) {
@@ -336,7 +333,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
 // ─── Google OAuth ─────────────────────────────────────────────────────────────
 // Accepts either an id_token (from Google One Tap) or an access_token (from OAuth flow)
-router.post('/google', async (req: Request, res: Response) => {
+router.post('/google', authLimiter, async (req: Request, res: Response) => {
   const { idToken, accessToken, email: directEmail, name: directName, picture } = req.body;
 
   let googleEmail: string | undefined;
