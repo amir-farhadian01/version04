@@ -7,6 +7,7 @@ import {
 } from '../../services/socialFeedApi'
 
 type TabKey = 'posts' | 'stories' | 'saved'
+type ViewMode = 'list' | 'grid'
 
 interface Tab {
   key: TabKey
@@ -38,6 +39,7 @@ function getMediaThumb(post: FeedPost): string | null {
 
 export default function MyPostsTab() {
   const [activeTab, setActiveTab] = useState<TabKey>('posts')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
 
   const { data: myPostsData, isLoading: loadingMy, isError: errorMy, refetch: refetchMy } = useMyPosts()
   const { data: savedData, isLoading: loadingSaved, isError: errorSaved, refetch: refetchSaved } = useSavedPosts()
@@ -104,15 +106,19 @@ export default function MyPostsTab() {
     }
 
     return (
-      <div className="px-4 py-2 space-y-2">
+      <div className={`${viewMode === 'grid' ? 'px-4 py-2 grid grid-cols-2 gap-2' : 'px-4 py-2 space-y-2'}`}>
         {posts.map((post) => (
           <div
             key={post.id}
-            className="rounded-xl border border-nh-border bg-nh-surface p-3 flex gap-3 items-center"
+            className={`rounded-xl border border-nh-border bg-nh-surface ${
+              viewMode === 'grid'
+                ? 'p-2 flex flex-col'
+                : 'p-3 flex gap-3 items-center'
+            }`}
           >
             {/* Thumbnail */}
             <div
-              className="w-16 h-16 rounded-lg flex-shrink-0 flex items-center justify-center text-2xl overflow-hidden"
+              className={`${viewMode === 'grid' ? 'w-full aspect-square' : 'w-16 h-16'} rounded-lg flex-shrink-0 flex items-center justify-center text-2xl overflow-hidden`}
               style={{
                 background: getMediaThumb(post)
                   ? `url(${getMediaThumb(post)}) center/cover`
@@ -124,13 +130,13 @@ export default function MyPostsTab() {
             </div>
 
             {/* Info */}
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-nh-text truncate mb-1">
+            <div className={`${viewMode === 'grid' ? 'mt-1.5' : 'flex-1 min-w-0'}`}>
+              <div className={`text-xs font-semibold text-nh-text mb-1 ${viewMode === 'grid' ? 'line-clamp-2' : 'truncate'}`}>
                 {post.caption
-                  ? post.caption.slice(0, 80) + (post.caption.length > 80 ? '...' : '')
+                  ? post.caption.slice(0, viewMode === 'grid' ? 50 : 80) + (post.caption.length > (viewMode === 'grid' ? 50 : 80) ? '...' : '')
                   : 'No caption'}
               </div>
-              <div className="flex items-center gap-3 text-[10px] text-nh-text-muted">
+              <div className={`flex items-center gap-3 text-[10px] text-nh-text-muted ${viewMode === 'grid' ? 'flex-wrap gap-x-1.5 gap-y-0.5' : ''}`}>
                 <span>{post.category?.name ?? 'General'}</span>
                 <span>❤ {post.likeCount}</span>
                 <span>💬 {post.commentCount}</span>
@@ -138,8 +144,8 @@ export default function MyPostsTab() {
               </div>
             </div>
 
-            {/* Delete action */}
-            {showDelete && (
+            {/* Delete action — hidden in grid mode */}
+            {showDelete && viewMode !== 'grid' && (
               <button
                 onClick={() => handleDelete(post.id)}
                 className="text-nh-text-muted hover:text-nh-danger transition-colors p-1"
@@ -158,24 +164,51 @@ export default function MyPostsTab() {
 
   return (
     <div>
-      {/* Tabs: Posts | Stories | Saved */}
-      <div className="flex border-b border-nh-border sticky top-[60px] z-30 bg-nh-bg">
-        {TABS.map((tab) => (
+      {/* Tabs: Posts | Stories | Saved — with list/grid toggle */}
+      <div className="flex border-b border-nh-border sticky top-[60px] z-30 bg-nh-bg items-center">
+        <div className="flex flex-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 py-3 text-center text-xs font-bold transition-all ${
+                activeTab === tab.key
+                  ? 'text-nh-primary border-b-2 border-nh-primary'
+                  : 'text-nh-text-muted border-b-2 border-transparent hover:text-nh-text-secondary'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* List / Grid toggle */}
+        {(activeTab === 'posts' || activeTab === 'saved') && (
           <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 py-3 text-center text-xs font-bold transition-all ${
-              activeTab === tab.key
-                ? 'text-nh-primary border-b-2 border-nh-primary'
-                : 'text-nh-text-muted border-b-2 border-transparent hover:text-nh-text-secondary'
-            }`}
+            onClick={() => setViewMode(v => v === 'list' ? 'grid' : 'list')}
+            className="w-7 h-7 mr-3 flex items-center justify-center rounded-lg border border-nh-border bg-nh-surface text-nh-text-secondary hover:text-nh-primary transition-colors flex-shrink-0"
+            title={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
           >
-            {tab.label}
+            {viewMode === 'list' ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            )}
           </button>
-        ))}
+        )}
       </div>
 
       {/* Tab Content */}
+      {/* Posts tab — no extra padding (no overlap issue) */}
       {activeTab === 'posts' &&
         renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
       {activeTab === 'stories' && (
@@ -187,8 +220,12 @@ export default function MyPostsTab() {
           </p>
         </div>
       )}
-      {activeTab === 'saved' &&
-        renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}
+      {/* Saved tab — padding-top added to prevent cards hiding behind sticky tab bar */}
+      {activeTab === 'saved' && (
+        <div className="pt-5">
+          {renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}
+        </div>
+      )}
     </div>
   )
 }

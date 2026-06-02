@@ -5,6 +5,7 @@ import { BottomNav, NavIcons } from '../../components/ui/phone/BottomNav'
 import { useMyPosts, useSavedPosts, useDeletePost, type FeedPost } from '../../services/socialFeedApi'
 
 type TabKey = 'posts' | 'stories' | 'saved'
+type ViewMode = 'list' | 'grid'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'posts', label: 'Posts' },
@@ -27,6 +28,7 @@ function formatTimeAgo(dateStr: string): string {
 export default function MyPostsPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabKey>('posts')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
 
   const { data: myPostsData, isLoading: loadingMy, error: errorMy, refetch: refetchMy } = useMyPosts()
   const { data: savedData, isLoading: loadingSaved, error: errorSaved, refetch: refetchSaved } = useSavedPosts()
@@ -80,27 +82,31 @@ export default function MyPostsPage() {
     }
 
     return (
-      <div className="px-[14px] py-2">
+      <div className={`${viewMode === 'grid' ? 'px-[14px] py-2 grid grid-cols-2 gap-2' : 'px-[14px] py-2'}`}>
         {posts.map((post) => (
-          <div key={post.id} className="bg-nh-surface rounded-xl p-3 my-2 flex gap-3 border border-nh-border items-center">
-            <div className="w-16 h-16 rounded-[10px] flex items-center justify-center text-2xl text-nh-text-muted overflow-hidden shrink-0" style={{
+          <div key={post.id} className={`bg-nh-surface rounded-xl border border-nh-border ${
+            viewMode === 'grid'
+              ? 'p-2 flex flex-col'
+              : 'p-3 my-2 flex gap-3 items-center'
+          }`}>
+            <div className={`${viewMode === 'grid' ? 'w-full aspect-square' : 'w-16 h-16'} rounded-[10px] flex items-center justify-center text-2xl text-nh-text-muted overflow-hidden shrink-0`} style={{
               background: getMediaThumb(post) ? `url(${getMediaThumb(post)}) center/cover` : undefined,
               backgroundColor: getMediaThumb(post) ? undefined : 'var(--nh-surface-elevated)',
             }}>
               {!getMediaThumb(post) && '📷'}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-nh-text mb-1">
-                {post.caption ? post.caption.slice(0, 80) + (post.caption.length > 80 ? '...' : '') : 'No caption'}
+            <div className={`${viewMode === 'grid' ? 'mt-1.5' : 'flex-1 min-w-0'}`}>
+              <div className={`text-xs font-semibold text-nh-text mb-1 ${viewMode === 'grid' ? 'line-clamp-2' : ''}`}>
+                {post.caption ? post.caption.slice(0, viewMode === 'grid' ? 50 : 80) + (post.caption.length > (viewMode === 'grid' ? 50 : 80) ? '...' : '') : 'No caption'}
               </div>
-              <div className="text-[11px] text-nh-text-muted flex gap-2.5 items-center">
+              <div className={`text-[11px] text-nh-text-muted flex gap-2.5 items-center ${viewMode === 'grid' ? 'flex-wrap gap-x-1.5 gap-y-0.5' : ''}`}>
                 <span>{post.category?.name ?? 'General'}</span>
                 <span>❤ {post.likeCount}</span>
                 <span>💬 {post.commentCount}</span>
                 <span>{formatTimeAgo(post.createdAt)}</span>
               </div>
             </div>
-            {showDelete && (
+            {showDelete && !(viewMode === 'grid') && (
               <div onClick={() => handleDelete(post.id)} className="text-sm text-nh-text-muted cursor-pointer p-1" title="Delete post">🗑</div>
             )}
           </div>
@@ -117,6 +123,27 @@ export default function MyPostsPage() {
           <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
         </svg>
         <span className="flex-1 text-sm font-semibold text-nh-text">My Posts</span>
+        {/* List / Grid toggle */}
+        <button
+          onClick={() => setViewMode(v => v === 'list' ? 'grid' : 'list')}
+          className="w-8 h-8 flex items-center justify-center rounded-lg border border-nh-border bg-nh-surface text-nh-text-secondary hover:text-nh-primary transition-colors"
+          title={viewMode === 'list' ? 'Switch to grid view' : 'Switch to list view'}
+        >
+          {viewMode === 'list' ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          )}
+        </button>
       </div>
       <div className="flex bg-nh-bg border-b border-nh-border">
         {TABS.map((tab) => (
@@ -132,6 +159,7 @@ export default function MyPostsPage() {
         ))}
       </div>
       <div className="flex-1 overflow-auto">
+        {/* Posts tab — no extra padding (no overlap issue) */}
         {activeTab === 'posts' && renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
         {activeTab === 'stories' && (
           <div className="px-[14px] py-10 text-center">
@@ -140,7 +168,8 @@ export default function MyPostsPage() {
             <div className="text-xs text-nh-text-muted">Active stories appear here. Expired stories will be greyed out.</div>
           </div>
         )}
-        {activeTab === 'saved' && renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}
+        {/* Saved tab — padding-top added to prevent cards hiding behind tab bar */}
+        {activeTab === 'saved' && <div className="pt-5">{renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}</div>}
       </div>
       <div className="h-20" />
       <BottomNav
