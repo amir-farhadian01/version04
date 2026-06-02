@@ -207,25 +207,22 @@ export default function MyPostsTab() {
         )}
       </div>
 
-      {/* Tab Content */}
-      {/* Posts tab — no extra padding (no overlap issue) */}
-      {activeTab === 'posts' &&
-        renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
-      {activeTab === 'stories' && (
-        <div className="px-4 py-10 text-center">
-          <div className="text-3xl mb-2">📸</div>
-          <p className="text-sm text-nh-text-secondary mb-1">Your stories</p>
-          <p className="text-[11px] text-nh-text-muted">
-            Active stories appear here. Expired stories will be greyed out.
-          </p>
-        </div>
-      )}
-      {/* Saved tab — padding-top added to prevent cards hiding behind sticky tab bar */}
-      {activeTab === 'saved' && (
-        <div className="pt-5">
-          {renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}
-        </div>
-      )}
+      {/* Tab Content — all tabs get pt-6 so content clears the sticky tab bar */}
+      <div className="pt-6">
+        {activeTab === 'posts' &&
+          renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
+        {activeTab === 'stories' && (
+          <div className="px-4 py-10 text-center">
+            <div className="text-3xl mb-2">📸</div>
+            <p className="text-sm text-nh-text-secondary mb-1">Your stories</p>
+            <p className="text-[11px] text-nh-text-muted">
+              Active stories appear here. Expired stories will be greyed out.
+            </p>
+          </div>
+        )}
+        {activeTab === 'saved' &&
+          renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}
+      </div>
     </div>
   )
 }

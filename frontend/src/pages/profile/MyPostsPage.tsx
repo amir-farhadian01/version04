@@ -158,8 +158,7 @@ export default function MyPostsPage() {
           </div>
         ))}
       </div>
-      <div className="flex-1 overflow-auto">
-        {/* Posts tab — no extra padding (no overlap issue) */}
+      <div className="flex-1 overflow-auto pt-6">
         {activeTab === 'posts' && renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
         {activeTab === 'stories' && (
           <div className="px-[14px] py-10 text-center">
@@ -168,8 +167,7 @@ export default function MyPostsPage() {
             <div className="text-xs text-nh-text-muted">Active stories appear here. Expired stories will be greyed out.</div>
           </div>
         )}
-        {/* Saved tab — padding-top added to prevent cards hiding behind tab bar */}
-        {activeTab === 'saved' && <div className="pt-5">{renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}</div>}
+        {activeTab === 'saved' && renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}
       </div>
       <div className="h-20" />
       <BottomNav
