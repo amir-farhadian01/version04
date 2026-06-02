@@ -21,6 +21,7 @@ import 'screens/business/business_page_screen.dart';
 import 'screens/profile/upgrade_to_business_screen.dart';
 import 'screens/explorer/story_screen.dart';
 import 'screens/explorer/comments_screen.dart';
+import 'screens/post_detail_screen.dart';
 import 'widgets/responsive_scaffold.dart';
 
 void main() {
@@ -104,6 +105,14 @@ class NeighborHubApp extends StatelessWidget {
           return MaterialPageRoute(
             builder: (_) => ResponsiveScaffold(
               child: CommentsScreen(postId: postId),
+            ),
+          );
+        }
+        if (settings.name == '/post-detail') {
+          final postId = settings.arguments as String? ?? '';
+          return MaterialPageRoute(
+            builder: (_) => ResponsiveScaffold(
+              child: PostDetailScreen(postId: postId),
             ),
           );
         }

@@ -194,26 +194,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
     // If pre-filled from business page, show a simplified direct-booking UI
     final isDirectBooking = _prefillServiceCatalogId != null;
 
-    return Scaffold(
-      backgroundColor: bg,
-      appBar: AppBar(
-        backgroundColor: bg,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          isDirectBooking ? 'Book Service' : 'New Order',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.text),
-        ),
-        centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: border, height: 1),
-        ),
-      ),
-      body: SingleChildScrollView(
+    return SingleChildScrollView(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,8 +431,7 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
             const SizedBox(height: 40),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildPrefillCard(Color card, Color border) {
