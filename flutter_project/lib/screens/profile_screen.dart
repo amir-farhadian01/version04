@@ -85,15 +85,19 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _loadProfile() async {
     setState(() => _loading = true);
-    await AuthService().getUserData();
+    // Restore token from SharedPreferences before API call
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_access_token');
+    final api = ApiService();
+    if (token != null) {
+      api.setToken(token);
+    }
     try {
-      final api = ApiService();
       final fresh = await api.get('/auth/me');
       setState(() {
         _userData = fresh;
         _loading = false;
       });
-      final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_user_data', jsonEncode(fresh));
     } catch (_) {
       setState(() {
