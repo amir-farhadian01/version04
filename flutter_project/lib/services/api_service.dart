@@ -489,6 +489,28 @@ class ApiService {
     return _handleResponse(response);
   }
 
+  Future<Map<String, dynamic>> _patch(String path, {Map<String, dynamic>? body}) async {
+    final uri = Uri.parse('$baseUrl$path');
+    final response = await http.patch(
+      uri,
+      headers: _headers,
+      body: body != null ? jsonEncode(body) : null,
+    );
+    return _handleResponse(response);
+  }
+
+  /// Validate a username for availability.
+  /// Returns { available: bool, suggestion?: string }
+  Future<Map<String, dynamic>> validateUsername(String username) async {
+    return await get('/users/validate-username?username=${Uri.encodeQueryComponent(username)}');
+  }
+
+  /// Update the current user's username.
+  /// Returns { success: bool, newUsername: string, oldUsername?: string }
+  Future<Map<String, dynamic>> updateUsername(String username) async {
+    return await _patch('/users/username', body: {'username': username});
+  }
+
   /// Upload image bytes directly.
   Future<String> uploadImageBytes(String fileName, List<int> bytes) async {
     final uri = Uri.parse('$baseUrl/upload');

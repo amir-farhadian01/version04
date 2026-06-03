@@ -194,7 +194,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           (media.first as Map<String, dynamic>)['url'] as String? ?? '',
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             height: 280,
                             color: AppColors.border2.withValues(alpha: 0.2),
                             child: const Center(

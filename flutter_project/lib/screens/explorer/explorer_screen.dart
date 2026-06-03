@@ -558,7 +558,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                                       imageUrl: avatarUrl,
                                       fit: BoxFit.cover,
                                       cacheManager: ImageCacheConfig.manager,
-                                      errorWidget: (_, __, ___) => Center(
+                                      errorWidget: (_, _, _) => Center(
                                         child: Text(
                                           name.characters.first.toUpperCase(),
                                           style: const TextStyle(

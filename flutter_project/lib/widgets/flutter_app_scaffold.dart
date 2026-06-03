@@ -122,7 +122,7 @@ class FlutterAppScaffold extends StatelessWidget {
         Expanded(child: child),
 
         // ── Footer widget (optional, for custom bottom elements) ──
-        if (bottomWidget != null) bottomWidget!,
+        ?bottomWidget,
       ],
     );
 

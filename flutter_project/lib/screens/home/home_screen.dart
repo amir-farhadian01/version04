@@ -318,7 +318,7 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
 
     return ValueListenableBuilder<bool>(
       valueListenable: _bannerExpandedNotifier,
-      builder: (_, expanded, __) {
+      builder: (_, expanded, _) {
         return GestureDetector(
           onTap: () {
             _bannerExpandedNotifier.value = !_bannerExpandedNotifier.value;
@@ -1020,7 +1020,7 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                     child: Image.network(
                       article['imageUrl'] as String,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           const SizedBox(height: 128),
                     ),
                   ),
@@ -1585,7 +1585,7 @@ class _MyPostsTabState extends State<MyPostsTab>
                 height: 160,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
+                errorBuilder: (_, _, _) =>
                     Container(height: 160, color: AppColors.border2),
               ),
             ),

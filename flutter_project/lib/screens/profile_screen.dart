@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bottom_nav.dart';
 import '../services/auth_service.dart';
@@ -12,7 +14,10 @@ import '../services/api_service.dart';
 import 'addresses_screen.dart';
 import 'cars_screen.dart';
 
-/// Redesigned Profile Screen — Dark Mode, Grouped Menu, Accordion, Share Dialog.
+/// Profile Screen — aligned with React Profile.tsx.
+/// Features: avatar, display name, email, Edit + Share buttons,
+/// username editing with availability check, QR code in share dialog,
+/// grouped menu sections with accordion.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -26,20 +31,31 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _loading = true;
   bool _showBizTab = false;
 
-  /// Follow counts
-  int _followerCount = 0;
-  int _followingCount = 0;
-
   /// Personal Info accordion
   bool _personalInfoOpen = false;
 
-
-  /// Pulse animation
+  /// Pulse animation for avatar glow
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
+  /// Cached opacity values for frequently used colors
+  static final _purple015 = AppColors.purple.withValues(alpha: 0.15);
+  static final _primary025 = AppColors.primary.withValues(alpha: 0.25);
+  static final _red005 = AppColors.red.withValues(alpha: 0.05);
+  static final _border04 = AppColors.border.withValues(alpha: 0.4);
+  static final _border05 = AppColors.border.withValues(alpha: 0.5);
+
+  // ─── Edit Profile controllers ──────────────────────────────────────────
   final _displayNameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
+
+  Timer? _usernameDebounce;
+
+  // ─── Username validation state ─────────────────────────────────────────
+  bool _usernameChecking = false;
+  bool? _usernameAvailable;
+  String? _usernameSuggestion;
 
   @override
   void initState() {
@@ -48,7 +64,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 10, end: 28).animate(_pulseController);
+    _pulseAnimation =
+        Tween<double>(begin: 10, end: 28).animate(_pulseController);
     _loadProfile();
     _checkRole();
   }
@@ -58,6 +75,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     _pulseController.dispose();
     _displayNameController.dispose();
     _emailController.dispose();
+    _usernameController.dispose();
+    _usernameDebounce?.cancel();
     super.dispose();
   }
 
@@ -73,38 +92,24 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _loadProfile() async {
     setState(() => _loading = true);
-    final userData = await AuthService().getUserData();
+    await AuthService().getUserData();
     try {
       final api = ApiService();
       final fresh = await api.get('/auth/me');
-      final userId = fresh['id'] as String? ?? '';
       setState(() {
         _userData = fresh;
         _loading = false;
       });
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_user_data', jsonEncode(fresh));
-      if (userId.isNotEmpty) {
-        _loadFollowCounts(userId);
-      }
     } catch (_) {
       setState(() {
-        _userData = userData;
+        final cached = AuthService().getUserData as Map<String, dynamic>?;
+        _userData = cached;
         _loading = false;
       });
+      setState(() => _loading = false);
     }
-  }
-
-  Future<void> _loadFollowCounts(String userId) async {
-    try {
-      final counts = await ApiService().getFollowCounts(userId);
-      if (mounted) {
-        setState(() {
-          _followerCount = counts['followers'] ?? 0;
-          _followingCount = counts['following'] ?? 0;
-        });
-      }
-    } catch (_) {}
   }
 
   String _getDisplayName() {
@@ -120,6 +125,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   String _getEmail() => _userData?['email'] as String? ?? '';
   String? _getAvatarUrl() => _userData?['avatarUrl'] as String?;
   String _getUserId() => _userData?['id'] as String? ?? '';
+  String _getUsername() =>
+      _userData?['username'] as String? ?? _getUserId();
 
   String _getInitial() {
     final name = _getDisplayName();
@@ -155,62 +162,149 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _editProfile() async {
     _displayNameController.text = _getDisplayName();
     _emailController.text = _getEmail();
+    _usernameController.text = _getUsername();
+    _usernameAvailable = null;
+    _usernameSuggestion = null;
+    _usernameChecking = false;
 
     final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Edit Profile',
-            style: TextStyle(
-                fontFamily: 'Space Grotesk',
-                color: AppColors.text,
-                fontWeight: FontWeight.w600)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _dialogField(
-              controller: _displayNameController,
-              hint: 'Display Name',
-              icon: Icons.person_outline,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.card,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Edit Profile',
+              style: TextStyle(
+                  fontFamily: 'Space Grotesk',
+                  color: AppColors.text,
+                  fontWeight: FontWeight.w600)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _dialogField(
+                  controller: _displayNameController,
+                  hint: 'Display Name',
+                  icon: Icons.person_outline,
+                ),
+                const SizedBox(height: 12),
+                _dialogField(
+                  controller: _emailController,
+                  hint: 'Email',
+                  icon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 12),
+                // ── Username field with availability check ──
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Username',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.text3)),
+                    const SizedBox(height: 4),
+                    _dialogField(
+                      controller: _usernameController,
+                      hint: 'your-username',
+                      icon: Icons.alternate_email,
+                      onChanged: (val) {
+                        _usernameDebounce?.cancel();
+                        if (val.length < 3) {
+                          setDialogState(() {
+                            _usernameAvailable = null;
+                            _usernameSuggestion = null;
+                          });
+                          return;
+                        }
+                        setDialogState(() => _usernameChecking = true);
+                        _usernameDebounce = Timer(
+                            const Duration(milliseconds: 500), () async {
+                          try {
+                            final check =
+                                await ApiService().validateUsername(val);
+                            if (ctx.mounted) {
+                              setDialogState(() {
+                                _usernameChecking = false;
+                                _usernameAvailable =
+                                    check['available'] as bool? ?? false;
+                                _usernameSuggestion =
+                                    check['suggestion'] as String?;
+                              });
+                            }
+                          } catch (_) {
+                            if (ctx.mounted) {
+                              setDialogState(() {
+                                _usernameChecking = false;
+                                _usernameAvailable = null;
+                              });
+                            }
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (_usernameChecking)
+                          const Text('Checking...',
+                              style: TextStyle(
+                                  fontSize: 11, color: AppColors.text3))
+                        else if (_usernameAvailable == true)
+                          const Text('✓ Available',
+                              style: TextStyle(
+                                  fontSize: 11, color: AppColors.secondary))
+                        else if (_usernameAvailable == false) ...[
+                          const Text('✗ Taken',
+                              style: TextStyle(
+                                  fontSize: 11, color: AppColors.red)),
+                          if (_usernameSuggestion != null) ...[
+                            const SizedBox(width: 8),
+                            Text('Try: $_usernameSuggestion',
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.warn,
+                                    fontFamily: 'monospace')),
+                          ],
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            _dialogField(
-              controller: _emailController,
-              hint: 'Email',
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel',
+                  style: TextStyle(color: AppColors.text3)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx, {
+                  'displayName': _displayNameController.text.trim(),
+                  'email': _emailController.text.trim(),
+                  'username': _usernameController.text.trim(),
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Save',
+                  style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel',
-                style: TextStyle(color: AppColors.text3)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx, {
-                'displayName': _displayNameController.text.trim(),
-                'email': _emailController.text.trim(),
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('Save',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
 
     if (result == null) return;
     final displayName = result['displayName'] ?? '';
     final email = result['email'] ?? '';
+    final newUsername = result['username'] ?? '';
 
     if (displayName.length >= 2) {
       try {
@@ -225,7 +319,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (email.isNotEmpty && email.contains('@')) {
       try {
         final api = ApiService();
-        final resp = await api.put('/auth/me/email', body: {'email': email});
+        final resp =
+            await api.put('/auth/me/email', body: {'email': email});
         setState(() => _userData!['email'] = resp['email']);
         _showSnack('Email updated');
       } catch (e) {
@@ -233,15 +328,30 @@ class _ProfileScreenState extends State<ProfileScreen>
             e is ApiException ? e.message : 'Failed to update email');
       }
     }
+    if (newUsername.isNotEmpty &&
+        newUsername != _getUsername() &&
+        _usernameAvailable == true) {
+      try {
+        final api = ApiService();
+        final resp = await api.updateUsername(newUsername);
+        setState(
+            () => _userData!['username'] = resp['newUsername']);
+        _showSnack('Username updated');
+      } catch (e) {
+        _showSnack(
+            e is ApiException ? e.message : 'Failed to update username');
+      }
+    }
   }
 
-  // ─── Clear Cache ──────────────────────────────────────────────────────
+  // ─── Clear Cache ─────────────────────────────────────────────────────
   Future<void> _clearCache() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Clear Cache',
             style: TextStyle(
                 fontFamily: 'Space Grotesk',
@@ -298,7 +408,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  // ─── Logout ───────────────────────────────────────────────────────────
+  // ─── Logout ──────────────────────────────────────────────────────────
   Future<void> _logout() async {
     await AuthService().logout();
     if (mounted) {
@@ -307,19 +417,22 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  // ─── Share Profile ───────────────────────────────────────────────────
+  // ─── Share Profile ──────────────────────────────────────────────────
   void _showShareDialog() {
-    final profileLink = 'neighborly://user/${_getUserId()}';
+    final profileDeepLink =
+        'neighborly://user/${_getUsername()}';
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.card,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => _ShareProfileSheet(
-        profileLink: profileLink,
+        profileLink: profileDeepLink,
         displayName: _getDisplayName(),
         userId: _getUserId(),
+        userName: _getUsername(),
       ),
     );
   }
@@ -329,11 +442,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message,
-            style: const TextStyle(color: Colors.white)),
+        content:
+            Text(message, style: const TextStyle(color: Colors.white)),
         backgroundColor: AppColors.card,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -343,6 +457,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     required String hint,
     IconData? icon,
     TextInputType? keyboardType,
+    ValueChanged<String>? onChanged,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -354,6 +469,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
+        onChanged: onChanged,
         style: const TextStyle(color: AppColors.text, fontSize: 14),
         decoration: InputDecoration(
           border: InputBorder.none,
@@ -367,31 +483,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  /// Stat helper
-  Widget _followStat(IconData icon, String count, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: AppColors.text2),
-        const SizedBox(width: 4),
-        Text(
-          count,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: AppColors.text,
-            fontFamily: 'Space Grotesk',
-          ),
-        ),
-        const SizedBox(width: 2),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: AppColors.text3),
-        ),
-      ],
-    );
-  }
-
   // ═══════════════════════════════════════════════════════════════════════
   // BUILD
   // ═══════════════════════════════════════════════════════════════════════
@@ -402,7 +493,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       children: [
         Column(
           children: [
-            // Body
             Expanded(
               child: _loading
                   ? const Center(
@@ -443,7 +533,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Navigator.pushReplacementNamed(context, '/activity');
               }
               if (id == 'biz') {
-                Navigator.pushReplacementNamed(context, '/dashboard');
+                Navigator.pushReplacementNamed(
+                    context, '/dashboard');
               }
             },
             items: const [
@@ -540,7 +631,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           size: 14, color: Colors.white),
                     ),
                   ),
-                  // Share button
+                  // Share button badge on avatar
                   Positioned(
                     top: -4,
                     right: -4,
@@ -584,43 +675,69 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 6),
-              // Follow counts
+              const SizedBox(height: 12),
+              // Edit + Share buttons (matching React layout)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _followStat(Icons.people_outline, '$_followerCount', 'followers'),
-                  const SizedBox(width: 20),
-                  _followStat(Icons.person_add_outlined, '$_followingCount', 'following'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Edit profile button
-              GestureDetector(
-                onTap: _editProfile,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryDim,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(Icons.edit, size: 14, color: AppColors.primary),
-                      SizedBox(width: 6),
-                      Text(
-                        'Edit Profile',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.primary,
-                        ),
+                  // Edit button
+                  GestureDetector(
+                    onTap: _editProfile,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.edit,
+                              size: 16, color: Colors.white),
+                          SizedBox(width: 6),
+                          Text(
+                            'Edit',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  // Share button
+                  GestureDetector(
+                    onTap: _showShareDialog,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.share,
+                              size: 16, color: Colors.white),
+                          SizedBox(width: 6),
+                          Text(
+                            'Share',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -629,14 +746,14 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ─── Menu Section (3 grouped sections) ───────────────────────────────
+  // ─── Menu Section (3 grouped sections) ──────────────────────────────
   Widget _buildMenuSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Column(
         children: [
           // ═══ Section 1: MY SERVICES ═══
-          _buildSectionHeader('MY SERVICES'),
+          _buildSectionHeader('My Services'),
           _buildSectionCard([
             _menuItem(
               icon: Icons.calendar_month_outlined,
@@ -661,7 +778,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           const SizedBox(height: 20),
 
           // ═══ Section 2: PERSONAL INFO (Accordion) ═══
-          _buildSectionHeader('PERSONAL INFO'),
+          _buildSectionHeader('Personal Info'),
           Container(
             decoration: BoxDecoration(
               color: AppColors.card,
@@ -672,8 +789,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               children: [
                 // Accordion header
                 GestureDetector(
-                  onTap: () =>
-                      setState(() => _personalInfoOpen = !_personalInfoOpen),
+                  onTap: () => setState(
+                      () => _personalInfoOpen = !_personalInfoOpen),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
@@ -683,8 +800,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: AppColors.purple.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
+                            color:
+                                AppColors.purple.withOpacity(0.15),
+                            borderRadius:
+                                BorderRadius.circular(12),
                           ),
                           child: const Icon(Icons.people_outline,
                               size: 22, color: AppColors.purple),
@@ -702,9 +821,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                         AnimatedRotation(
                           turns: _personalInfoOpen ? 0.5 : 0,
-                          duration: const Duration(milliseconds: 300),
-                          child: const Icon(Icons.keyboard_arrow_down,
-                              size: 20, color: AppColors.text3),
+                          duration:
+                              const Duration(milliseconds: 300),
+                          child: const Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 20,
+                              color: AppColors.text3),
                         ),
                       ],
                     ),
@@ -712,13 +834,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
                 // Accordion content
                 AnimatedCrossFade(
-                  firstChild: const SizedBox(width: double.infinity),
+                  firstChild:
+                      const SizedBox(width: double.infinity),
                   secondChild: Column(
                     children: [
                       _divider(),
                       AnimatedOpacity(
-                        opacity: _personalInfoOpen ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 200),
+                        opacity:
+                            _personalInfoOpen ? 1.0 : 0.0,
+                        duration:
+                            const Duration(milliseconds: 200),
                         child: _menuItem(
                           icon: Icons.location_on_outlined,
                           title: 'My Addresses',
@@ -726,14 +851,17 @@ class _ProfileScreenState extends State<ProfileScreen>
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const AddressesScreen()),
+                                builder: (_) =>
+                                    const AddressesScreen()),
                           ),
                         ),
                       ),
                       _divider(),
                       AnimatedOpacity(
-                        opacity: _personalInfoOpen ? 1.0 : 0.0,
-                        duration: const Duration(milliseconds: 200),
+                        opacity:
+                            _personalInfoOpen ? 1.0 : 0.0,
+                        duration:
+                            const Duration(milliseconds: 200),
                         child: _menuItem(
                           icon: Icons.directions_car_outlined,
                           title: 'My Cars',
@@ -741,7 +869,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const CarsScreen()),
+                                builder: (_) =>
+                                    const CarsScreen()),
                           ),
                         ),
                       ),
@@ -759,7 +888,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           const SizedBox(height: 20),
 
           // ═══ Section 3: SETTINGS & SUPPORT ═══
-          _buildSectionHeader('SETTINGS & SUPPORT'),
+          _buildSectionHeader('Settings & Support'),
           _buildSectionCard([
             _menuItem(
               icon: Icons.notifications_outlined,
@@ -786,7 +915,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ─── Section Header ───────────────────────────────────────────────────
+  // ─── Section Header ──────────────────────────────────────────────────
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -813,7 +942,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ─── Section Card ─────────────────────────────────────────────────────
+  // ─── Section Card ────────────────────────────────────────────────────
   Widget _buildSectionCard(List<Widget> items) {
     return Container(
       decoration: BoxDecoration(
@@ -827,7 +956,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ─── Menu Item ────────────────────────────────────────────────────────
+  // ─── Menu Item ───────────────────────────────────────────────────────
   Widget _menuItem({
     required IconData icon,
     required String title,
@@ -837,12 +966,12 @@ class _ProfileScreenState extends State<ProfileScreen>
   }) {
     return GestureDetector(
       onTap: () {
-        // Tap animation
         setState(() {});
         onTap();
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 14),
         child: Row(
           children: [
             Container(
@@ -867,8 +996,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             if (badge != null)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.red,
                   borderRadius: BorderRadius.circular(10),
@@ -891,18 +1020,17 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // ─── Divider ──────────────────────────────────────────────────────────
+  // ─── Divider ─────────────────────────────────────────────────────────
   Widget _divider() {
     return Divider(
       height: 1,
       thickness: 0.5,
       color: AppColors.border.withOpacity(0.5),
-      indent: 16 + 44 + 14, // padding + icon box + gap
+      indent: 16 + 44 + 14,
       endIndent: 16,
     );
   }
 
-  /// Interleave widgets with a divider between each
   List<Widget> _intersperse(List<Widget> items, Widget divider) {
     final result = <Widget>[];
     for (int i = 0; i < items.length; i++) {
@@ -912,7 +1040,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return result;
   }
 
-  // ─── Bottom Section (Settings + Logout) ───────────────────────────────
+  // ─── Bottom Section (Settings + Logout) ──────────────────────────────
   Widget _buildBottomSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -936,7 +1064,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             onTap: _logout,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
                 color: AppColors.red.withOpacity(0.05),
                 border: Border.all(color: AppColors.red),
@@ -945,7 +1074,8 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: const [
-                  Icon(Icons.logout, size: 18, color: AppColors.red),
+                  Icon(Icons.logout,
+                      size: 18, color: AppColors.red),
                   SizedBox(width: 8),
                   Text(
                     'Logout',
@@ -966,26 +1096,42 @@ class _ProfileScreenState extends State<ProfileScreen>
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Share Profile Bottom Sheet
+// Share Profile Bottom Sheet (with QR code)
 // ═══════════════════════════════════════════════════════════════════════════
 
-class _ShareProfileSheet extends StatelessWidget {
+class _ShareProfileSheet extends StatefulWidget {
   final String profileLink;
   final String displayName;
   final String userId;
+  final String userName;
 
   const _ShareProfileSheet({
     required this.profileLink,
     required this.displayName,
     required this.userId,
+    required this.userName,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final supportsShare =
-        // Web Share API — just show it always; will gracefully fail on unsupported platforms
-        true;
+  State<_ShareProfileSheet> createState() => _ShareProfileSheetState();
+}
 
+class _ShareProfileSheetState extends State<_ShareProfileSheet> {
+  bool _copied = false;
+
+  String get _profileDeepLink => widget.profileLink;
+
+  Future<void> _copyProfileId() async {
+    try {
+      await Clipboard.setData(ClipboardData(text: _profileDeepLink));
+      setState(() => _copied = true);
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) setState(() => _copied = false);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -1001,162 +1147,87 @@ class _ShareProfileSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Share Profile',
-            style: TextStyle(
-              fontFamily: 'Space Grotesk',
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.text,
-            ),
-          ),
+
+          // Title
+          const Text('Share Profile',
+              style: TextStyle(
+                  fontFamily: 'Space Grotesk',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text)),
           const SizedBox(height: 20),
 
-          // QR Code placeholder
+          // A — QR Code
           Container(
-            width: 160,
-            height: 160,
-            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Center(
-              child: _buildQrPlaceholder(),
-            ),
-          ),
-          Text(
-            profileLink,
-            style: const TextStyle(fontSize: 11, color: AppColors.text3),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-
-          // Copy Profile ID button
-          _shareOption(
-            icon: Icons.copy,
-            label: 'Copy Profile ID',
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: profileLink));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Copied!'),
-                  backgroundColor: AppColors.card,
-                  behavior: SnackBarBehavior.floating,
+            child: Column(
+              children: [
+                QrImageView(
+                  data: _profileDeepLink,
+                  version: QrVersions.auto,
+                  size: 180,
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.all(8),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-
-          // Native Share button
-          if (supportsShare)
-            _shareOption(
-              icon: Icons.share,
-              label: 'Share via...',
-              onTap: () {
-                // For Flutter web, this is limited. On mobile Flutter, share_plus would be used.
-                // For now, we copy to clipboard and show the native share sheet if possible.
-                Clipboard.setData(ClipboardData(
-                    text:
-                        'Add me on Neighborly! My profile: $profileLink'));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Profile link copied — share it with your friends!'),
-                    backgroundColor: AppColors.card,
-                    behavior: SnackBarBehavior.floating,
+                const SizedBox(height: 12),
+                Text(
+                  _profileDeepLink,
+                  style: const TextStyle(
+                    color: Colors.black54,
+                    fontSize: 11,
                   ),
-                );
-              },
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
+          ),
           const SizedBox(height: 16),
+
+          // B — Copy Profile ID
+          GestureDetector(
+            onTap: _copyProfileId,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.copy,
+                      size: 20, color: AppColors.text2),
+                  const SizedBox(width: 12),
+                  Text(
+                    _copied ? 'Copied!' : 'Copy Profile ID',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.text,
+                    ),
+                  ),
+                  if (_copied)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Text('✓',
+                          style: TextStyle(
+                              color: AppColors.secondary,
+                              fontSize: 12)),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
-
-  Widget _shareOption({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.bg,
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 20, color: AppColors.primary),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.text,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQrPlaceholder() {
-    // Simple QR-like pattern
-    return CustomPaint(
-      size: const Size(140, 140),
-      painter: _QrPlaceholderPainter(value: 0),
-    );
-  }
-}
-
-class _QrPlaceholderPainter extends CustomPainter {
-  final int value;
-  _QrPlaceholderPainter({required this.value});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.black;
-    const cellCount = 7;
-    final cellSize = size.width / cellCount;
-
-    // Finder patterns (corners)
-    for (final pos in [0, 4]) {
-      final x = pos * cellSize;
-      for (final yPos in [0, 4]) {
-        final y = yPos * cellSize;
-        canvas.drawRect(
-          Rect.fromLTWH(x, y, 3 * cellSize, 3 * cellSize),
-          paint,
-        );
-        canvas.drawRect(
-          Rect.fromLTWH(x + cellSize, y + cellSize, cellSize, cellSize),
-          Paint()..color = Colors.white,
-        );
-      }
-    }
-
-    // Data cells
-    paint.color = Colors.black;
-    for (int r = 0; r < cellCount; r++) {
-      for (int c = 0; c < cellCount; c++) {
-        if ((r + c) % 2 == 0 && !((r < 3 && c < 3) || (r < 3 && c > 3) || (r > 3 && c < 3))) {
-          canvas.drawRect(
-            Rect.fromLTWH(c * cellSize, r * cellSize, cellSize, cellSize),
-            paint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

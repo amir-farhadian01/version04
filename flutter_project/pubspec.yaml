@@ -26,6 +26,7 @@ dependencies:
   flutter_cache_manager: ^3.4.0
   connectivity_plus: ^6.0.0
   clock: ^1.1.1
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:
