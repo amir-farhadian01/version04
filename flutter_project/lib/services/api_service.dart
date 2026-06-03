@@ -322,16 +322,14 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getUtilityLinks(String category) async {
-    final result = await get('/home/utilities/$category');
+    final result = await get('/home/utility-links?category=$category&pageSize=50');
     return (result['data'] as List<dynamic>?)
             ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+        [];
   }
 
   Future<void> trackUtilityClick(String linkId) async {
-    await post('/home/utilities/click', body: {'linkId': linkId});
+    await post('/home/utility-links/$linkId/click', body: {});
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

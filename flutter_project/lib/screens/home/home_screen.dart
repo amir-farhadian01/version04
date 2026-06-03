@@ -4,8 +4,14 @@ import '../../services/api_service.dart';
 import '../../widgets/service_search_delegate.dart';
 
 /// Home screen (TAB 1) with Home and My Posts sub-tabs.
-/// Displays neighbourhood banner, utility icons, search, news feed,
-/// and a My Posts tab with Posts / Stories / Saved inner tabs.
+/// Matches the React frontend's HomePage.tsx design exactly:
+///   - Greeting header "Good morning, X 👋"
+///   - HOME | MY POSTS sub-tab bar
+///   - Neighbourhood Banner (weather + alerts, collapsible)
+///   - Utility Icons Row (horizontal scroll, expandable per category)
+///   - Search Box
+///   - Local News & Events (category tabbed, from /api/home/news)
+///   - My Posts tab (Posts / Stories / Saved inner tabs, list/grid toggle)
 class FlutterHomeScreen extends StatefulWidget {
   const FlutterHomeScreen({super.key});
 
@@ -18,10 +24,17 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
   late final TabController _tabController;
   final ApiService _api = ApiService();
   bool _loading = true;
-  Map<String, dynamic>? _banner;
+
+  // Data from API
+  Map<String, dynamic>? _homeBanner;
   List<Map<String, dynamic>> _news = [];
   List<Map<String, dynamic>> _utilities = [];
-  final String _currentLocation = 'Vaughan, ON';
+  Map<String, dynamic>? _weather;
+  List<Map<String, dynamic>> _alerts = [];
+
+  // Utility expand state
+  String? _activeUtilityCategory;
+  List<Map<String, dynamic>> _filteredUtilityLinks = [];
 
   @override
   void initState() {
@@ -38,55 +51,100 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
 
   Future<void> _loadHomeData() async {
     setState(() => _loading = true);
-    try {
-      final bannerResult = await _api.getHomeBanner();
-      _banner = bannerResult['data'] as Map<String, dynamic>? ?? bannerResult;
-    } catch (_) {
-      _banner = {
-        'title': 'Central Park Vaughan',
-        'temp': '13°C',
-        'condition': 'Sunny',
-        'alert': 'Police Alert',
-      };
-    }
-    try {
-      _news = await _api.getHomeNews();
-    } catch (_) {
-      _news = _mockNews();
-    }
-    try {
-      _utilities = await _api.getUtilityLinks('general');
-    } catch (_) {
-      _utilities = _mockUtilities();
-    }
-    setState(() => _loading = false);
+    final results = await Future.wait([
+      _api.getHomeBanner().then((r) => r).catchError((_) => <String, dynamic>{}),
+      _api.getHomeNews().then((r) => r).catchError((_) => <Map<String, dynamic>>[]),
+      _api.getUtilityLinks('general').then((r) => r).catchError((_) => <Map<String, dynamic>>[]),
+      _api.getWeather().then((r) => r).catchError((_) => <String, dynamic>{}),
+      _api.getActiveAlerts().then((r) => r).catchError((_) => <Map<String, dynamic>>[]),
+    ]);
+
+    // getHomeBanner returns { data: {...} }
+    final bannerResult = results[0] as Map<String, dynamic>;
+    _homeBanner = (bannerResult['data'] as Map<String, dynamic>?) ?? bannerResult;
+
+    // getHomeNews returns list of maps from the array response
+    _news = (results[1] as List<dynamic>).cast<Map<String, dynamic>>();
+
+    // getUtilityLinks returns array from { data: [...] }
+    _utilities = (results[2] as List<dynamic>).cast<Map<String, dynamic>>();
+
+    // getWeather returns { data: {...} }
+    final weatherResult = results[3] as Map<String, dynamic>;
+    _weather = (weatherResult['data'] as Map<String, dynamic>?) ?? weatherResult;
+
+    // getActiveAlerts returns { data: [...] }
+    _alerts = (results[4] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        <Map<String, dynamic>>[];
+
+    if (mounted) setState(() => _loading = false);
   }
 
-  List<Map<String, dynamic>> _mockNews() => [
-        {
-          'title': 'Construction rates up 12%',
-          'time': '2h',
-          'color': 'primary',
-        },
-        {
-          'title': 'Traffic delay on Major Mackenzie Dr',
-          'time': '45m',
-          'color': 'warn',
-        },
-        {
-          'title': 'Music Festival at Vaughan Mills',
-          'time': '5h',
-          'color': 'secondary',
-        },
-      ];
+  Future<void> _loadFilteredUtilityLinks(String category) async {
+    try {
+      final links = await _api.getUtilityLinks(category);
+      if (mounted) setState(() => _filteredUtilityLinks = links);
+    } catch (_) {
+      if (mounted) setState(() => _filteredUtilityLinks = []);
+    }
+  }
 
-  List<Map<String, dynamic>> _mockUtilities() => [
-        {'label': '🏦 TD Bank', 'id': 'bank-td'},
-        {'label': '🏦 RBC', 'id': 'bank-rbc'},
-        {'label': '📊 Credit', 'id': 'credit'},
-        {'label': '🛡️ Insurance', 'id': 'insurance'},
-        {'label': '🏛️ ServiceON', 'id': 'serviceon'},
-      ];
+  // ── Weather emoji map matching React NeighbourhoodBanner ──
+  static const _weatherIconMap = <String, String>{
+    'sunny': '☀️',
+    'clear': '☀️',
+    'partly_cloudy': '⛅',
+    'cloudy': '☁️',
+    'overcast': '☁️',
+    'rain': '🌧️',
+    'light_rain': '🌦️',
+    'heavy_rain': '🌧️',
+    'thunderstorm': '⛈️',
+    'snow': '🌨️',
+    'fog': '🌫️',
+    'wind': '💨',
+  };
+
+  String _getWeatherEmoji(String condition) {
+    final lower = condition.toLowerCase().replaceAll(RegExp(r'\s+'), '_');
+    for (final entry in _weatherIconMap.entries) {
+      if (lower.contains(entry.key)) return entry.value;
+    }
+    return '🌤️';
+  }
+
+  // ── Utility category definitions (matching React) ──
+  static const _utilityCategories = <_UtilityCat>[
+    _UtilityCat('banks', 'Banks', '🏦'),
+    _UtilityCat('insurance', 'Insurance', '🛡️'),
+    _UtilityCat('fuel', 'Fuel', '⛽'),
+    _UtilityCat('government', 'Government', '🏛️'),
+    _UtilityCat('health', 'Health', '🏥'),
+    _UtilityCat('transit', 'Transit', '🚌'),
+  ];
+
+  // ── News category tabs (matching React NewsFeed) ──
+  static const _newsCategories = <_NewsCat>[
+    _NewsCat('all', 'All', null, null),
+    _NewsCat('sports', 'Sports', '⚽', Color(0x26256beb)),
+    _NewsCat('community', 'Community', '🤝', Color(0x260fc98a)),
+    _NewsCat('events', 'Events', '🎉', Color(0x268b5cf6)),
+    _NewsCat('city', 'City', '🏙️', Color(0x26ffb800)),
+    _NewsCat('promotions', 'Promotions', '💸', Color(0x26ff4d4d)),
+  ];
+  String _activeNewsCategory = 'all';
+
+  String _formatTimeAgo(String? dateStr) {
+    if (dateStr == null) return '';
+    final date = DateTime.tryParse(dateStr);
+    if (date == null) return '';
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours < 24) return '${diff.inHours}h';
+    if (diff.inDays < 7) return '${diff.inDays}d';
+    return '${date.day}/${date.month > 9 ? '${date.month}' : '0${date.month}'}/${date.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,108 +158,82 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
       color: bg,
       child: Column(
         children: [
-          // Header
+          // ── Greeting header (matching React) ──
           Container(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
             decoration: BoxDecoration(
-              color: bg,
+              color: bg.withValues(alpha: 0.9),
               border: Border(bottom: BorderSide(color: border)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.location_on,
-                            size: 12, color: AppColors.primary),
-                        const SizedBox(width: 5),
                         Text(
-                          _currentLocation,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.primary,
+                          'Good morning, Neighbour 👋',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: text,
+                            fontFamily: 'Space Grotesk',
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Your neighbourhood, your community',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: text2,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Good morning 👋',
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                        color: text,
-                        fontFamily: 'Space Grotesk',
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/profile'),
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryDim,
-                      shape: BoxShape.circle,
-                      border:
-                          Border.all(color: AppColors.primary, width: 2),
+                // Sub-tabs: HOME | MY POSTS
+                Padding(
+                  padding: const EdgeInsets.only(left: 16),
+                  child: TabBar(
+                    controller: _tabController,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    indicatorSize: TabBarIndicatorSize.label,
+                    indicatorColor: AppColors.primary,
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: text2,
+                    labelStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Space Grotesk',
                     ),
-                    child: const Center(
-                      child: Text(
-                        'A',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                          fontSize: 15,
-                        ),
-                      ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
+                    labelPadding: const EdgeInsets.only(right: 24),
+                    dividerHeight: 0,
+                    tabs: const [
+                      Tab(text: 'HOME'),
+                      Tab(text: 'MY POSTS'),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
 
-          // Main tab bar: Home | My Posts
-          Container(
-            color: bg,
-            child: TabBar(
-              controller: _tabController,
-              indicatorSize: TabBarIndicatorSize.label,
-              indicatorColor: AppColors.primary,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: text2,
-              labelStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'Space Grotesk',
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-              tabs: const [
-                Tab(text: 'Home'),
-                Tab(text: 'My Posts'),
-              ],
-            ),
-          ),
-
-          // Tab content
+          // ── Tab content ──
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : TabBarView(
                     controller: _tabController,
                     children: [
-                      // ── TAB 0: Home ──
-                      _buildHomeTab(text2),
-                      // ── TAB 1: My Posts ──
+                      _buildHomeTab(text, text2, isDark),
                       const MyPostsTab(),
                     ],
                   ),
@@ -211,163 +243,659 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
     );
   }
 
-  Widget _buildHomeTab(Color text2) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // Neighbourhood Banner
-          _buildBanner(),
-          // Search box
-          _buildSearchBox(),
-          // Utility Icons
-          _buildUtilityIcons(),
-          // News
-          _buildSection(
-            'Local News',
-            _news.map((n) => _newsTile(n)).toList(),
-            text2,
-          ),
-          // Events
-          _buildSection('Local Events', _buildEventCards(), text2),
-          const SizedBox(height: 80),
-        ],
-      ),
-    );
-  }
+  Widget _buildHomeTab(Color text, Color text2, bool isDark) {
+    final border = isDark ? AppColors.border : AppColorsLight.border;
+    final filteredNews = _activeNewsCategory == 'all'
+        ? _news
+        : _news.where((n) => n['category'] == _activeNewsCategory).toList();
 
-  Widget _buildBanner() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-      height: 140,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1A3580), Color(0xFF0A1228)],
-        ),
-      ),
+    return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.camera_alt, size: 11, color: Color(0xFFC8D8FF)),
-                  SizedBox(width: 5),
-                  Text(
-                    'Photo of the Week',
-                    style:
-                        TextStyle(fontSize: 11, color: Color(0xFFC8D8FF)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _banner?['title'] as String? ?? 'Neighbourhood',
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                fontFamily: 'Space Grotesk',
-              ),
-            ),
-            const SizedBox(height: 10),
+            // ── 1. Neighbourhood Banner ──
+            _buildBanner(text2),
+            const SizedBox(height: 16),
+
+            // ── 2. Utility Icons Row ──
+            _buildUtilityIcons(text, text2, border, isDark),
+            const SizedBox(height: 16),
+
+            // ── 3. Search Box ──
+            _buildSearchBox(),
+            const SizedBox(height: 16),
+
+            // ── 4. Local News & Events ──
             Row(
               children: [
-                _bannerPill(
-                  Icons.access_time,
-                  '${_banner?['temp'] ?? '??'} · ${_banner?['condition'] ?? ''}',
-                  Colors.white.withValues(alpha: 0.1),
+                Text(
+                  'Local News & Events',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: text,
+                    fontFamily: 'Space Grotesk',
+                  ),
                 ),
                 const SizedBox(width: 8),
-                if (_banner?['alert'] != null)
-                  _bannerPill(
-                    Icons.warning_amber,
-                    _banner!['alert'].toString(),
-                    const Color(0x26FFB800),
+                Text(
+                  '· swipe to explore',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: text2,
                   ),
+                ),
               ],
             ),
+            const SizedBox(height: 12),
+
+            // Category tabs
+            _buildNewsTabs(text2, isDark),
+            const SizedBox(height: 12),
+
+            // News articles
+            _buildNewsList(filteredNews, text, text2, isDark),
           ],
         ),
       ),
     );
   }
 
-  Widget _bannerPill(IconData icon, String text, Color bgColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: const Color(0xFFD0E0FF)),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: const TextStyle(fontSize: 11, color: Color(0xFFD0E0FF)),
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEIGHBOURHOOD BANNER (matching React NeighbourhoodBanner.tsx)
+  // ═══════════════════════════════════════════════════════════════════════════
+  final _bannerExpandedNotifier = ValueNotifier<bool>(false);
+
+  Widget _buildBanner(Color text2) {
+    final w = _weather;
+    final temp = w?['temp'];
+    final condition = w?['condition'] as String? ?? 'Unavailable';
+    final emoji = _getWeatherEmoji(condition);
+    final activeAlerts = _alerts.where((a) => (a['isActive'] as bool?) == true).toList();
+    final criticalAlerts = activeAlerts.where((a) => a['severity'] == 'critical').toList();
+    final warningAlerts = activeAlerts.where((a) => a['severity'] != 'critical').toList();
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: _bannerExpandedNotifier,
+      builder: (_, expanded, __) {
+        return GestureDetector(
+          onTap: () {
+            _bannerExpandedNotifier.value = !_bannerExpandedNotifier.value;
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: expanded ? null : 180,
+            constraints: BoxConstraints(minHeight: expanded ? 0 : 180),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1A3580), Color(0xFF0A1228)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              children: [
+                // Collapsed content
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Top row: neighbourhood label + alert badges
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Your Neighbourhood',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xB3FFFFFF),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      temp != null ? '$temp°' : '--°',
+                                      style: const TextStyle(
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                        fontFamily: 'Space Grotesk',
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      emoji,
+                                      style: const TextStyle(fontSize: 22),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  condition,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0x99FFFFFF),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Alert badges
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: criticalAlerts.take(2).map((a) {
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.red.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text('!',
+                                        style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.red)),
+                                    const SizedBox(width: 4),
+                                    ConstrainedBox(
+                                      constraints:
+                                          const BoxConstraints(maxWidth: 100),
+                                      child: Text(
+                                        a['title'] as String? ?? '',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                      // Warning alert chips
+                      if (warningAlerts.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 22,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: warningAlerts.take(4).map((a) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 2),
+                                margin: const EdgeInsets.only(right: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.amber.withValues(alpha: 0.3)),
+                                ),
+                                child: Text(
+                                  (a['location'] ?? a['title'] ?? '') as String,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.amber,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
+                      // Weather forecast mini-strip
+                      const SizedBox(height: 8),
+                      _forecastStrip(temp),
+                      // Tap hint
+                      const SizedBox(height: 4),
+                      const Center(
+                        child: Text(
+                          'tap for details',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Color(0x66FFFFFF),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Expanded detail view
+                if (expanded) ...[
+                  Container(
+                    height: 1,
+                    color: const Color(0x1AFFFFFF),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Weather & Alerts · Your Neighbourhood',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            fontFamily: 'Space Grotesk',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // Weather detail grid
+                        Row(
+                          children: [
+                            _weatherDetailCard(emoji,
+                                temp != null ? '$temp°' : '--°', condition),
+                            const SizedBox(width: 12),
+                            _weatherDetailCard('💧',
+                                w?['humidity'] != null ? '${w!['humidity']}%' : '--%', 'Humidity'),
+                            const SizedBox(width: 12),
+                            _weatherDetailCard('💨',
+                                w?['windSpeed'] != null ? '${w!['windSpeed']} km/h' : '--', 'Wind'),
+                          ],
+                        ),
+                        // All alerts
+                        if (activeAlerts.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            'ACTIVE ALERTS',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: text2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ...activeAlerts.map((a) => _alertTile(a)),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _forecastStrip(dynamic currentTemp) {
+    final t = currentTemp is int ? currentTemp : (currentTemp is double ? currentTemp.toInt() : 25);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _forecastItem('Now', '🌤️', '$t°'),
+        _forecastItem('+1h', '🌤️', '${t + 1}°'),
+        _forecastItem('+2h', '⛅', '$t°'),
+        _forecastItem('+3h', '☁️', '${t - 1}°'),
+      ],
+    );
+  }
+
+  Widget _forecastItem(String time, String icon, String temp) {
+    return Column(
+      children: [
+        Text(time, style: const TextStyle(fontSize: 10, color: Color(0x80FFFFFF))),
+        const SizedBox(height: 2),
+        Text(icon, style: const TextStyle(fontSize: 14)),
+        const SizedBox(height: 2),
+        Text(temp,
+            style: const TextStyle(fontSize: 10, color: Color(0xB3FFFFFF), fontWeight: FontWeight.w500)),
+      ],
+    );
+  }
+
+  Widget _weatherDetailCard(String icon, String value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 22)),
+            const SizedBox(height: 4),
+            Text(value,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    fontFamily: 'Space Grotesk')),
+            const SizedBox(height: 2),
+            Text(label,
+                style: const TextStyle(fontSize: 10, color: Color(0x99FFFFFF))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _alertTile(Map<String, dynamic> alert) {
+    final sev = alert['severity'] as String? ?? 'info';
+    final Color sevColor = sev == 'critical'
+        ? Colors.red
+        : sev == 'warning'
+            ? Colors.amber
+            : AppColors.primary;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: sevColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: sevColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                sev.toUpperCase(),
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: sevColor),
+              ),
+              if (alert['location'] != null) ...[
+                const SizedBox(width: 8),
+                Text(
+                  '· ${alert['location']}',
+                  style: TextStyle(fontSize: 10, color: sevColor.withValues(alpha: 0.6)),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            alert['title'] as String? ?? '',
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white),
+          ),
+          if (alert['description'] != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              alert['description'] as String,
+              style: const TextStyle(fontSize: 11, color: Color(0x99FFFFFF)),
+            ),
+          ],
         ],
       ),
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UTILITY ICONS ROW (matching React UtilityIconsRow.tsx)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildUtilityIcons(Color text, Color text2, Color border, bool isDark) {
+    return Column(
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: _utilityCategories.map((cat) {
+              final isActive = _activeUtilityCategory == cat.key;
+              return GestureDetector(
+                onTap: () {
+                  if (_activeUtilityCategory == cat.key) {
+                    setState(() {
+                      _activeUtilityCategory = null;
+                      _filteredUtilityLinks = [];
+                    });
+                  } else {
+                    setState(() => _activeUtilityCategory = cat.key);
+                    _loadFilteredUtilityLinks(cat.key);
+                  }
+                },
+                child: Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  child: Column(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? AppColors.primary
+                              : (isDark ? AppColors.card : AppColorsLight.card),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isActive
+                                ? AppColors.primary
+                                : border,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            cat.icon,
+                            style: const TextStyle(fontSize: 20),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        cat.label,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: isActive ? AppColors.primary : text2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        // Expanded filtered utility links
+        if (_activeUtilityCategory != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.card : AppColorsLight.card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${_utilityCategories.firstWhere((c) => c.key == _activeUtilityCategory).label} Links',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: text,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        _activeUtilityCategory = null;
+                        _filteredUtilityLinks = [];
+                      }),
+                      child: Text(
+                        'Close',
+                        style: TextStyle(fontSize: 10, color: text2),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (_filteredUtilityLinks.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: Text(
+                        'No links available for this category yet.',
+                        style: TextStyle(fontSize: 12, color: text2),
+                      ),
+                    ),
+                  )
+                else
+                  ..._filteredUtilityLinks.map((link) => _utilityLinkTile(
+                      link, isDark, border)),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _utilityLinkTile(
+      Map<String, dynamic> link, bool isDark, Color border) {
+    return GestureDetector(
+      onTap: () {
+        _api.trackUtilityClick(link['id'] as String? ?? '');
+        // Open URL
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.bg3 : AppColorsLight.bg3,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  _activeUtilityCategory != null
+                      ? (_utilityCategories
+                              .firstWhere((c) => c.key == _activeUtilityCategory)
+                              .icon)
+                      : '🔗',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    link['title'] as String? ?? '',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? AppColors.text : AppColorsLight.text,
+                    ),
+                  ),
+                  if (link['description'] != null)
+                    Text(
+                      link['description'] as String,
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: isDark
+                              ? AppColors.text2
+                              : AppColorsLight.text2),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_outward,
+                size: 14, color: isDark ? AppColors.text3 : AppColorsLight.text3),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SEARCH BOX
+  // ═══════════════════════════════════════════════════════════════════════════
 
   Widget _buildSearchBox() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth =
             constraints.maxWidth > 480 ? 480.0 : constraints.maxWidth;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-          child: Center(
-            child: SizedBox(
-              width: maxWidth,
-              child: GestureDetector(
-                onTap: () {
-                  showSearch(
-                    context: context,
-                    delegate: ServiceSearchDelegate(),
-                  );
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: constraints.maxWidth < 360 ? 10 : 14,
-                    vertical: constraints.maxWidth < 360 ? 8 : 10,
+        return Center(
+          child: SizedBox(
+            width: maxWidth,
+            child: GestureDetector(
+              onTap: () {
+                showSearch(
+                  context: context,
+                  delegate: ServiceSearchDelegate(),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.card
+                      : AppColorsLight.card,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.border
+                        : AppColorsLight.border,
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search,
-                          size: 16, color: AppColors.text3),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Search services in your area...',
-                          style: TextStyle(
-                            fontSize:
-                                constraints.maxWidth < 360 ? 13 : 14,
-                            color: AppColors.text3,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.search,
+                        size: 16,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.text3
+                            : AppColorsLight.text3),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Search services, businesses, skills near you...',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.text3
+                              : AppColorsLight.text3,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -377,185 +905,272 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
     );
   }
 
-  Widget _buildUtilityIcons() {
-    if (_utilities.isEmpty) return const SizedBox(height: 14);
-    return Container(
-      margin: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-      child: SizedBox(
-        height: 72,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: _utilities.map((u) {
-            return GestureDetector(
-              onTap: () => _api.trackUtilityClick(u['id'] as String? ?? ''),
-              child: Container(
-                width: 64,
-                margin: const EdgeInsets.only(right: 10),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.card2,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Center(
-                        child: Text(
-                          u['label'] as String? ?? '',
-                          style: const TextStyle(fontSize: 18),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      u['label'] as String? ?? '',
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: AppColors.text2,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEWS TABS + LIST (matching React NewsFeed.tsx)
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildSection(
-      String title, List<Widget> children, Color text2) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.article, size: 14, color: AppColors.text2),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: text2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ...children,
-        ],
-      ),
-    );
-  }
+  Widget _buildNewsTabs(Color text2, bool isDark) {
+    final card = isDark ? AppColors.card : AppColorsLight.card;
+    final border = isDark ? AppColors.border : AppColorsLight.border;
 
-  Widget _newsTile(Map<String, dynamic> item) {
-    final c = item['color'] as String? ?? 'primary';
-    final colorVal = c == 'warn'
-        ? AppColors.warn
-        : c == 'secondary'
-            ? AppColors.secondary
-            : AppColors.primary;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
-      ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration:
-                BoxDecoration(color: colorVal, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              item['title'] as String? ?? '',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.text,
-                height: 1.5,
+        children: _newsCategories.map((cat) {
+          final isActive = _activeNewsCategory == cat.key;
+          return GestureDetector(
+            onTap: () => setState(() => _activeNewsCategory = cat.key),
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.primary
+                    : card,
+                borderRadius: BorderRadius.circular(20),
+                border: isActive
+                    ? null
+                    : Border.all(color: border),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (cat.icon != null) ...[
+                    Text(cat.icon!, style: const TextStyle(fontSize: 12)),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(
+                    cat.label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: isActive ? Colors.white : text2,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            item['time'] as String? ?? '',
-            style: const TextStyle(fontSize: 10, color: AppColors.text3),
-          ),
-        ],
+          );
+        }).toList(),
       ),
     );
   }
 
-  List<Widget> _buildEventCards() {
-    final events = [
-      (
-        'Craft Festival',
-        'May 10 · Vaughan Mills',
-        [const Color(0x550FC98A), const Color(0xFF001105)]
-      ),
-      (
-        'Concert Night',
-        'May 14 · Club District',
-        [const Color(0x55FF7A2B), const Color(0xFF210A00)]
-      ),
-    ];
-    return [
-      SizedBox(
-        height: 100,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          children: events.map((e) {
-            return Container(
-              width: 150,
-              margin: const EdgeInsets.only(right: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(colors: [e.$3[0], e.$3[1]]),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      e.$1,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        fontFamily: 'Space Grotesk',
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      e.$2,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xB3FFFFFF),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+  Widget _buildNewsList(
+      List<Map<String, dynamic>> articles, Color text, Color text2, bool isDark) {
+    final card = isDark ? AppColors.card : AppColorsLight.card;
+    final border = isDark ? AppColors.border : AppColorsLight.border;
+
+    if (articles.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: border),
         ),
-      ),
-    ];
+        child: Column(
+          children: [
+            const Text('📰', style: TextStyle(fontSize: 32)),
+            const SizedBox(height: 12),
+            Text(
+              'No news articles yet',
+              style: TextStyle(fontSize: 14, color: text2),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Check back later for local updates',
+              style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.text3
+                      : AppColorsLight.text3),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: articles.map((article) {
+        final catInfo = _newsCategories.firstWhere(
+            (c) => c.key == (article['category'] ?? ''),
+            orElse: () => _newsCategories[0]);
+        final hasImage = article['imageUrl'] != null;
+        return GestureDetector(
+          onTap: () {
+            final id = article['id'] as String? ?? '';
+            // Navigate to news detail could be added here
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: card,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: border),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasImage)
+                  SizedBox(
+                    height: 128,
+                    width: double.infinity,
+                    child: Image.network(
+                      article['imageUrl'] as String,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const SizedBox(height: 128),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: catInfo.catColor ??
+                                  (isDark ? AppColors.bg3 : AppColorsLight.bg3),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (catInfo.icon != null) ...[
+                                  Text(catInfo.icon!,
+                                      style: const TextStyle(fontSize: 10)),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  catInfo.label,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (article['isFeatured'] == true) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'Featured',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const Spacer(),
+                          Text(
+                            _formatTimeAgo(
+                                article['publishedAt'] as String?),
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isDark
+                                  ? AppColors.text3
+                                  : AppColorsLight.text3,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        article['title'] as String? ?? '',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: text,
+                          fontFamily: 'Space Grotesk',
+                          height: 1.3,
+                        ),
+                      ),
+                      if (article['summary'] != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          article['summary'] as String,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: text2,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.only(top: 12),
+                        decoration: BoxDecoration(
+                          border: Border(top: BorderSide(color: border)),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Tap to read more',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isDark
+                                    ? AppColors.text3
+                                    : AppColorsLight.text3,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 14,
+                              color: isDark
+                                  ? AppColors.text3
+                                  : AppColorsLight.text3,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA CLASSES
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _UtilityCat {
+  final String key;
+  final String label;
+  final String icon;
+  const _UtilityCat(this.key, this.label, this.icon);
+}
+
+class _NewsCat {
+  final String key;
+  final String label;
+  final String? icon;
+  final Color? catColor;
+  const _NewsCat(this.key, this.label, this.icon, this.catColor);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -582,7 +1197,6 @@ class _MyPostsTabState extends State<MyPostsTab>
   List<Map<String, dynamic>> _stories = [];
   List<Map<String, dynamic>> _savedPosts = [];
 
-  /// Whether to show posts in grid view (true) or list view (false).
   bool _gridView = false;
 
   @override
@@ -666,8 +1280,6 @@ class _MyPostsTabState extends State<MyPostsTab>
 
     return Column(
       children: [
-        // Inner tab bar: Posts | Stories | Saved — with padding to prevent
-        // content from hiding behind it.
         Container(
           color: bg,
           padding: const EdgeInsets.only(top: 8),
@@ -696,7 +1308,6 @@ class _MyPostsTabState extends State<MyPostsTab>
                   ],
                 ),
               ),
-              // List / Grid toggle
               Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: GestureDetector(
@@ -705,7 +1316,7 @@ class _MyPostsTabState extends State<MyPostsTab>
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: AppColors.card,
+                      color: isDark ? AppColors.card : AppColorsLight.card,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: border),
                     ),
@@ -720,26 +1331,18 @@ class _MyPostsTabState extends State<MyPostsTab>
             ],
           ),
         ),
-
-        // Inner tab content — with explicit padding-top so cards
-        // never overlap with the tab bar or its indicator underline.
         Expanded(
           child: TabBarView(
             controller: _innerTabController,
             children: [
-              // ── POSTS (no extra padding — no overlap issue) ──
               _loadingPosts
                   ? const Center(child: CircularProgressIndicator())
                   : _gridView
                       ? _buildPostGrid(_myPosts)
                       : _buildPostList(_myPosts),
-
-              // ── STORIES (no extra padding — no overlap issue) ──
               _loadingStories
                   ? const Center(child: CircularProgressIndicator())
                   : _buildStoryList(),
-
-              // ── SAVED (padding-top added to prevent cards hiding behind tab bar) ──
               _loadingSaved
                   ? const Center(child: CircularProgressIndicator())
                   : Padding(
@@ -755,7 +1358,6 @@ class _MyPostsTabState extends State<MyPostsTab>
     );
   }
 
-  /// List view of post cards.
   Widget _buildPostList(List<Map<String, dynamic>> posts) {
     if (posts.isEmpty) {
       return _buildEmptyState('No posts yet');
@@ -767,7 +1369,6 @@ class _MyPostsTabState extends State<MyPostsTab>
     );
   }
 
-  /// Grid view of post cards (2 columns).
   Widget _buildPostGrid(List<Map<String, dynamic>> posts) {
     if (posts.isEmpty) {
       return _buildEmptyState('No posts yet');
@@ -785,7 +1386,6 @@ class _MyPostsTabState extends State<MyPostsTab>
     );
   }
 
-  /// Story cards (always linear/horizontal).
   Widget _buildStoryList() {
     if (_stories.isEmpty) {
       return _buildEmptyState('No stories yet');
@@ -802,22 +1402,17 @@ class _MyPostsTabState extends State<MyPostsTab>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.inbox_outlined,
-              size: 48, color: AppColors.text3),
+          const Icon(Icons.inbox_outlined, size: 48, color: AppColors.text3),
           const SizedBox(height: 12),
           Text(
             message,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.text2,
-            ),
+            style: const TextStyle(fontSize: 14, color: AppColors.text2),
           ),
         ],
       ),
     );
   }
 
-  /// Post card — shared between list and grid modes.
   Widget _postCard(Map<String, dynamic> post, {bool compact = false}) {
     final author = post['author'] as Map<String, dynamic>? ?? {};
     final authorName = (author['displayName'] ?? 'User') as String;
@@ -847,7 +1442,6 @@ class _MyPostsTabState extends State<MyPostsTab>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Padding(
             padding: EdgeInsets.all(compact ? 8 : 12),
             child: Row(
@@ -898,8 +1492,6 @@ class _MyPostsTabState extends State<MyPostsTab>
               ],
             ),
           ),
-
-          // Media thumbnail
           if (hasImage)
             Container(
               height: compact ? 100 : 140,
@@ -908,16 +1500,13 @@ class _MyPostsTabState extends State<MyPostsTab>
                 color: AppColors.border2.withValues(alpha: 0.2),
                 image: DecorationImage(
                   image: NetworkImage(
-                    (media.first as Map<String, dynamic>)['url'] as String? ??
-                        '',
+                    (media.first as Map<String, dynamic>)['url'] as String? ?? '',
                   ),
                   fit: BoxFit.cover,
                   onError: (error, stackTrace) {},
                 ),
               ),
             ),
-
-          // Caption (shortened in compact mode)
           if (caption.isNotEmpty)
             Padding(
               padding: EdgeInsets.fromLTRB(
@@ -937,8 +1526,6 @@ class _MyPostsTabState extends State<MyPostsTab>
                 ),
               ),
             ),
-
-          // Action bar
           Padding(
             padding: EdgeInsets.all(compact ? 8 : 10),
             child: Row(
@@ -950,8 +1537,7 @@ class _MyPostsTabState extends State<MyPostsTab>
                     compact: compact),
                 const Spacer(),
                 _actionItem(Icons.bookmark_border, '',
-                    compact: compact,
-                    color: AppColors.text3),
+                    compact: compact, color: AppColors.text3),
               ],
             ),
           ),
@@ -959,14 +1545,12 @@ class _MyPostsTabState extends State<MyPostsTab>
       ),
     );
 
-    // In non-compact list mode, wrap in a GestureDetector for navigation
     if (!compact) {
       return GestureDetector(
         onTap: () {
           final postId = post['id'] as String? ?? '';
           if (postId.isNotEmpty) {
-            Navigator.pushNamed(context, '/post-detail',
-                arguments: postId);
+            Navigator.pushNamed(context, '/post-detail', arguments: postId);
           }
         },
         child: card,
@@ -975,7 +1559,6 @@ class _MyPostsTabState extends State<MyPostsTab>
     return card;
   }
 
-  /// Simple story card — linear list style.
   Widget _storyCard(Map<String, dynamic> story) {
     final author = story['author'] as Map<String, dynamic>? ?? {};
     final authorName = (author['displayName'] ?? 'User') as String;
@@ -994,23 +1577,16 @@ class _MyPostsTabState extends State<MyPostsTab>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Media
           if (mediaUrl.isNotEmpty)
             ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Container(
-                height: 180,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Image.network(
+                mediaUrl,
+                height: 160,
                 width: double.infinity,
-                color: AppColors.border2.withValues(alpha: 0.3),
-                child: Image.network(
-                  mediaUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const Center(
-                    child: Icon(Icons.broken_image,
-                        size: 40, color: AppColors.text3),
-                  ),
-                ),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Container(height: 160, color: AppColors.border2),
               ),
             ),
           Padding(
@@ -1018,11 +1594,11 @@ class _MyPostsTabState extends State<MyPostsTab>
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
                     child: Text(
@@ -1030,34 +1606,26 @@ class _MyPostsTabState extends State<MyPostsTab>
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 12,
                         fontFamily: 'Space Grotesk',
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        authorName,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.text,
-                        ),
-                      ),
-                      Text(
-                        timeAgo.isNotEmpty ? '$timeAgo · $viewCount views' : '',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.text3,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    authorName,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
                   ),
+                ),
+                Text(
+                  timeAgo,
+                  style: const TextStyle(fontSize: 10, color: AppColors.text3),
                 ),
               ],
             ),
@@ -1067,24 +1635,23 @@ class _MyPostsTabState extends State<MyPostsTab>
     );
   }
 
-  /// Action item with icon + count (like, comment, bookmark).
-  Widget _actionItem(IconData icon, String label,
-      {Color? color, bool compact = false}) {
+  Widget _actionItem(IconData icon, String count,
+      {bool compact = false, Color? color}) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           icon,
           size: compact ? 14 : 16,
-          color: color ?? AppColors.text3,
+          color: color ?? AppColors.text2,
         ),
-        if (label.isNotEmpty) ...[
+        if (count.isNotEmpty) ...[
           const SizedBox(width: 4),
           Text(
-            label,
+            count,
             style: TextStyle(
               fontSize: compact ? 10 : 11,
-              color: color ?? AppColors.text3,
+              color: color ?? AppColors.text2,
             ),
           ),
         ],
