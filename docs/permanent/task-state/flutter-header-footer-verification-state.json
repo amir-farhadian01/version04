@@ -1,0 +1,43 @@
+{
+  "sourceFile": "/home/amir/version04/docs/permanent/flutter-header-footer-verification.md",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Clean hung terminals and kill stale processes\n\nKill all hung terminal processes, clear background jobs, free up ports 7357, 5173, 8080, 9090. Use `pkill -f` and `kill %N` to clean up.\n\n---",
+      "content": "## TASK 1: Clean hung terminals and kill stale processes\n\nKill all hung terminal processes, clear background jobs, free up ports 7357, 5173, 8080, 9090. Use `pkill -f` and `kill %N` to clean up.\n\n---",
+      "status": "in_progress",
+      "startedAt": "2026-06-02T23:18:07.203Z"
+    },
+    {
+      "id": 2,
+      "title": "Start Flutter web server on port 7357\n\nRun `cd /home/amir/version04/flutter_project && flutter run -d web-server --web-port 7357` in background. Wait for it to start and verify with curl http://localhost:7357 returns 200.\n\n---",
+      "content": "## TASK 2: Start Flutter web server on port 7357\n\nRun `cd /home/amir/version04/flutter_project && flutter run -d web-server --web-port 7357` in background. Wait for it to start and verify with curl http://localhost:7357 returns 200.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 3,
+      "title": "Test Flutter /order/new page with Playwright\n\nUse Playwright MCP to navigate to http://localhost:7357/#/order/new. Take screenshot. Verify header shows 'New Order' title and back button. Verify footer/back button exists. Take screenshot for evidence.\n\n---",
+      "content": "## TASK 3: Test Flutter /order/new page with Playwright\n\nUse Playwright MCP to navigate to http://localhost:7357/#/order/new. Take screenshot. Verify header shows 'New Order' title and back button. Verify footer/back button exists. Take screenshot for evidence.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 4,
+      "title": "Test Flutter /auth page with Playwright\n\nUse Playwright MCP to navigate to http://localhost:7357/#/auth. Take screenshot. Verify header shows 'Sign In' title and back button.\n\n---",
+      "content": "## TASK 4: Test Flutter /auth page with Playwright\n\nUse Playwright MCP to navigate to http://localhost:7357/#/auth. Take screenshot. Verify header shows 'Sign In' title and back button.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 5,
+      "title": "Test Flutter /home page with Playwright\n\nUse Playwright MCP to navigate to http://localhost:7357/#/home. Take screenshot. Verify BottomNav is visible with Home/Explorer/Activity tabs.\n\n---",
+      "content": "## TASK 5: Test Flutter /home page with Playwright\n\nUse Playwright MCP to navigate to http://localhost:7357/#/home. Take screenshot. Verify BottomNav is visible with Home/Explorer/Activity tabs.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 6,
+      "title": "Verify all screenshots and report\n\nTake all screenshots, verify header/footer presence in each, report results.\n\n---",
+      "content": "## TASK 6: Verify all screenshots and report\n\nTake all screenshots, verify header/footer presence in each, report results.\n\n---",
+      "status": "pending"
+    }
+  ],
+  "lastUpdated": "2026-06-02T23:18:07.203Z"
+}

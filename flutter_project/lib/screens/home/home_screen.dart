@@ -743,7 +743,7 @@ class _MyPostsTabState extends State<MyPostsTab>
               _loadingSaved
                   ? const Center(child: CircularProgressIndicator())
                   : Padding(
-                      padding: const EdgeInsets.only(top: 20),
+                      padding: const EdgeInsets.only(top: 24),
                       child: _gridView
                           ? _buildPostGrid(_savedPosts)
                           : _buildPostList(_savedPosts),
@@ -965,7 +965,7 @@ class _MyPostsTabState extends State<MyPostsTab>
         onTap: () {
           final postId = post['id'] as String? ?? '';
           if (postId.isNotEmpty) {
-            Navigator.pushNamed(context, '/explorer/comments',
+            Navigator.pushNamed(context, '/post-detail',
                 arguments: postId);
           }
         },

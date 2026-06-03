@@ -1,0 +1,175 @@
+import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
+import 'bottom_nav.dart';
+import 'responsive_scaffold.dart';
+
+/// FlutterAppScaffold — Consistent app wrapper for ALL screens.
+///
+/// Provides:
+/// - ResponsiveScaffold outer shell (phone-card on desktop, full-width on mobile)
+/// - Optional PageHeader (AppBar with back button + title)
+/// - Scrollable child content
+/// - Optional BottomNav (floating, only shown on main tabs)
+///
+/// This replaces ad-hoc AppBars scattered across individual screens,
+/// ensuring every page has consistent chrome.
+class FlutterAppScaffold extends StatelessWidget {
+  final Widget child;
+  final String? title;
+  final bool showBack;
+  final VoidCallback? onBack;
+  final bool showBottomNav;
+  final String? currentTab;
+  final bool showBizTab;
+  final bool expandOnDesktop;
+  final List<Widget>? actions;
+  final Widget? bottomWidget;
+
+  const FlutterAppScaffold({
+    super.key,
+    required this.child,
+    this.title,
+    this.showBack = false,
+    this.onBack,
+    this.showBottomNav = false,
+    this.currentTab,
+    this.showBizTab = false,
+    this.expandOnDesktop = false,
+    this.actions,
+    this.bottomWidget,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.bg : AppColorsLight.bg;
+    final borderColor = isDark ? AppColors.border : AppColorsLight.border;
+
+    Widget inner = Column(
+      children: [
+        // ── Header ──
+        if (title != null || showBack || (actions != null && actions.isNotEmpty))
+          PreferredSize(
+            preferredSize: const Size.fromHeight(kToolbarHeight + 1),
+            child: Container(
+              decoration: BoxDecoration(
+                color: bgColor.withValues(alpha: 0.9),
+                border: Border(
+                  bottom: BorderSide(color: borderColor.withValues(alpha: 0.3), width: 1),
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: SizedBox(
+                  height: kToolbarHeight,
+                  child: Row(
+                    children: [
+                      // Back button
+                      if (showBack)
+                        SizedBox(
+                          width: 48,
+                          child: IconButton(
+                            icon: const Icon(Icons.arrow_back, size: 22),
+                            onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+                            tooltip: 'Back',
+                          ),
+                        )
+                      else
+                        const SizedBox(width: 48),
+
+                      // Title
+                      Expanded(
+                        child: title != null
+                            ? Text(
+                                title!,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? AppColors.text : AppColorsLight.text,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+
+                      // Actions / spacer
+                      if (actions != null && actions.isNotEmpty)
+                        SizedBox(
+                          width: 48 * actions!.length.clamp(0, 2).toDouble(),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: actions!,
+                          ),
+                        )
+                      else
+                        const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // ── Content ──
+        Expanded(child: child),
+
+        // ── Footer or Bottom Widget ──
+        if (bottomWidget != null)
+          bottomWidget!,
+      ],
+    );
+
+    // If bottom nav is enabled, wrap in a Stack
+    if (showBottomNav) {
+      final tabs = <BottomNavItem>[
+        BottomNavItem(
+          id: 'home',
+          label: 'Home',
+          icon: Icons.home_rounded,
+          active: currentTab == 'home',
+        ),
+        BottomNavItem(
+          id: 'explorer',
+          label: 'Explorer',
+          icon: Icons.explore_rounded,
+          active: currentTab == 'explorer',
+        ),
+        BottomNavItem(
+          id: 'activity',
+          label: 'Activity',
+          icon: Icons.notifications_none_rounded,
+          active: currentTab == 'activity',
+        ),
+        if (showBizTab)
+          BottomNavItem(
+            id: 'biz',
+            label: 'Business',
+            icon: Icons.business_rounded,
+            active: currentTab == 'biz',
+            isBiz: true,
+          ),
+      ];
+
+      inner = Stack(
+        children: [
+          inner,
+          BottomNavWrapper(
+            child: BottomNav(
+              items: tabs,
+              showBizTab: showBizTab,
+              onItemTap: (id) {
+                // Navigation is handled by the parent screen
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ResponsiveScaffold(
+      expandOnDesktop: expandOnDesktop,
+      child: inner,
+    );
+  }
+}

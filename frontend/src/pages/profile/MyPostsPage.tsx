@@ -42,7 +42,7 @@ export default function MyPostsPage() {
   }
 
   const handlePostClick = (post: FeedPost) => {
-    navigate(`/explorer/comments`, { state: { postId: post.id } })
+    navigate(`/post/${post.id}`)
   }
 
   const getMediaThumb = (post: FeedPost): string | null => {
@@ -165,16 +165,24 @@ export default function MyPostsPage() {
           </div>
         ))}
       </div>
-      <div className="flex-1 overflow-auto pt-10">
-        {activeTab === 'posts' && renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
+      <div className="flex-1 overflow-auto">
+        {activeTab === 'posts' && (
+          <div className="pt-10">
+            {renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
+          </div>
+        )}
         {activeTab === 'stories' && (
-          <div className="px-[14px] py-10 text-center">
+          <div className="pt-10 px-[14px] py-10 text-center">
             <div className="text-[32px] mb-2">📸</div>
             <div className="text-sm text-nh-text-secondary mb-1">Your stories</div>
             <div className="text-xs text-nh-text-muted">Active stories appear here. Expired stories will be greyed out.</div>
           </div>
         )}
-        {activeTab === 'saved' && renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}
+        {activeTab === 'saved' && (
+          <div className="pt-20">
+            {renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}
+          </div>
+        )}
       </div>
       <div className="h-20" />
       <BottomNav

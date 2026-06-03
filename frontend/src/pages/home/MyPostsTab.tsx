@@ -59,7 +59,7 @@ export default function MyPostsTab() {
   }
 
   const handlePostClick = (post: FeedPost) => {
-    navigate(`/explorer/comments`, { state: { postId: post.id } })
+    navigate(`/post/${post.id}`)
   }
 
   const renderPostList = (
@@ -214,12 +214,15 @@ export default function MyPostsTab() {
         )}
       </div>
 
-      {/* Tab Content — pt-10 gives generous clearance from sticky tab bar */}
-      <div className="pt-10">
-        {activeTab === 'posts' &&
-          renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
+      {/* Tab Content — per-tab padding to prevent overlap with sticky tab bar */}
+      <div>
+        {activeTab === 'posts' && (
+          <div className="pt-10">
+            {renderPostList(myPosts, loadingMy, !!errorMy, "You haven't created any posts yet", true)}
+          </div>
+        )}
         {activeTab === 'stories' && (
-          <div className="px-4 py-10 text-center">
+          <div className="pt-10 px-4 py-10 text-center">
             <div className="text-3xl mb-2">📸</div>
             <p className="text-sm text-nh-text-secondary mb-1">Your stories</p>
             <p className="text-[11px] text-nh-text-muted">
@@ -227,8 +230,11 @@ export default function MyPostsTab() {
             </p>
           </div>
         )}
-        {activeTab === 'saved' &&
-          renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}
+        {activeTab === 'saved' && (
+          <div className="pt-20">
+            {renderPostList(savedPosts, loadingSaved, !!errorSaved, 'No saved posts yet', false)}
+          </div>
+        )}
       </div>
     </div>
   )

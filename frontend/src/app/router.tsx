@@ -31,6 +31,7 @@ import SocialMediaManager from '../pages/business/SocialMediaManager'
 import MyPostsPage from '../pages/profile/MyPostsPage'
 import UpgradeToBusiness from '../pages/profile/UpgradeToBusiness'
 import NewsArticlePage from '../pages/home/NewsArticlePage'
+import PostDetailPage from '../pages/social/PostDetailPage'
 import MyServicesPage from '../pages/business/MyServicesPage'
 import MyPackagesPage from '../pages/business/MyPackagesPage'
 import InventoryPage from '../pages/business/InventoryPage'
@@ -65,6 +66,8 @@ export const router = createBrowserRouter([
       { path: '/explorer', element: <Explore /> },
       { path: '/explorer/general', element: <Explore /> },
       { path: '/explorer/business', element: <Explore /> },
+      // Post detail — from saved posts, feed, etc.
+      { path: '/post/:id', element: <PostDetailPage /> },
     ],
   },
   // Standalone routes — no AppShell (no bottom nav, no avatar header)
