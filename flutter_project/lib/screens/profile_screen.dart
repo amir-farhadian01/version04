@@ -38,13 +38,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  /// Cached opacity values for frequently used colors
-  static final _purple015 = AppColors.purple.withValues(alpha: 0.15);
-  static final _primary025 = AppColors.primary.withValues(alpha: 0.25);
-  static final _red005 = AppColors.red.withValues(alpha: 0.05);
-  static final _border04 = AppColors.border.withValues(alpha: 0.4);
-  static final _border05 = AppColors.border.withValues(alpha: 0.5);
-
   // ─── Edit Profile controllers ──────────────────────────────────────────
   final _displayNameController = TextEditingController();
   final _emailController = TextEditingController();
