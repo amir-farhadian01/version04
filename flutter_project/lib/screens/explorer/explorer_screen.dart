@@ -30,6 +30,8 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   int _currentPage = 1;
   List<Map<String, dynamic>> _posts = [];
   List<Map<String, dynamic>> _stories = [];
+  List<Map<String, dynamic>> _businesses = [];
+  bool _loadingBiz = true;
 
   String? _errorMessage;
 
@@ -101,6 +103,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       });
       // Batch-load follow statuses after feed loads
       _loadFollowStatuses(_posts);
+      _loadBusinesses();
       // Populate like/save state from feed data
       for (final p in _posts) {
         final pid = p['id'] as String? ?? '';
@@ -171,6 +174,41 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
   Future<void> _onRefresh() async {
     await _loadFeed();
     await _loadStories();
+    await _loadBusinesses();
+  }
+
+  Future<void> _loadBusinesses() async {
+    setState(() => _loadingBiz = true);
+    try {
+      final seenIds = <String>{};
+      final bizList = <Map<String, dynamic>>[];
+      for (final post in _posts) {
+        final author = post['author'] as Map<String, dynamic>? ?? {};
+        final authorId = author['id'] as String? ?? '';
+        final isBiz = (post['isBusinessPost'] as bool?) ?? false;
+        if (authorId.isNotEmpty && isBiz && !seenIds.contains(authorId)) {
+          seenIds.add(authorId);
+          bizList.add({
+            'id': authorId,
+            'name': author['displayName'] ?? 'Business',
+            'avatarUrl': author['avatarUrl'],
+            'slug': author['slug'] ?? authorId,
+          });
+        }
+      }
+      _businesses = bizList;
+    } catch (_) {
+      _businesses = [];
+    }
+    setState(() => _loadingBiz = false);
+  }
+
+  /// Get filtered posts for the current tab
+  List<Map<String, dynamic>> get _filteredPosts {
+    if (_tabIndex == 1) {
+      return _posts.where((p) => (p['isBusinessPost'] as bool?) ?? false).toList();
+    }
+    return _posts;
   }
 
   /// Batch-check follow status for all visible post authors.
@@ -461,6 +499,129 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                   ),
           ),
 
+          // Business Hub header
+          if (_tabIndex == 1 && !_loadingBiz && _businesses.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.business, size: 16, color: AppColors.accent),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${_businesses.length} Businesses Near You',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.text,
+                      fontFamily: 'Space Grotesk',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          // Business cards (Business Hub tab)
+          if (_tabIndex == 1 && !_loadingBiz && _businesses.isNotEmpty)
+            SizedBox(
+              height: 130,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+                itemCount: _businesses.length,
+                itemBuilder: (ctx, i) {
+                  final biz = _businesses[i];
+                  final name = biz['name'] as String? ?? 'Business';
+                  final avatarUrl = biz['avatarUrl'] as String?;
+                  final slug = biz['slug'] as String? ?? biz['id'] as String? ?? '';
+                  return GestureDetector(
+                    onTap: () => Navigator.pushNamed(context, '/business', arguments: slug),
+                    child: Container(
+                      width: 140,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.accent.withValues(alpha: 0.15),
+                            ),
+                            child: avatarUrl != null
+                                ? ClipOval(
+                                    child: CachedNetworkImage(
+                                      imageUrl: avatarUrl,
+                                      fit: BoxFit.cover,
+                                      cacheManager: ImageCacheConfig.manager,
+                                      errorWidget: (_, __, ___) => Center(
+                                        child: Text(
+                                          name.characters.first.toUpperCase(),
+                                          style: const TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.accent,
+                                            fontFamily: 'Space Grotesk',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Center(
+                                    child: Text(
+                                      name.characters.first.toUpperCase(),
+                                      style: const TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.accent,
+                                        fontFamily: 'Space Grotesk',
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            name,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'View Profile',
+                            style: TextStyle(fontSize: 10, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          // Posts section label (Business Hub tab)
+          if (_tabIndex == 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.campaign, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Business Posts',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.text,
+                      fontFamily: 'Space Grotesk',
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // Posts feed with pull-to-refresh and infinite scroll
           Expanded(
             child: RefreshIndicator(
@@ -524,8 +685,10 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
       );
     }
 
+    final displayPosts = _filteredPosts;
+
     // Empty state
-    if (_posts.isEmpty) {
+    if (displayPosts.isEmpty) {
       return ListView(
         padding: EdgeInsets.zero,
         children: [
@@ -545,8 +708,10 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Be the first to create a post in your neighbourhood!',
+      Text(
+          _tabIndex == 1
+              ? 'No business posts yet. Follow businesses to see their posts here!'
+              : 'Be the first to create a post in your neighbourhood!',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: AppColors.text3),
                 ),
@@ -562,9 +727,9 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.zero,
-      itemCount: _posts.length + (_hasMore ? 1 : 0),
+      itemCount: displayPosts.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, index) {
-        if (index >= _posts.length) {
+        if (index >= displayPosts.length) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Center(
@@ -579,7 +744,7 @@ class _ExplorerScreenState extends State<ExplorerScreen> {
             ),
           );
         }
-        return _postCard(_posts[index]);
+        return _postCard(displayPosts[index]);
       },
     );
   }
