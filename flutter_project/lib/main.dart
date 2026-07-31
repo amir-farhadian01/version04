@@ -4,12 +4,11 @@ import 'theme/app_theme.dart';
 import 'providers/cache_provider.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/social_screen.dart';
 import 'screens/activity_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/business_profile_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/explorer/explorer_screen.dart';
+import 'features/feed/feed_screen.dart';
 import 'screens/home/home_screen.dart' as home_new;
 import 'screens/customer/dashboard_screen.dart';
 import 'screens/customer/orders_screen.dart';
@@ -52,12 +51,12 @@ class NeighborHubApp extends StatelessWidget {
       routes: {
         '/auth': (_) => const ResponsiveScaffold(child: AuthScreen()),
         '/home': (_) => const ResponsiveScaffold(child: HomeScreen()),
-        '/social': (_) => const ResponsiveScaffold(child: SocialScreen()),
+        '/social': (_) => const ResponsiveScaffold(child: FeedScreen()),
         '/activity': (_) => const ResponsiveScaffold(child: ActivityScreen()),
         '/profile': (_) => const ResponsiveScaffold(child: ProfileScreen()),
         '/biz-profile': (_) => const ResponsiveScaffold(child: BusinessProfileScreen()),
         '/dashboard': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: DashboardScreen()),
-        '/explorer': (_) => const ResponsiveScaffold(child: ExplorerScreen()),
+        '/explorer': (_) => const ResponsiveScaffold(child: FeedScreen()),
         '/new-home': (_) => const ResponsiveScaffold(child: home_new.FlutterHomeScreen()),
         '/services': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerDashboardScreen()),
         '/customer/orders': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerOrdersScreen()),
