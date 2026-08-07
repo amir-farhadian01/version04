@@ -331,6 +331,170 @@ router.post('/reset-password', authLimiter, async (req: Request, res: Response) 
   }
 });
 
+// ─── Apple Sign-In ────────────────────────────────────────────────────────────
+router.post('/apple', authLimiter, async (req: Request, res: Response) => {
+  const { identityToken, fullName } = req.body as {
+    identityToken?: string;
+    fullName?: { givenName?: string; familyName?: string };
+  };
+
+  if (!identityToken) {
+    return res.status(400).json({ error: 'identityToken is required', code: 'MISSING_IDENTITY_TOKEN' });
+  }
+
+  try {
+    // Decode the Apple identity token (base64url JWT)
+    const parts = identityToken.split('.');
+    if (parts.length !== 3) {
+      return res.status(400).json({ error: 'Invalid identity token format' });
+    }
+
+    const payloadStr = Buffer.from(parts[1]!, 'base64url').toString('utf-8');
+    const payload = JSON.parse(payloadStr) as {
+      sub: string;
+      email?: string;
+      email_verified?: string | boolean;
+      is_private_email?: string | boolean;
+      aud: string;
+      iss: string;
+      iat: number;
+      exp: number;
+    };
+
+    if (payload.iss !== 'https://appleid.apple.com') {
+      return res.status(401).json({ error: 'Invalid token issuer', code: 'INVALID_ISSUER' });
+    }
+    if (payload.exp && Date.now() > payload.exp * 1000) {
+      return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
+    }
+
+    const appleSub = payload.sub;
+    const appleEmail = payload.email;
+    const isPrivateEmail = payload.is_private_email === 'true' || payload.is_private_email === true;
+    const displayName = fullName
+      ? [fullName.givenName, fullName.familyName].filter(Boolean).join(' ')
+      : undefined;
+
+    // Find or create user
+    let user = await prisma.user.findFirst({ where: { appleId: appleSub } });
+
+    if (!user && appleEmail) {
+      user = await prisma.user.findUnique({ where: { email: appleEmail } });
+      if (user) {
+        await prisma.user.update({ where: { id: user.id }, data: { appleId: appleSub } });
+      }
+    }
+
+    if (!user) {
+      const email = appleEmail || `apple_${appleSub}@neighborly.local`;
+      const normalizedEmail = appleEmail ? normalizeEmail(appleEmail) : email;
+      const assignedRole = email === OWNER_EMAIL ? 'owner' : 'customer';
+      user = await prisma.user.create({
+        data: {
+          email,
+          normalizedEmail,
+          displayName: displayName || `User_${appleSub.slice(0, 8)}`,
+          appleId: appleSub,
+          role: assignedRole as any,
+          isVerified: email === OWNER_EMAIL || !isPrivateEmail,
+          registrationIp: getRequestIp(req) ?? null,
+        },
+      });
+    }
+
+    if (user.status === 'suspended') {
+      return res.status(403).json({ error: 'Account suspended', code: 'ACCOUNT_SUSPENDED' });
+    }
+
+    const tokens = generateTokenPair({
+      userId: user.id, email: user.email, role: user.role,
+      username: user.username ?? undefined,
+    });
+    await prisma.user.update({ where: { id: user.id }, data: { refreshToken: tokens.refreshToken } });
+    await touchUserSessionOnAuth(req, user.id);
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true, secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({
+      accessToken: tokens.accessToken,
+      user: {
+        id: user.id, email: user.email, displayName: user.displayName,
+        username: user.username, role: user.role, companyId: user.companyId,
+        avatarUrl: user.avatarUrl,
+        onboardingCompleted: !!user.onboardingCompletedAt,
+      },
+      needsOnboarding: !user.onboardingCompletedAt,
+    });
+  } catch (err: any) {
+    console.error('Apple auth error:', err.message);
+    res.status(401).json({ error: 'Apple authentication failed', code: 'APPLE_AUTH_FAILED' });
+  }
+});
+
+// ─── Onboarding Completion ────────────────────────────────────────────────────
+router.post('/onboarding', authenticate, async (req: AuthRequest, res: Response) => {
+  const { interests, latitude, longitude, address, avatarUrl } = req.body as {
+    interests?: string[];
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+    avatarUrl?: string;
+  };
+
+  if (!interests || !Array.isArray(interests) || interests.length < 3) {
+    return res.status(400).json({ error: 'Please select at least 3 interests', code: 'MIN_INTERESTS' });
+  }
+
+  try {
+    const updateData: Record<string, unknown> = {
+      onboardingInterests: interests,
+      onboardingCompletedAt: new Date(),
+    };
+    if (latitude !== undefined && longitude !== undefined) {
+      updateData.locationLat = latitude;
+      updateData.locationLng = longitude;
+    }
+    if (address) {
+      updateData.address = address;
+      updateData.location = address;
+    }
+    if (avatarUrl) updateData.avatarUrl = avatarUrl;
+
+    const user = await prisma.user.update({
+      where: { id: req.user!.userId },
+      data: updateData,
+      select: {
+        id: true, email: true, displayName: true, username: true,
+        role: true, companyId: true, avatarUrl: true,
+        onboardingCompletedAt: true, onboardingInterests: true, location: true,
+      },
+    });
+
+    // Create default address if provided
+    if (address && latitude !== undefined && longitude !== undefined) {
+      await prisma.userAddress.upsert({
+        where: { id: `${req.user!.userId}_home` },
+        create: {
+          id: `${req.user!.userId}_home`,
+          userId: req.user!.userId,
+          label: 'home', street: address, city: '', province: '', postalCode: '', country: 'CA',
+          latitude, longitude, categoryTags: interests, isDefault: true,
+        },
+        update: { street: address, latitude, longitude, categoryTags: interests },
+      });
+    }
+
+    await publish('user.onboarding.completed', { userId: user.id, interests });
+    res.json({ data: user });
+  } catch (err: any) {
+    console.error('Onboarding error:', err);
+    res.status(500).json({ error: err.message || 'Onboarding failed', code: 'ONBOARDING_FAILED' });
+  }
+});
+
 // ─── Google OAuth ─────────────────────────────────────────────────────────────
 // Accepts either an id_token (from Google One Tap) or an access_token (from OAuth flow)
 router.post('/google', authLimiter, async (req: Request, res: Response) => {
@@ -343,7 +507,6 @@ router.post('/google', authLimiter, async (req: Request, res: Response) => {
 
   try {
     if (idToken) {
-      // Verify Google ID token
       const ticket = await googleClient.verifyIdToken({
         idToken,
         audience: process.env.GOOGLE_CLIENT_ID,
@@ -355,7 +518,6 @@ router.post('/google', authLimiter, async (req: Request, res: Response) => {
       googleName = payload.name;
       googlePicture = payload.picture;
     } else if (accessToken) {
-      // Use access token to fetch user info from Google
       const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -365,7 +527,6 @@ router.post('/google', authLimiter, async (req: Request, res: Response) => {
       googleName = userInfo.name || directName;
       googlePicture = userInfo.picture || picture;
     } else if (directEmail) {
-      // Fallback: trust provided email (dev/testing only)
       googleEmail = directEmail;
       googleName = directName;
       googlePicture = picture;
@@ -391,7 +552,6 @@ router.post('/google', authLimiter, async (req: Request, res: Response) => {
           registrationIp: getRequestIp(req) ?? null,
         },
       });
-
     } else if (googleSub && !user.googleId) {
       await prisma.user.update({ where: { id: user.id }, data: { googleId: googleSub } });
       user = (await prisma.user.findUnique({ where: { id: user.id } }))!;
@@ -407,7 +567,12 @@ router.post('/google', authLimiter, async (req: Request, res: Response) => {
 
     res.json({
       accessToken: tokens.accessToken,
-      user: { id: user.id, email: user.email, displayName: user.displayName, role: user.role, companyId: user.companyId, avatarUrl: user.avatarUrl },
+      user: {
+        id: user.id, email: user.email, displayName: user.displayName,
+        role: user.role, companyId: user.companyId, avatarUrl: user.avatarUrl,
+        onboardingCompleted: !!user.onboardingCompletedAt,
+      },
+      needsOnboarding: !user.onboardingCompletedAt,
     });
   } catch (err: any) {
     console.error('Google auth error:', err.message);

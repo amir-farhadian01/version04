@@ -235,6 +235,12 @@ model User {
   avatarUrl           String?
   /// Google `sub` when the account is linked to Google (OAuth).
   googleId            String?     @unique
+  /// Apple `sub` when the account is linked to Apple (Sign in with Apple).
+  appleId             String?     @unique
+  /// Set to now() when the user completes the onboarding wizard.
+  onboardingCompletedAt DateTime?
+  /// Category IDs the user selected during onboarding (for feed algorithm).
+  onboardingInterests String[]
   /// Client-driven settings: privacy, device whitelist, safety flags (see app JSON contract).
   accountPreferences  Json?
   orderPriorities     Json?

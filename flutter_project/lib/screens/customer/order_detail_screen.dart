@@ -179,6 +179,30 @@ class _CustomerOrderDetailScreenState
           if (o['providerEmail'] != null)
             _contactTile(
                 Icons.email, o['providerEmail'].toString(), 'Email'),
+          // Reorder button for completed orders
+          if ((o['status'] as String?)?.toLowerCase() == 'completed') ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/order/new', arguments: {
+                    'originalOrderId': widget.orderId,
+                    'prefill': true,
+                  });
+                },
+                icon: const Icon(Icons.replay, size: 18),
+                label: const Text('Reorder'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.secondary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -373,6 +373,12 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
             ),
             const SizedBox(height: 24),
 
+            // Commission breakdown (visible when price is known)
+            if (_selectedServiceId != null) ...[
+              const SizedBox(height: 16),
+              _buildCommissionBreakdown(),
+            ],
+
             // Submit button
             SizedBox(
               width: double.infinity,
@@ -432,6 +438,95 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
           ],
         ),
       );
+  }
+
+  // ── Commission Breakdown ──
+  static const double _commissionRate = 0.125; // 12.5% platform commission
+
+  Widget _buildCommissionBreakdown() {
+    // Get price from selected service or prefill
+    int? priceInCents;
+    if (_prefillData?['price'] != null) {
+      priceInCents = (_prefillData!['price'] as num).toInt();
+    } else if (_selectedServiceId != null) {
+      final svc = _services.cast<Map<String, dynamic>?>().firstWhere(
+        (s) => s!['id'] == _selectedServiceId,
+        orElse: () => null,
+      );
+      priceInCents = svc?['price'] as int?;
+    }
+    if (priceInCents == null) return const SizedBox.shrink();
+
+    final price = priceInCents / 100.0;
+    final commission = price * _commissionRate;
+    final providerReceives = price - commission;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.receipt_long_outlined, size: 18, color: AppColors.text2),
+              SizedBox(width: 8),
+              Text(
+                'Payment Breakdown',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _commissionRow('Service price', '\$${price.toStringAsFixed(2)}', AppColors.text, false),
+          _commissionRow('Platform fee (${(_commissionRate * 100).toStringAsFixed(1)}%)',
+              '-\$${commission.toStringAsFixed(2)}', AppColors.text3, false),
+          const Divider(color: AppColors.border, height: 20),
+          _commissionRow('You pay', '\$${price.toStringAsFixed(2)}', AppColors.primary, true),
+          const SizedBox(height: 4),
+          Text(
+            'Provider receives \$${providerReceives.toStringAsFixed(2)} after platform fee',
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.text3,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _commissionRow(String label, String value, Color valueColor, bool bold) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: AppColors.text2),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: bold ? 15 : 13,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              color: valueColor,
+              fontFamily: bold ? 'Space Grotesk' : null,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPrefillCard(Color card, Color border) {

@@ -1,12 +1,15 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_bar.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 
-/// Auth screen with Login and Sign Up tabs.
-/// Login: username/email/phone + password
-/// Sign Up: email or phone + password + displayName
+/// Auth screen with Instagram-style design:
+/// - Top: Logo + welcome text
+/// - Middle: Google & Apple Sign-In buttons
+/// - Divider: "or"
+/// - Bottom: Email login/signup tabs (secondary)
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -28,11 +31,15 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   final _signupDisplayNameController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isOAuthLoading = false;
   String? _errorMessage;
   bool _obscureLoginPassword = true;
   bool _obscureSignupPassword = true;
 
   final AuthService _authService = AuthService();
+
+  // Only show Apple button on iOS/macOS
+  bool get _showAppleButton => Platform.isIOS || Platform.isMacOS;
 
   @override
   void initState() {
@@ -59,7 +66,101 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  // ── Login ──
+  // ── Google Sign-In ──
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isOAuthLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // On web/mobile, use google_sign_in package for native flow
+      // For now, this is a placeholder — the actual Google Sign-In flow
+      // will be wired when google_sign_in package is configured with
+      // client ID in native projects (ios/Runner/Info.plist, android/app/build.gradle)
+      //
+      // In development mode with Flutter web, users use email/password
+      // until native OAuth is configured.
+      //
+      // When configured, the flow would be:
+      //   1. GoogleSignIn _googleSignIn = GoogleSignIn();
+      //   2. GoogleSignInAccount? account = await _googleSignIn.signIn();
+      //   3. GoogleSignInAuthentication auth = await account!.authentication;
+      //   4. result = await _authService.loginWithGoogle(auth.idToken!);
+      //
+      // For now, we show the buttons but they'll need native setup.
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Google Sign-In requires native project configuration.\nPlease use email login for now.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Google Sign-In failed. Please try email login.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isOAuthLoading = false);
+      }
+    }
+  }
+
+  // ── Apple Sign-In ──
+  Future<void> _handleAppleSignIn() async {
+    setState(() {
+      _isOAuthLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Apple Sign-In requires native project configuration:
+      // - Xcode: Add "Sign in with Apple" capability
+      // - The sign_in_with_apple package handles the native flow
+      //
+      // When configured, the flow would be:
+      //   1. AuthorizationCredentialAppleID credential = await SignInWithApple.getAppleIDCredential(...)
+      //   2. result = await _authService.loginWithApple(
+      //        credential.identityToken!,
+      //        fullName: { 'givenName': credential.givenName, 'familyName': credential.familyName },
+      //      );
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Apple Sign-In requires native project configuration.\nPlease use email login for now.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Apple Sign-In failed. Please try email login.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isOAuthLoading = false);
+      }
+    }
+  }
+
+  // ── Navigate after successful login (checks onboarding status) ──
+  void _navigateAfterLogin(Map<String, dynamic> result) {
+    final user = result['user'] as Map<String, dynamic>?;
+    final needsOnboarding = result['needsOnboarding'] == true;
+    final onboardingCompleted = user?['onboardingCompletedAt'] != null;
+
+    if (needsOnboarding || (!onboardingCompleted && user != null)) {
+      Navigator.pushReplacementNamed(context, '/onboarding');
+    } else {
+      Navigator.pushReplacementNamed(context, '/home');
+    }
+  }
+
+  // ── Email Login ──
   Future<void> _handleLogin() async {
     final login = _loginController.text.trim();
     final password = _loginPasswordController.text;
@@ -75,9 +176,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     });
 
     try {
-      await _authService.login(login, password);
+      final result = await _authService.login(login, password);
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
+      _navigateAfterLogin(result);
     } on ApiException catch (e) {
       setState(() {
         _errorMessage = e.message;
@@ -98,7 +199,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     final password = _signupPasswordController.text;
     final displayName = _signupDisplayNameController.text.trim();
 
-    // Validate: at least email or phone must be provided
     if (email.isEmpty && phone.isEmpty) {
       setState(() => _errorMessage = 'Please enter an email or phone number');
       return;
@@ -122,14 +222,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     });
 
     try {
-      await _authService.register(
+      final result = await _authService.register(
         email: email.isNotEmpty ? email : '$displayName@neighborly.local',
         password: password,
         displayName: displayName,
         phone: phone.isNotEmpty ? phone : null,
       );
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
+      _navigateAfterLogin(result);
     } on ApiException catch (e) {
       setState(() {
         _errorMessage = e.message;
@@ -158,7 +258,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Logo
+                // ── Logo + Welcome (same as before) ──
                 Container(
                   width: 60,
                   height: 60,
@@ -183,9 +283,133 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   'Discover local businesses, events, and connect with your neighborhood community.',
                   style: TextStyle(fontSize: 14, color: AppColors.text2, height: 1.6),
                 ),
+                const SizedBox(height: 28),
+
+                // ── Google Sign-In Button ──
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton(
+                    onPressed: _isOAuthLoading ? null : _handleGoogleSignIn,
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black87,
+                      side: const BorderSide(color: Color(0xFFDADCE0)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isOAuthLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Google 'G' logo
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: const BoxDecoration(
+                                  image: DecorationImage(
+                                    image: AssetImage('assets/icons/google_g.png'),
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                // Fallback: colored 'G' text
+                                child: const Center(
+                                  child: Text(
+                                    'G',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF4285F4),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Continue with Google',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+
+                // ── Apple Sign-In Button (iOS/macOS only) ──
+                if (_showAppleButton) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _isOAuthLoading ? null : _handleAppleSignIn,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isOAuthLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.apple, size: 22, color: Colors.white),
+                                const SizedBox(width: 10),
+                                const Text(
+                                  'Continue with Apple',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+
+                // ── "or" divider ──
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    const Expanded(child: Divider(color: AppColors.border2, thickness: 1)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'or',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.text3,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: Divider(color: AppColors.border2, thickness: 1)),
+                  ],
+                ),
                 const SizedBox(height: 24),
 
-                // Tab bar
+                // ── Tab bar for email login/signup (secondary) ──
                 Container(
                   decoration: BoxDecoration(
                     color: AppColors.card,
@@ -217,7 +441,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 ),
                 const SizedBox(height: 24),
 
-                // Tab content
+                // ── Tab content ──
                 SizedBox(
                   height: 420,
                   child: TabBarView(
@@ -229,7 +453,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   ),
                 ),
 
-                // Error message
+                // ── Error message ──
                 if (_errorMessage != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -461,7 +685,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               onSubmitted: onSubmitted,
             ),
           ),
-          ?suffixIcon,
+          if (suffixIcon != null) suffixIcon,
         ],
       ),
     );

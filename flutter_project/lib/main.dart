@@ -21,6 +21,8 @@ import 'screens/profile/upgrade_to_business_screen.dart';
 import 'screens/explorer/story_screen.dart';
 import 'screens/explorer/comments_screen.dart';
 import 'screens/post_detail_screen.dart';
+import 'screens/onboarding/onboarding_screen.dart';
+import 'screens/post/create_post_screen.dart';
 import 'widgets/responsive_scaffold.dart';
 
 void main() {
@@ -62,7 +64,9 @@ class NeighborHubApp extends StatelessWidget {
         '/customer/orders': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerOrdersScreen()),
         '/customer/messages': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerMessagesScreen()),
         '/profile/upgrade': (_) => const ResponsiveScaffold(child: UpgradeToBusinessScreen()),
-        '/order/new': (_) => const ResponsiveScaffold(child: NewOrderScreen()),
+              '/order/new': (_) => const ResponsiveScaffold(child: NewOrderScreen()),
+        '/onboarding': (_) => const ResponsiveScaffold(child: OnboardingScreen()),
+        '/post/create': (_) => const ResponsiveScaffold(child: CreatePostScreen()),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/customer/order-detail') {

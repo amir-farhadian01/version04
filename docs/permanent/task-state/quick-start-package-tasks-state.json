@@ -1,0 +1,20 @@
+{
+  "sourceFile": "/home/amir/version04/docs/permanent/quick-start-package-tasks.md",
+  "tasks": [
+    {"id": 1, "title": "Backend: Add Google & Apple OAuth endpoints", "status": "completed", "completedAt": "2026-08-06T06:17:35.143Z"},
+    {"id": 2, "title": "Backend: Add onboarding wizard endpoints", "status": "completed", "completedAt": "2026-08-07T03:10:00.000Z"},
+    {"id": 3, "title": "Flutter: Add Google & Apple Sign-In buttons", "status": "completed", "completedAt": "2026-08-07T03:11:00.000Z"},
+    {"id": 4, "title": "Flutter: Build Onboarding Wizard (3 screens)", "status": "completed", "completedAt": "2026-08-07T03:14:00.000Z"},
+    {"id": 5, "title": "Flutter: Polish Stories Row (Instagram-level)", "status": "completed", "completedAt": "2026-08-07T03:17:00.000Z"},
+    {"id": 6, "title": "Flutter: Polish Post Card (double-tap like, video, comments)", "status": "completed", "completedAt": "2026-08-07T03:18:00.000Z"},
+    {"id": 7, "title": "Flutter: Create Post Flow", "status": "completed", "completedAt": "2026-08-07T03:19:00.000Z"},
+    {"id": 8, "title": "Flutter: Post → Order Bridge (Book Now CTA)", "status": "completed", "completedAt": "2026-08-07T03:19:00.000Z"},
+    {"id": 9, "title": "Flutter: One-Tap Reorder from History", "status": "completed", "completedAt": "2026-08-07T03:23:00.000Z"},
+    {"id": 10, "title": "Flutter: Commission Visibility in Payment Flow", "status": "completed", "completedAt": "2026-08-07T03:24:00.000Z"},
+    {"id": 11, "title": "Flutter: Feed Algorithm Integration", "status": "completed", "completedAt": "2026-08-07T03:24:00.000Z"},
+    {"id": 12, "title": "Database: Add onboarding fields + OAuth support", "status": "completed", "completedAt": "2026-08-07T03:09:00.000Z"},
+    {"id": 13, "title": "Testing: Playwright UI Verification", "status": "pending"},
+    {"id": 14, "title": "Documentation: Update ROADMAP, FEATURES, DECISIONS, memory files", "status": "pending"}
+  ],
+  "lastUpdated": "2026-08-07T03:25:00.000Z"
+}

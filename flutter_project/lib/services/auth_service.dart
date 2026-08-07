@@ -59,6 +59,68 @@ class AuthService {
     return response;
   }
 
+  /// Login with Google identity token.
+  /// Calls POST /auth/google with the idToken.
+  Future<Map<String, dynamic>> loginWithGoogle(String idToken) async {
+    final response = await _api.post('/auth/google', body: {
+      'idToken': idToken,
+    });
+
+    if (response.containsKey('accessToken')) {
+      final token = response['accessToken'] as String;
+      _api.setToken(token);
+      await _persistAuth(token, response['user'] as Map<String, dynamic>?);
+    }
+
+    return response;
+  }
+
+  /// Login with Apple identity token.
+  /// Calls POST /auth/apple with the identityToken.
+  /// [fullName] is optional — provided by Apple only on first sign-in.
+  Future<Map<String, dynamic>> loginWithApple(
+    String identityToken, {
+    Map<String, String>? fullName,
+  }) async {
+    final body = <String, dynamic>{
+      'identityToken': identityToken,
+    };
+    if (fullName != null) {
+      body['fullName'] = fullName;
+    }
+
+    final response = await _api.post('/auth/apple', body: body);
+
+    if (response.containsKey('accessToken')) {
+      final token = response['accessToken'] as String;
+      _api.setToken(token);
+      await _persistAuth(token, response['user'] as Map<String, dynamic>?);
+    }
+
+    return response;
+  }
+
+  /// Complete onboarding wizard.
+  /// Calls POST /auth/onboarding with interests, location, and optional avatar.
+  Future<Map<String, dynamic>> completeOnboarding({
+    required List<String> interests,
+    double? latitude,
+    double? longitude,
+    String? address,
+    String? avatarUrl,
+  }) async {
+    final body = <String, dynamic>{
+      'interests': interests,
+    };
+    if (latitude != null) body['latitude'] = latitude;
+    if (longitude != null) body['longitude'] = longitude;
+    if (address != null) body['address'] = address;
+    if (avatarUrl != null) body['avatarUrl'] = avatarUrl;
+
+    final response = await _api.post('/auth/onboarding', body: body);
+    return response;
+  }
+
   /// Try to restore a saved session.
   Future<bool> tryRestoreSession() async {
     final prefs = await SharedPreferences.getInstance();

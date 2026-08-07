@@ -177,6 +177,26 @@ class ApiService {
     return await get('/social/posts/feed?$query');
   }
 
+  /// Get feed with location + interests filtering (uses GET /api/feed).
+  /// [interests] is a list of category IDs from user's onboarding preferences.
+  Future<Map<String, dynamic>> getFeed({
+    int page = 1,
+    double? lat,
+    double? lng,
+    List<String>? interests,
+    String? city,
+  }) async {
+    final params = <String, String>{'page': page.toString(), 'pageSize': '20'};
+    if (lat != null) params['lat'] = lat.toString();
+    if (lng != null) params['lng'] = lng.toString();
+    if (city != null && city.isNotEmpty) params['city'] = city;
+    if (interests != null && interests.isNotEmpty) {
+      params['interest'] = interests.first; // API accepts one interest at a time
+    }
+    final query = params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
+    return await get('/feed?$query');
+  }
+
   Future<Map<String, dynamic>> createPost(Map<String, dynamic> body) async {
     return await post('/social/posts', body: body);
   }
