@@ -1,12 +1,12 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { authenticate, requireRole, AuthRequest } from '../lib/auth.middleware.js';
+import { authenticate, isAdmin, AuthRequest } from '../lib/auth.middleware.js';
 import prisma from '../lib/db.js';
 
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole('platform_admin'));
+router.use(isAdmin);
 
 // ─── Zod Schemas ───────────────────────────────────────────────────────────
 
