@@ -99,7 +99,8 @@
       "id": 14,
       "title": "Business Workspace Backend: Staff identity + Service assignment\n\nT4.2: Staff identity display (photo + name per service). Service-to-staff assignment. Parallel scheduling calculation.\n\n---",
       "content": "## TASK 14: Business Workspace Backend: Staff identity + Service assignment\n\nT4.2: Staff identity display (photo + name per service). Service-to-staff assignment. Parallel scheduling calculation.\n\n---",
-      "status": "pending"
+      "status": "in_progress",
+      "startedAt": "2026-08-07T05:14:02.514Z"
     },
     {
       "id": 15,
@@ -138,5 +139,5 @@
       "status": "pending"
     }
   ],
-  "lastUpdated": "2026-08-07T05:12:39.804Z"
+  "lastUpdated": "2026-08-07T05:14:02.514Z"
 }
