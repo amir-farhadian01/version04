@@ -1,11 +1,11 @@
 import { Router, Response } from 'express';
-import { authenticate, requireRole, AuthRequest } from '../lib/auth.middleware.js';
+import { authenticate, isAdmin, AuthRequest } from '../lib/auth.middleware.js';
 import prisma from '../lib/db.js';
 
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole('platform_admin'));
+router.use(isAdmin);
 
 // GET /api/admin/media — all uploaded media with audit status
 router.get('/', async (req: AuthRequest, res: Response) => {

@@ -34,6 +34,10 @@ abstract final class ImageCacheConfig {
   static ImageProvider provider(String url) =>
       CachedNetworkImageProvider(url, cacheManager: manager);
 
+  /// Maximum decode width for post media images in the feed (px).
+  /// Images larger than this are down-sampled to save memory.
+  static const int postMediaCacheWidth = 1080;
+
   /// Flush every cached image from disk.
   static Future<void> clearAll() async {
     await manager.emptyCache();
