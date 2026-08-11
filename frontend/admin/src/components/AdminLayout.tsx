@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   Newspaper,
   BarChart3,
+  Wrench,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { motion, AnimatePresence } from 'motion/react'
@@ -34,6 +35,7 @@ const SIDEBAR_LINKS = [
   { label: 'Home Content', icon: Newspaper, path: '/admin/home-content' },
   { label: 'Moderation', icon: ShieldAlert, path: '/admin/moderation' },
   { label: 'Analytics', icon: BarChart3, path: '/admin/analytics' },
+  { label: 'Services', icon: Wrench, path: '/admin/orders' },
   { label: 'Settings', icon: Settings, path: '/admin/settings' },
 ]
 

@@ -83,6 +83,9 @@ import invoiceRoutes from "./routes/invoices.js";
 import workspaceFinanceRoutes from "./routes/workspaceFinance.js";
 import workspaceSocialRoutes from "./routes/workspaceSocial.js";
 import { router as serviceSearchRoutes } from "./routes/serviceSearch.js";
+import subcontractorRoutes from "./routes/subcontractor.js";
+import staffScheduleRoutes from "./routes/staffSchedule.js";
+import dynamicFormsRoutes from "./routes/dynamicForms.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -97,6 +100,7 @@ function mountApiRoutes(app: Express) {
   app.use("/api/services/search", serviceSearchRoutes);
   app.use("/api/services", serviceRoutes);
   app.use("/api/service-catalog", serviceCatalogRoutes);
+  app.use("/api/service-catalog", dynamicFormsRoutes);
   app.use("/api/requests", requestRoutes);
   app.use("/api/contracts", contractRoutes);
   app.use("/api/tickets", ticketRoutes);
@@ -112,6 +116,7 @@ function mountApiRoutes(app: Express) {
   app.use("/api/orders/:orderId/sessions", orderSessionsRoutes);
   app.use("/api/orders/:orderId/group-sessions", groupSessionsRoutes);
   app.use("/api/workspaces", workspacesRoutes);
+  app.use("/api/workspaces", subcontractorRoutes);
   app.use("/api/products", productsRoutes);
   app.use("/api/system", systemRoutes);
   app.use("/api/places", placesRoutes);
@@ -130,6 +135,7 @@ function mountApiRoutes(app: Express) {
   app.use("/api/social", socialFeedRoutes);
   app.use("/api/business-page", businessPageRoutes);
   app.use("/api/staff", staffRoutes);
+  app.use("/api/staff", staffScheduleRoutes);
   app.use("/api/schedules", schedulesRoutes);
   app.use("/api/home-intelligence", homeIntelligenceRoutes);
   app.use("/api/home", homeContentRoutes);
@@ -169,6 +175,7 @@ function mountAdminApiRoutes(app: Express) {
   app.use("/api/admin/home", adminHomeContentRoutes);
   app.use("/api/admin/disputes", adminDisputesRouter);
   app.use("/api/admin/analytics", adminAnalyticsRoutes);
+  app.use("/api/service-catalog", dynamicFormsRoutes);
 }
 
 function createWebApp(opts?: { adminOnly?: boolean }): Express {

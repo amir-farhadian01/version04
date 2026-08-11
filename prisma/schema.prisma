@@ -132,6 +132,15 @@ enum AttendeeStatus {
   attended
 }
 
+enum SubcontractStatus {
+  pending      // prime sent request, awaiting sub
+  accepted     // sub accepted
+  rejected     // sub rejected
+  in_progress  // sub working on job
+  completed    // sub marked done
+  cancelled    // cancelled before start
+}
+
 enum ChatRestrictionLevel {
   none
   warning
@@ -302,6 +311,8 @@ model User {
   packageStaffAssignments PackageStaffAssignment[]
   reviewerReviews       OrderReview[]           @relation("ReviewerUser")
   usernameHistory       UsernameHistory[]
+  staffSlotBlocks       StaffSlotBlock[]
+  subStaffAssignments   SubcontractorAssignment[] @relation("SubStaff")
 }
 
 model UsernameHistory {
@@ -359,6 +370,9 @@ model Company {
   businessHoursSchema BusinessHours[]
   quotes              Quote[]
   customerNotes       WorkspaceCustomerNote[]
+  primeAssignments    SubcontractorAssignment[] @relation("PrimeContracts")
+  subAssignments      SubcontractorAssignment[] @relation("SubContracts")
+  staffSlotBlocks     StaffSlotBlock[]
   stripeEnabled       Boolean?    @default(false) @map("stripe_enabled")
   stripeAccountId     String?     @map("stripe_account_id")
   stripeChargesEnabled Boolean?   @default(false) @map("stripe_charges_enabled")
@@ -409,6 +423,7 @@ model ServiceCatalog {
   orders                  Order[]
   providerPackages        ProviderServicePackage[]
   linkedPosts             Post[]
+  formTemplates           ServiceFormTemplate[]
 
   @@index([categoryId])
   @@index([categoryId, sortOrder])
@@ -620,6 +635,8 @@ model Order {
   isMultiSession        Boolean         @default(false) @map("is_multi_session")
   totalSessions         Int             @default(1) @map("total_sessions")
   completedSessions     Int             @default(0) @map("completed_sessions")
+  subcontractorAssignment SubcontractorAssignment? @relation("OrderSubcontract")
+  formTemplateVersion   Int?            @map("form_template_version")
 
   @@index([customerId])
   @@index([status])
@@ -1667,6 +1684,92 @@ model DemandAnalytics {
 
   @@index([city, neighborhood, periodStart])
   @@map("demand_analytics")
+}
+
+// ─── Subcontractor Assignment (ADR-0069) ──────────────────────────────────────
+
+/// When a prime contractor (matched workspace) delegates a Job to an approved subcontractor.
+/// Requires an approved B2BConnection between the two workspaces.
+model SubcontractorAssignment {
+  id                String            @id @default(cuid())
+  orderId           String            @unique
+  order             Order             @relation("OrderSubcontract", fields: [orderId], references: [id], onDelete: Cascade)
+  primeWorkspaceId  String            @map("prime_workspace_id")
+  primeWorkspace    Company           @relation("PrimeContracts", fields: [primeWorkspaceId], references: [id])
+  subWorkspaceId    String            @map("sub_workspace_id")
+  subWorkspace      Company           @relation("SubContracts", fields: [subWorkspaceId], references: [id])
+  assignedStaffId   String?           @map("assigned_staff_id")
+  assignedStaff     User?             @relation("SubStaff", fields: [assignedStaffId], references: [id])
+  status            SubcontractStatus @default(pending)
+  /// Prime contractor's revenue share percentage (e.g., 70 = 70%)
+  primeSharePercent Float             @default(100) @map("prime_share_percent")
+  /// Subcontractor's revenue share percentage (e.g., 30 = 30%)
+  subSharePercent   Float             @default(0) @map("sub_share_percent")
+  notes             String?
+  agreedAt          DateTime?         @map("agreed_at")
+  startedAt         DateTime?         @map("started_at")
+  completedAt       DateTime?         @map("completed_at")
+  rejectedAt        DateTime?         @map("rejected_at")
+  rejectionReason   String?           @map("rejection_reason")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  @@index([orderId])
+  @@index([primeWorkspaceId, status])
+  @@index([subWorkspaceId, status])
+  @@map("subcontractor_assignments")
+}
+
+// ─── Staff Slot Blocking (ADR-0070) ────────────────────────────────────────────
+
+/// Blocks a staff member's time in ALL their workspaces when assigned to a job.
+/// Prevents double-booking across multiple businesses.
+model StaffSlotBlock {
+  id          String   @id @default(cuid())
+  staffId     String   @map("staff_id")
+  staff       User     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  workspaceId String   @map("workspace_id")
+  workspace   Company  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  startAt     DateTime @map("start_at")
+  endAt       DateTime @map("end_at")
+  /// "order:<orderId>" or "manual" or "leave" or "break"
+  reason      String?
+  orderId     String?  @map("order_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([staffId, startAt, endAt])
+  @@index([workspaceId, startAt])
+  @@index([orderId])
+  @@map("staff_slot_blocks")
+}
+
+// ─── AI Dynamic Form Templates (ADR-0071) ──────────────────────────────────────
+
+/// Versioned form schema for a ServiceCatalog item.
+/// Can be generated by AI or created manually by admin.
+/// The schema follows the platform's DynamicFieldSpec format (same as ServiceCatalog.dynamicFieldsSchema).
+model ServiceFormTemplate {
+  id               String         @id @default(cuid())
+  serviceCatalogId String         @map("service_catalog_id")
+  serviceCatalog   ServiceCatalog @relation(fields: [serviceCatalogId], references: [id], onDelete: Cascade)
+  version          Int            @default(1)
+  isActive         Boolean        @default(false) @map("is_active")
+  /// JSON Schema with UI hints — array of DynamicFieldSpec objects
+  schema           Json
+  /// Whether this schema was generated by AI
+  generatedByAi    Boolean        @default(false) @map("generated_by_ai")
+  /// The prompt used for AI generation (preserved for audit)
+  aiPrompt         String?        @map("ai_prompt")
+  /// AI model used (e.g. "gemini-2.0-flash")
+  aiModel          String?        @map("ai_model")
+  publishedById    String?        @map("published_by_id")
+  publishedAt      DateTime?      @map("published_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  @@unique([serviceCatalogId, version])
+  @@index([serviceCatalogId, isActive])
+  @@map("service_form_templates")
 }
 
 // ─── Group Service Sessions (G7) ────────────────────────────────────────────

@@ -17,6 +17,7 @@ import Moderation from './pages/Moderation'
 import HomeContent from './pages/HomeContent'
 import ContentModeration from './pages/ContentModeration'
 import Analytics from './pages/Analytics'
+import FormBuilder from './pages/FormBuilder'
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { token } = useAuthStore()
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
       { path: 'admin/home-content', element: <HomeContent /> },
       { path: 'admin/content-moderation', element: <ContentModeration /> },
       { path: 'admin/analytics', element: <Analytics /> },
+      { path: 'admin/services/:catalogId/form-builder', element: <FormBuilder /> },
     ],
   },
 ])
