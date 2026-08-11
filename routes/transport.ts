@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { authenticate, optionalAuth } from '../lib/auth.middleware.js';
+import { authenticate } from '../lib/auth.middleware.js';
 import { prisma } from '../lib/db.js';
 
 const router = Router();
@@ -62,7 +62,7 @@ router.post('/vehicles', authenticate, async (req: Request, res: Response, next:
 
 // ─── GET /api/transport/ride/estimate — Fare estimate ────────
 
-router.get('/ride/estimate', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/ride/estimate', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { pickupLat, pickupLng, dropoffLat, dropoffLng, vehicleType } = req.query;
     if (!pickupLat || !pickupLng || !dropoffLat || !dropoffLng) {
