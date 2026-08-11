@@ -220,8 +220,8 @@ All users undergo **KYC verification** by admin before activation. Business Clie
 | Contract drafting (AI from chat) | ✅ |
 | Contract templates | ✅ |
 | Payment session (post-contract) | ✅ |
-| Payment gateway integration (Stripe/etc.) | ✅ |
-| Payout to providers | ✅ |
+| Payment gateway integration (Stripe Connect) | ✅ (approved 2026-08-11) |
+| Payout to providers (Stripe Connect auto-split) | ✅ (approved 2026-08-11) |
 | Admin payment ledger | ✅ |
 
 ---

@@ -1,0 +1,186 @@
+{
+  "sourceFile": "/home/amir/version04/docs/permanent/full-mvp-implementation-tasks.md",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Cleanup: Update docs/AGENTS.md rule #6 — Stripe approved\n\nReplace rule #6 in docs/AGENTS.md:\n- Remove 'NO payment gateway SDK installed' prohibition\n- Add: 'Stripe SDK APPROVED — CEO approved Stripe Connect as payment gateway on 2026-08-11. lib/stripe.ts and lib/stripeService.ts are active. All payment flows use Stripe Connect for automatic commission splitting.'\n- Also update CURRENT PHASE section to reflect Full MVP status\n\n---",
+      "content": "## TASK 1: Cleanup: Update docs/AGENTS.md rule #6 — Stripe approved\n\nReplace rule #6 in docs/AGENTS.md:\n- Remove 'NO payment gateway SDK installed' prohibition\n- Add: 'Stripe SDK APPROVED — CEO approved Stripe Connect as payment gateway on 2026-08-11. lib/stripe.ts and lib/stripeService.ts are active. All payment flows use Stripe Connect for automatic commission splitting.'\n- Also update CURRENT PHASE section to reflect Full MVP status\n\n---",
+      "status": "completed",
+      "startedAt": "2026-08-11T17:57:19.427Z",
+      "completedAt": "2026-08-11T17:58:08.395Z"
+    },
+    {
+      "id": 2,
+      "title": "Cleanup: Update decision-history.md — Stripe approval + MVP scope change\n\nAdd 2 new entries to docs/memory/decision-history.md:\n1. [2026-08-11] Stripe SDK Approved — CEO approved Stripe Connect as official payment gateway\n2. [2026-08-11] MVP Scope Expanded — CEO decided full flow (registration→payment→execution), not just accept-invite\n\n---",
+      "content": "## TASK 2: Cleanup: Update decision-history.md — Stripe approval + MVP scope change\n\nAdd 2 new entries to docs/memory/decision-history.md:\n1. [2026-08-11] Stripe SDK Approved — CEO approved Stripe Connect as official payment gateway\n2. [2026-08-11] MVP Scope Expanded — CEO decided full flow (registration→payment→execution), not just accept-invite\n\n---",
+      "status": "completed",
+      "completedAt": "2026-08-11T17:58:36.449Z"
+    },
+    {
+      "id": 3,
+      "title": "Cleanup: Create ADR for Stripe approval\n\nCreate docs/adr/ADR-0072-stripe-approval.md:\n- ADR-0072: Stripe Connect Approved as Payment Gateway\n- Status: accepted\n- Context: CEO approved on 2026-08-11\n- Decision: Use existing lib/stripe.ts and lib/stripeService.ts\n- Supersedes AGENTS.md rule #6\n\n---",
+      "content": "## TASK 3: Cleanup: Create ADR for Stripe approval\n\nCreate docs/adr/ADR-0072-stripe-approval.md:\n- ADR-0072: Stripe Connect Approved as Payment Gateway\n- Status: accepted\n- Context: CEO approved on 2026-08-11\n- Decision: Use existing lib/stripe.ts and lib/stripeService.ts\n- Supersedes AGENTS.md rule #6\n\n---",
+      "status": "completed",
+      "completedAt": "2026-08-11T17:59:53.623Z"
+    },
+    {
+      "id": 4,
+      "title": "Cleanup: Update ROADMAP.md — mark Phase 7 payments as done\n\nIn docs/ROADMAP.md, Phase 7 payments line should be marked ✅ since Stripe is approved and active. Also update the status legend date to 2026-08-11.\n\n---",
+      "content": "## TASK 4: Cleanup: Update ROADMAP.md — mark Phase 7 payments as done\n\nIn docs/ROADMAP.md, Phase 7 payments line should be marked ✅ since Stripe is approved and active. Also update the status legend date to 2026-08-11.\n\n---",
+      "status": "completed",
+      "completedAt": "2026-08-11T18:00:09.726Z"
+    },
+    {
+      "id": 5,
+      "title": "Cleanup: Update goal-log.md — add G-004\n\nAdd G-004 to docs/memory/goal-log.md: 'Full MVP Implementation — All remaining phases (Social Feed, Business Workspace, Admin Content, Transport)' with status 'In Progress'\n\n---",
+      "content": "## TASK 5: Cleanup: Update goal-log.md — add G-004\n\nAdd G-004 to docs/memory/goal-log.md: 'Full MVP Implementation — All remaining phases (Social Feed, Business Workspace, Admin Content, Transport)' with status 'In Progress'\n\n---",
+      "status": "completed",
+      "completedAt": "2026-08-11T18:00:21.615Z"
+    },
+    {
+      "id": 6,
+      "title": "Quick-Start Task 13: Complete Playwright UI verification for Flutter\n\nRun Playwright against Flutter web (port 7357) to verify:\n1. OAuth buttons render on auth screen\n2. Onboarding wizard 3-step flow works\n3. Stories row renders with gradient rings\n4. Post card shows with double-tap like, comments, menu\n5. Order detail screen shows Reorder button\n6. New order screen shows commission breakdown\nSave screenshots to screenshots/flutter-quickstart-*.png\n\n---",
+      "content": "## TASK 6: Quick-Start Task 13: Complete Playwright UI verification for Flutter\n\nRun Playwright against Flutter web (port 7357) to verify:\n1. OAuth buttons render on auth screen\n2. Onboarding wizard 3-step flow works\n3. Stories row renders with gradient rings\n4. Post card shows with double-tap like, comments, menu\n5. Order detail screen shows Reorder button\n6. New order screen shows commission breakdown\nSave screenshots to screenshots/flutter-quickstart-*.png\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 7,
+      "title": "Quick-Start Task 14: Complete documentation updates\n\n1. Update ROADMAP.md to mark quick-start as done\n2. Update FEATURES.md if any specs changed\n3. Verify all ADRs reference updated Stripe status\n4. Update docs/memory/lessons-learned.md with quick-start insights\n\n---",
+      "content": "## TASK 7: Quick-Start Task 14: Complete documentation updates\n\n1. Update ROADMAP.md to mark quick-start as done\n2. Update FEATURES.md if any specs changed\n3. Verify all ADRs reference updated Stripe status\n4. Update docs/memory/lessons-learned.md with quick-start insights\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 8,
+      "title": "Social Feed: Implement Post creation API endpoint\n\nIn routes/ — create or extend post creation endpoint:\n- POST /api/posts — create post with media, caption, categoryId\n- Zod validation: categoryId required (no uncategorized posts)\n- Support photo and video uploads\n- Return created post with { data: post }\nOwner: backend\n\n---",
+      "content": "## TASK 8: Social Feed: Implement Post creation API endpoint\n\nIn routes/ — create or extend post creation endpoint:\n- POST /api/posts — create post with media, caption, categoryId\n- Zod validation: categoryId required (no uncategorized posts)\n- Support photo and video uploads\n- Return created post with { data: post }\nOwner: backend\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 9,
+      "title": "Social Feed: Implement Feed API endpoint\n\nIn routes/ — create feed endpoint:\n- GET /api/feed — returns personalized feed based on user interests + location\n- Pagination support\n- Filter by: category, distance, content type (posts/stories)\n- Include like count, comment count, user info\nOwner: backend\n\n---",
+      "content": "## TASK 9: Social Feed: Implement Feed API endpoint\n\nIn routes/ — create feed endpoint:\n- GET /api/feed — returns personalized feed based on user interests + location\n- Pagination support\n- Filter by: category, distance, content type (posts/stories)\n- Include like count, comment count, user info\nOwner: backend\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 10,
+      "title": "Social Feed: Implement Follow/Unfollow API\n\nIn routes/ — create social endpoints:\n- POST /api/social/follow/:userId\n- POST /api/social/unfollow/:userId\n- GET /api/social/followers\n- GET /api/social/following\nOwner: backend\n\n---",
+      "content": "## TASK 10: Social Feed: Implement Follow/Unfollow API\n\nIn routes/ — create social endpoints:\n- POST /api/social/follow/:userId\n- POST /api/social/unfollow/:userId\n- GET /api/social/followers\n- GET /api/social/following\nOwner: backend\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 11,
+      "title": "Social Feed: Implement Like/Comment API\n\nIn routes/ — create engagement endpoints:\n- POST /api/posts/:id/like\n- DELETE /api/posts/:id/like\n- POST /api/posts/:id/comments\n- GET /api/posts/:id/comments\nOwner: backend\n\n---",
+      "content": "## TASK 11: Social Feed: Implement Like/Comment API\n\nIn routes/ — create engagement endpoints:\n- POST /api/posts/:id/like\n- DELETE /api/posts/:id/like\n- POST /api/posts/:id/comments\n- GET /api/posts/:id/comments\nOwner: backend\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 12,
+      "title": "Social Feed: Implement Stories API\n\nIn routes/ — create stories endpoints:\n- POST /api/stories — create 24h story with media\n- GET /api/stories/feed — active stories from followed + nearby\n- DELETE /api/stories/:id\n- Auto-expire after 24h (cron or TTL)\nOwner: backend\n\n---",
+      "content": "## TASK 12: Social Feed: Implement Stories API\n\nIn routes/ — create stories endpoints:\n- POST /api/stories — create 24h story with media\n- GET /api/stories/feed — active stories from followed + nearby\n- DELETE /api/stories/:id\n- Auto-expire after 24h (cron or TTL)\nOwner: backend\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 13,
+      "title": "Social Feed: Build React PostCard component\n\nIn frontend/src/components/social/PostCard.tsx:\n- Full post card with: avatar, username, time, caption, media (photo/video)\n- Action bar: Like (with count), Comment (with count), Share, Save\n- Double-tap to like\n- Three-dot menu: Report, Block (and View Business Page for business posts)\n- Order CTA button on business posts linked to a service\nMax 200 lines. Use TailwindCSS.\n\n---",
+      "content": "## TASK 13: Social Feed: Build React PostCard component\n\nIn frontend/src/components/social/PostCard.tsx:\n- Full post card with: avatar, username, time, caption, media (photo/video)\n- Action bar: Like (with count), Comment (with count), Share, Save\n- Double-tap to like\n- Three-dot menu: Report, Block (and View Business Page for business posts)\n- Order CTA button on business posts linked to a service\nMax 200 lines. Use TailwindCSS.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 14,
+      "title": "Social Feed: Build React FeedPage with personalized feed\n\nIn frontend/src/pages/social/FeedPage.tsx:\n- Infinite scroll feed of PostCard components\n- Stories row at top (horizontal scrollable circular avatars)\n- Pull-to-refresh\n- Filter tabs: Following, For You, Nearby\n- TanStack Query for data fetching\n\n---",
+      "content": "## TASK 14: Social Feed: Build React FeedPage with personalized feed\n\nIn frontend/src/pages/social/FeedPage.tsx:\n- Infinite scroll feed of PostCard components\n- Stories row at top (horizontal scrollable circular avatars)\n- Pull-to-refresh\n- Filter tabs: Following, For You, Nearby\n- TanStack Query for data fetching\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 15,
+      "title": "Social Feed: Build React StoryViewer component\n\nIn frontend/src/components/social/StoryViewer.tsx:\n- Fullscreen story viewer (Instagram-style)\n- Auto-advance every 5 seconds\n- Tap left/right to navigate between stories\n- Progress bar at top\n- Swipe down to dismiss\n\n---",
+      "content": "## TASK 15: Social Feed: Build React StoryViewer component\n\nIn frontend/src/components/social/StoryViewer.tsx:\n- Fullscreen story viewer (Instagram-style)\n- Auto-advance every 5 seconds\n- Tap left/right to navigate between stories\n- Progress bar at top\n- Swipe down to dismiss\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 16,
+      "title": "Social Feed: Build React HomeTab with weather & traffic\n\nIn frontend/src/pages/home/HomeTab.tsx:\n- Neighbourhood banner (photo bg, weather, traffic alerts)\n- Utility icons row (Banks, Insurance, Fuel, Government, Health, Transit)\n- Large search box: 'Search services, businesses, skills near you...'\n- Local news & events cards (horizontally swipeable)\n- 3 sub-tabs: HOME, MY POSTS, PROFILE\n\n---",
+      "content": "## TASK 16: Social Feed: Build React HomeTab with weather & traffic\n\nIn frontend/src/pages/home/HomeTab.tsx:\n- Neighbourhood banner (photo bg, weather, traffic alerts)\n- Utility icons row (Banks, Insurance, Fuel, Government, Health, Transit)\n- Large search box: 'Search services, businesses, skills near you...'\n- Local news & events cards (horizontally swipeable)\n- 3 sub-tabs: HOME, MY POSTS, PROFILE\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 17,
+      "title": "Social Feed: Build React ExplorerTab (General + Business)\n\nIn frontend/src/pages/explorer/ExplorerTab.tsx:\n- Two sub-tabs: General, Business\n- Stories row at top for each tab\n- Post feed with business filter for Business tab\n- Category, distance, rating, price filters\n- Business card tap → Business Page\n\n---",
+      "content": "## TASK 17: Social Feed: Build React ExplorerTab (General + Business)\n\nIn frontend/src/pages/explorer/ExplorerTab.tsx:\n- Two sub-tabs: General, Business\n- Stories row at top for each tab\n- Post feed with business filter for Business tab\n- Category, distance, rating, price filters\n- Business card tap → Business Page\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 18,
+      "title": "Business Workspace: Implement CRM API (customer management)\n\nIn routes/ — create customer management endpoints:\n- GET /api/workspace/:id/customers — list with filters\n- GET /api/workspace/:id/customers/:customerId — detail with order history\n- POST /api/workspace/:id/customers/:customerId/notes — add note\nOwner: backend\n\n---",
+      "content": "## TASK 18: Business Workspace: Implement CRM API (customer management)\n\nIn routes/ — create customer management endpoints:\n- GET /api/workspace/:id/customers — list with filters\n- GET /api/workspace/:id/customers/:customerId — detail with order history\n- POST /api/workspace/:id/customers/:customerId/notes — add note\nOwner: backend\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 19,
+      "title": "Business Workspace: Implement Invoice API\n\nIn routes/ — create invoice endpoints extending existing invoiceGenerator.ts:\n- POST /api/workspace/:id/invoices — create invoice\n- GET /api/workspace/:id/invoices — list invoices\n- GET /api/invoices/:id/pdf — download PDF\n- POST /api/invoices/:id/send — email invoice to customer\nOwner: backend\n\n---",
+      "content": "## TASK 19: Business Workspace: Implement Invoice API\n\nIn routes/ — create invoice endpoints extending existing invoiceGenerator.ts:\n- POST /api/workspace/:id/invoices — create invoice\n- GET /api/workspace/:id/invoices — list invoices\n- GET /api/invoices/:id/pdf — download PDF\n- POST /api/invoices/:id/send — email invoice to customer\nOwner: backend\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 20,
+      "title": "Business Workspace: Implement Staff Assignment API\n\nIn routes/ — create staff assignment endpoints:\n- POST /api/workspace/:id/services/:serviceId/staff — assign staff to service\n- DELETE /api/workspace/:id/services/:serviceId/staff/:userId\n- GET /api/workspace/:id/services/:serviceId/staff\n- GET /api/workspace/:id/staff/:userId/schedule — staff schedule/availability\nOwner: backend\n\n---",
+      "content": "## TASK 20: Business Workspace: Implement Staff Assignment API\n\nIn routes/ — create staff assignment endpoints:\n- POST /api/workspace/:id/services/:serviceId/staff — assign staff to service\n- DELETE /api/workspace/:id/services/:serviceId/staff/:userId\n- GET /api/workspace/:id/services/:serviceId/staff\n- GET /api/workspace/:id/staff/:userId/schedule — staff schedule/availability\nOwner: backend\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 21,
+      "title": "Business Workspace: Build React CRM page\n\nIn frontend/src/pages/business/CRMPage.tsx:\n- Customer list with search/filter\n- Customer detail view: order history, notes, total spent\n- Add note functionality\n- Export customer list\n\n---",
+      "content": "## TASK 21: Business Workspace: Build React CRM page\n\nIn frontend/src/pages/business/CRMPage.tsx:\n- Customer list with search/filter\n- Customer detail view: order history, notes, total spent\n- Add note functionality\n- Export customer list\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 22,
+      "title": "Business Workspace: Build React Invoicing page\n\nIn frontend/src/pages/business/InvoicingPage.tsx:\n- Invoice list with status filters (Draft, Sent, Paid, Overdue, Cancelled)\n- Create invoice form (line items, tax, due date)\n- Download PDF button\n- Send via email button\n\n---",
+      "content": "## TASK 22: Business Workspace: Build React Invoicing page\n\nIn frontend/src/pages/business/InvoicingPage.tsx:\n- Invoice list with status filters (Draft, Sent, Paid, Overdue, Cancelled)\n- Create invoice form (line items, tax, due date)\n- Download PDF button\n- Send via email button\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 23,
+      "title": "Business Workspace: Build React Staff Scheduling page\n\nIn frontend/src/pages/business/StaffSchedulingPage.tsx:\n- Staff list with current assignments\n- Assign staff to services\n- Calendar/availability view per staff member\n- Parallel scheduling visualization\n\n---",
+      "content": "## TASK 23: Business Workspace: Build React Staff Scheduling page\n\nIn frontend/src/pages/business/StaffSchedulingPage.tsx:\n- Staff list with current assignments\n- Assign staff to services\n- Calendar/availability view per staff member\n- Parallel scheduling visualization\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 24,
+      "title": "Admin Content: Implement Utility Links API\n\nIn routes/admin.ts — add utility link endpoints:\n- POST /admin/utility-links — create link\n- GET /admin/utility-links — list with click stats\n- PUT /admin/utility-links/:id\n- DELETE /admin/utility-links/:id\n- GET /admin/utility-links/analytics — click analytics\nOwner: backend\n\n---",
+      "content": "## TASK 24: Admin Content: Implement Utility Links API\n\nIn routes/admin.ts — add utility link endpoints:\n- POST /admin/utility-links — create link\n- GET /admin/utility-links — list with click stats\n- PUT /admin/utility-links/:id\n- DELETE /admin/utility-links/:id\n- GET /admin/utility-links/analytics — click analytics\nOwner: backend\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 25,
+      "title": "Admin Content: Implement Home Content API\n\nIn routes/adminHomeContent.ts — extend existing:\n- POST /admin/home-content/news — create news article\n- PUT /admin/home-content/news/:id\n- DELETE /admin/home-content/news/:id\n- GET /admin/home-content — all content blocks\n- PUT /admin/home-content/priority — reorder blocks\nOwner: backend\n\n---",
+      "content": "## TASK 25: Admin Content: Implement Home Content API\n\nIn routes/adminHomeContent.ts — extend existing:\n- POST /admin/home-content/news — create news article\n- PUT /admin/home-content/news/:id\n- DELETE /admin/home-content/news/:id\n- GET /admin/home-content — all content blocks\n- PUT /admin/home-content/priority — reorder blocks\nOwner: backend\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 26,
+      "title": "Admin Content: Build React UtilityLinksManager page\n\nIn frontend/admin/src/pages/UtilityLinks.tsx:\n- Table of all utility links with click stats\n- Add/Edit link form\n- Commission rate per link\n- Category management\n\n---",
+      "content": "## TASK 26: Admin Content: Build React UtilityLinksManager page\n\nIn frontend/admin/src/pages/UtilityLinks.tsx:\n- Table of all utility links with click stats\n- Add/Edit link form\n- Commission rate per link\n- Category management\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 27,
+      "title": "Admin Content: Build React HomeContentManager page\n\nIn frontend/admin/src/pages/HomeContent.tsx:\n- News article CRUD\n- Media upload for articles\n- Display priority drag-and-drop ordering\n- Content scheduling (future publish date)\n- External API configuration (weather, traffic)\n\n---",
+      "content": "## TASK 27: Admin Content: Build React HomeContentManager page\n\nIn frontend/admin/src/pages/HomeContent.tsx:\n- News article CRUD\n- Media upload for articles\n- Display priority drag-and-drop ordering\n- Content scheduling (future publish date)\n- External API configuration (weather, traffic)\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 28,
+      "title": "Final: Playwright verification of all surfaces\n\nRun full Playwright verification per docs/AGENTS.md protocol:\n1. React frontend (5173) — Feed, Home, Explorer\n2. Admin panel (9090) — Utility Links, Home Content\n3. Flutter web (7357) — Quick-start features\nTake screenshots at each step. Verify no console errors. Test mobile viewport (375px).\n\n---",
+      "content": "## TASK 28: Final: Playwright verification of all surfaces\n\nRun full Playwright verification per docs/AGENTS.md protocol:\n1. React frontend (5173) — Feed, Home, Explorer\n2. Admin panel (9090) — Utility Links, Home Content\n3. Flutter web (7357) — Quick-start features\nTake screenshots at each step. Verify no console errors. Test mobile viewport (375px).\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 29,
+      "title": "Final: Git commit and push all changes\n\n1. git add -A\n2. git commit -m 'feat: full MVP implementation — Stripe approved, docs updated, social feed, business workspace, admin content'\n3. git push origin main\n\n---",
+      "content": "## TASK 29: Final: Git commit and push all changes\n\n1. git add -A\n2. git commit -m 'feat: full MVP implementation — Stripe approved, docs updated, social feed, business workspace, admin content'\n3. git push origin main\n\n---",
+      "status": "pending"
+    }
+  ],
+  "lastUpdated": "2026-08-11T18:00:21.615Z"
+}

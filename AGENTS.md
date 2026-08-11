@@ -87,18 +87,25 @@
 
 ## 🚧 CURRENT PHASE
 
-**Phase: Admin SPA Separation (Complete)**
-- Separate Vite build for admin panel at `frontend/admin/` ✅
-- Admin-only API routes on port 9090 via `mountAdminApiRoutes()` ✅
-- Admin routes removed from client SPA router ✅
-- Build scripts added to `frontend/package.json` ✅
-- Both SPAs build successfully ✅
-- AGENTS.md updated ✅
+**Phase: Full MVP — Social Feed + Business Workspace + Admin Content**
+- Admin SPA Separation ✅
+- Stripe SDK approved for payment gateway (2026-08-11) ✅
+- Quick-Start Package (OAuth, Onboarding, Stories, Posts) — 12/14 tasks done ✅
+- MVP scope: Full flow from registration to payment and execution
+- In progress: Social Feed, Business Workspace, Admin Content Management
 
-**Next Phase: New Flutter UI Design**
-- Backend + Web Frontend + Flutter Web running locally ✅
-- Port registry documented in PORTS.md ✅
-- Next: New UI design on Flutter → connect to backend
+**Current Priority (per PM decision):**
+1. Cleanup & docs update (AGENTS.md, decision history, ADR)
+2. Quick-Start Tasks 13-14 (Playwright + docs)
+3. Social Feed — Phase 2
+4. Business Workspace — Phase 6
+5. Admin Content — Phase 8
+6. Transport — Phase 9
+
+**Next Phase: Social Feed Implementation**
+- Public posts, personalized feed, stories, follow/comment/like
+- Home Tab: weather, traffic, search, utility links
+- Explorer Tab: General + Business sub-tabs
 
 ---
 
@@ -111,11 +118,10 @@ See [`docs/AGENTS.md`](docs/AGENTS.md) for the full 25-rule list with detailed e
 3. **NEVER touch `src/` directory**
 4. **Prisma stays at 5.x** — no upgrades, no downgrades
 5. **All TS/JS imports must use `.js` extension** — e.g. `import './foo.js'`
-6. **NO payment gateway SDK installed** — The `Payment` model schema has Stripe-compatible 
-   fields (`stripePaymentIntentId`, `stripeTransferId`) for future integration, but NO 
-   Stripe SDK (`stripe` npm package) or other payment gateway library is currently 
-   installed. All payments flow through internal `Transaction` records. Do NOT add 
-   any payment gateway SDK without an approved ADR and architect sign-off.
+6. **Stripe SDK APPROVED** — CEO approved Stripe Connect as payment gateway on 2026-08-11.
+   `lib/stripe.ts` and `lib/stripeService.ts` are active. All payment flows use Stripe
+   Connect for automatic commission splitting. No other payment gateway may be added
+   without ADR and architect sign-off.
 7. **Use `npm` only** — no yarn, no pnpm
 8. **READ before WRITE** — read every file fully before editing it
 9. **No new business logic** unless explicitly instructed by the architect

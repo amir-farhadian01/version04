@@ -19,11 +19,10 @@ Violation of any rule below = **task failure**. No exceptions.
 | 3 | **NEVER touch `src/` directory** — legacy, do not modify |
 | 4 | **Prisma stays at 5.x** — no version changes |
 | 5 | **All imports use `.js` extension** — `import './foo.js'` |
-| 6 | **NO payment gateway SDK installed** — The `Payment` model schema has Stripe-compatible 
-    fields (`stripePaymentIntentId`, `stripeTransferId`) for future integration, but NO 
-    Stripe SDK (`stripe` npm package) or other payment gateway library is currently 
-    installed. All payments flow through internal `Transaction` records. Do NOT add 
-    any payment gateway SDK without an approved ADR and architect sign-off. |
+| 6 | **Stripe SDK APPROVED** — CEO approved Stripe Connect as payment gateway on 2026-08-11.
+    `lib/stripe.ts` and `lib/stripeService.ts` are active. All payment flows use Stripe
+    Connect for automatic commission splitting. No other payment gateway may be added
+    without ADR and architect sign-off. |
 | 7 | **`npm` only** — no yarn, no pnpm |
 | 8 | **READ before WRITE** — read every file fully before editing |
 | 9 | **No new business logic** without explicit architect instruction |
