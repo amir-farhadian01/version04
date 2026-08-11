@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_bar.dart';
@@ -38,8 +38,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
   final AuthService _authService = AuthService();
 
-  // Only show Apple button on iOS/macOS
-  bool get _showAppleButton => Platform.isIOS || Platform.isMacOS;
+  // Only show Apple button on iOS/macOS (not on web)
+  bool get _showAppleButton => !kIsWeb;
 
   @override
   void initState() {

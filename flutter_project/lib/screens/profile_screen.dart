@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -85,7 +85,6 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _loadProfile() async {
     setState(() => _loading = true);
-    // Restore token from SharedPreferences before API call
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_access_token');
     final api = ApiService();
@@ -193,7 +192,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 12),
-                // ── Username field with availability check ──
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -389,16 +387,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           await prefs.remove(key);
         }
       }
-      try {
-        final tempDir = await getTemporaryDirectory();
-        if (tempDir.existsSync()) {
-          for (final entity in tempDir.listSync()) {
-            if (entity is File) {
-              await entity.delete();
-            }
-          }
-        }
-      } catch (_) {}
+      // File system cache clearing only works on native platforms
+      // On web, SharedPreferences clear above is sufficient
       _showSnack('Cache cleared successfully');
     } catch (e) {
       _showSnack('Failed to clear cache');
