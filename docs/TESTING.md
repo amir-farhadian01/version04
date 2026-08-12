@@ -769,6 +769,7 @@ Every PR **must** pass this checklist before merge. Any unchecked item = **block
 | [`docs/AGENTS.md`](AGENTS.md) | Playwright verification checklist (Rule Zero) |
 | [`prisma/seed.ts`](../prisma/seed.ts) | Test database seed data |
 | [`.github/workflows/test.yml`](../.github/workflows/test.yml) | CI test workflow |
+| [`scripts/test-social-feed.sh`](../scripts/test-social-feed.sh) | Social feed API smoke test (posts, likes, comments, saves, follow, feed, stories, search) |
 
 ### Glossary
 
