@@ -1,4 +1,4 @@
-# ADR-0072: Stripe Connect Approved as Payment Gateway
+# ADR-0079: Stripe Connect Approved as Payment Gateway
 - **Status:** accepted
 - **Date:** 2026-08-11
 - **Decision Maker:** CEO (Amir Farhadian)

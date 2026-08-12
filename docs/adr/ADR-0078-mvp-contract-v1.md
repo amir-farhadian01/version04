@@ -1,4 +1,4 @@
-# ADR-0070: MVP Contract v1.0 — First Launchable User Journey
+# ADR-0078: MVP Contract v1.0 — First Launchable User Journey
 
 - **Status:** proposed
 - **Date:** 2026-08-11 (final correction)

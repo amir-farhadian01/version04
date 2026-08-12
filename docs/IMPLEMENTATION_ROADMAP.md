@@ -20,7 +20,7 @@
 | ID | Task | Files | Owner | Notes |
 |----|------|-------|-------|-------|
 | P1-1 | Mark `docs/ORDER_FLOW_GAP_ANALYSIS.md` as superseded (or rewrite header to reflect 2026-08 code state); it still says "16 open" | `docs/ORDER_FLOW_GAP_ANALYSIS.md` | docs | Prevents re-fixing already-fixed bugs |
-| P1-2 | Resolve ADR numbering collisions (C6): `ADR-0070` (MVP contract vs CI/CD) and `ADR-0072` (Stripe approval vs Rule #6) | `docs/adr/*.md`, `docs/DECISIONS.md` | docs | Traceability |
+| P1-2 | Resolve ADR numbering collisions (C6): `ADR-0070` (MVP contract vs CI/CD) and `ADR-0072` (Stripe approval vs Rule #6) | `docs/adr/*.md`, `docs/DECISIONS.md` | docs | ✅ DONE 2026-08-12 → ADR-0078/0079/0080 |
 | P1-3 | Annotate `plans/` as "implemented (archive)" or move to `docs/archive/` so agents don't re-execute completed work | `plans/` | docs | Rule 7 in `docs/AGENTS.md` says old plans are obsolete, but they're not marked |
 | P1-4 | Commit the in-flight social-feed QA work (currently untracked) | `scripts/test-social-feed.sh`, `docs/permanent/social-feed-full-test.md`, `docs/permanent/task-state/*` | qa | `git status` shows `??` entries |
 | P1-5 | Normalize doc versions (`docs/AGENTS.md` 3.1.0 vs `docs/ROADMAP.md` 3.0.0) | `docs/AGENTS.md`, `docs/ROADMAP.md` | docs | Low risk |
@@ -60,10 +60,10 @@ flowchart TD
 |------|-----|-----------|--------|------------|
 | Agent follows stale root `PORTS.md` ("Redis removed") and misconfigures prod cache | 🔴 High | High | Wrong cache topology in deployment | P0-1 (fix immediately) |
 | Re-execution of already-done plan work ("re-fix" order flow / social layer) | 🟡 Med | Med | Wasted effort, regressions | P1-1, P1-3 (mark superseded/archive) |
-| ADR traceability breaks (two ADR-0070/0072) → wrong decision cited in future PR | 🟡 Med | Med | Audit/rollback confusion | P1-2 |
+| ADR traceability breaks (two ADR-0070/0072) → wrong decision cited in future PR | 🟡 Med | Med | Audit/rollback confusion | ✅ P1-2 done 2026-08-12 |
 | Visual parity claim unverifiable → React/Flutter drift silently worsens | 🟡 Med | Med | Divergent UX | P2-1 (screenshots as baseline) |
 | Running test suite requires DB/migration → violates stop conditions | 🔴 High | Med | Schema drift, data risk | P2-2 gated by §4; run against local dev DB only, never migrate prod |
-| Stripe/payment regression from future edits | 🔴 High | Low | Funds/commission errors | ADR-0072 gate; no payment change without new ADR |
+| Stripe/payment regression from future edits | 🔴 High | Low | Funds/commission errors | ADR-0079 gate; no payment change without new ADR |
 | Uncommitted QA files lost or overwritten | 🟢 Low | Low | Lost test coverage | P1-4 (commit now) |
 
 ---
@@ -74,7 +74,7 @@ flowchart TD
 2. **Production data:** If any task would write/backfill/delete prod data, STOP.
 3. **Payments/Stripe:** If any task would change `lib/stripe.ts`, `lib/stripeService.ts`, `routes/stripeWebhook.ts`, commission, or escrow logic, STOP — new ADR + architect sign-off required.
 4. **Secrets:** If any task requires changing `JWT_SECRET`, DB URLs, `REDIS_PASSWORD`, or Stripe keys, STOP — never rotate/commit without approval.
-5. **ADR conflict:** If the roadmap reverses ADR-0070 (MVP scope) or ADR-0072 (Stripe), STOP and re-enter the Human Approval Gate.
+5. **ADR conflict:** If the roadmap reverses ADR-0078 (MVP scope) or ADR-0079 (Stripe), STOP and re-enter the Human Approval Gate.
 
 ---
 

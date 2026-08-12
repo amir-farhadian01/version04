@@ -24,8 +24,8 @@ Add 2 new entries to docs/memory/decision-history.md:
 
 ## TASK 3: Cleanup: Create ADR for Stripe approval
 
-Create docs/adr/ADR-0072-stripe-approval.md:
-- ADR-0072: Stripe Connect Approved as Payment Gateway
+Create docs/adr/ADR-0079-stripe-approval.md:
+- ADR-0079: Stripe Connect Approved as Payment Gateway
 - Status: accepted
 - Context: CEO approved on 2026-08-11
 - Decision: Use existing lib/stripe.ts and lib/stripeService.ts

@@ -1,4 +1,4 @@
-# ADR-0069: Quick-Start Package — Onboarding, Social Feed & Order Workflow
+# ADR-0080: Quick-Start Package — Onboarding, Social Feed & Order Workflow
 - **Status:** proposed
 - **Date:** 2026-08-06
 - **Author:** Solution Architect (day-1 audit)

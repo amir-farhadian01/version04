@@ -134,7 +134,7 @@ The 42-issue / 7-phase plan has been implemented. Evidence:
 | C3 | Traefik dashboard port — root `PORTS.md` = 8080 vs `docs/PORTS.md` = 9191 | `PORTS.md` vs `docs/PORTS.md` | 🟡 Medium |
 | C4 | "MVP 100% complete, no remaining tasks" (`ROADMAP.md` v3.0.0) vs `ORDER_FLOW_GAP_ANALYSIS.md` header "16 open items" (last updated 2026-05-26) | `docs/ROADMAP.md` vs `docs/ORDER_FLOW_GAP_ANALYSIS.md` | 🟡 Medium (stale doc) |
 | C5 | Doc version skew — `docs/AGENTS.md` v3.1.0 vs `docs/ROADMAP.md` v3.0.0 | `docs/AGENTS.md` vs `docs/ROADMAP.md` | 🟢 Low |
-| C6 | ADR numbering collisions — `ADR-0070` = "MVP contract v1" (`docs/adr/`) vs "CI/CD Pipeline" (`docs/DECISIONS.md` L670); `ADR-0072` = "Stripe approval" (`docs/adr/`) vs "AGENTS.md Rule #6 Clarification" (`docs/DECISIONS.md` L674) | `docs/adr/` vs `docs/DECISIONS.md` | 🟡 Medium (traceability) |
+| C6 | ADR numbering collisions — `ADR-0070` = "MVP contract v1" (`docs/adr/`) vs "CI/CD Pipeline" (`docs/DECISIONS.md` L670); `ADR-0072` = "Stripe approval" (`docs/adr/`) vs "AGENTS.md Rule #6 Clarification" (`docs/DECISIONS.md` L674) | `docs/adr/` vs `docs/DECISIONS.md` | ✅ RESOLVED 2026-08-12 → ADR-0078/0079/0080 |
 | C7 | ROADMAP stack lists Redis + NATS (L80-81) while root `PORTS.md` claims Redis removed — internal ROADMAP/doc inconsistency | `docs/ROADMAP.md` vs `PORTS.md` | 🟡 Medium |
 
 ---
@@ -160,7 +160,7 @@ The 42-issue / 7-phase plan has been implemented. Evidence:
 | Task / Workstream | Status | Evidence |
 |-------------------|--------|----------|
 | Quick-Start Package (OAuth, onboarding, feed, order flow) Tasks 1-14 | ✅ Implemented | Commit `4da076a`; `flutter_project/lib/screens/onboarding/`; `routes/auth.ts`; decision-history 2026-08-07 |
-| Stripe Connect approval + integration | ✅ Implemented | `lib/stripe.ts`, `lib/stripeService.ts`, `routes/stripeWebhook.ts`; ADR-0072 (`docs/adr/`), decision-history 2026-08-11 |
+| Stripe Connect approval + integration | ✅ Implemented | `lib/stripe.ts`, `lib/stripeService.ts`, `routes/stripeWebhook.ts`; ADR-0079 (`docs/adr/`), decision-history 2026-08-11 |
 | MVP scope expanded to full flow | ✅ Implemented | `docs/ROADMAP.md` v3.0.0; commit `50537ce`; decision-history 2026-08-11 |
 | Admin SPA separation | ✅ Implemented | `frontend/admin/`; `mountAdminApiRoutes()` |
 | Social feed (Phase 2) | ✅ Implemented | `routes/socialFeed.ts`, `stories.ts`, `follow.ts`, `feed.ts`; Flutter `features/feed/` |
@@ -185,9 +185,9 @@ The 42-issue / 7-phase plan has been implemented. Evidence:
 |---------|--------|
 | **Prisma migration required** | STOP. `prisma migrate dev`/`deploy` is blocked pending approval. Current schema is already at the target state for all 12 plans; no further migration is required. |
 | **Production data could be affected** | STOP. No bulk backfill, seed on prod, or destructive writes without approval. |
-| **Payment / Stripe behavior must change** | STOP. Stripe is CEO-approved (ADR-0072). Any change to `lib/stripe.ts`, `lib/stripeService.ts`, `routes/stripeWebhook.ts`, or commission/escrow math requires a new ADR + architect sign-off. |
+| **Payment / Stripe behavior must change** | STOP. Stripe is CEO-approved (ADR-0079). Any change to `lib/stripe.ts`, `lib/stripeService.ts`, `routes/stripeWebhook.ts`, or commission/escrow math requires a new ADR + architect sign-off. |
 | **Secret / credential must change** | STOP. `JWT_SECRET`, `DATABASE_URL`, `REDIS_PASSWORD`, Stripe keys must never be committed or rotated without approval. |
-| **Existing ADR conflicts with requested roadmap** | STOP. ADR-0070 (MVP scope, superseded) and ADR-0072 (Stripe) are decision records; any roadmap that reverses them must go back to the Human Approval Gate. |
+| **Existing ADR conflicts with requested roadmap** | STOP. ADR-0078 (MVP scope, superseded) and ADR-0079 (Stripe) are decision records; any roadmap that reverses them must go back to the Human Approval Gate. |
 
 ---
 

@@ -18,8 +18,8 @@
     },
     {
       "id": 3,
-      "title": "Cleanup: Create ADR for Stripe approval\n\nCreate docs/adr/ADR-0072-stripe-approval.md:\n- ADR-0072: Stripe Connect Approved as Payment Gateway\n- Status: accepted\n- Context: CEO approved on 2026-08-11\n- Decision: Use existing lib/stripe.ts and lib/stripeService.ts\n- Supersedes AGENTS.md rule #6\n\n---",
-      "content": "## TASK 3: Cleanup: Create ADR for Stripe approval\n\nCreate docs/adr/ADR-0072-stripe-approval.md:\n- ADR-0072: Stripe Connect Approved as Payment Gateway\n- Status: accepted\n- Context: CEO approved on 2026-08-11\n- Decision: Use existing lib/stripe.ts and lib/stripeService.ts\n- Supersedes AGENTS.md rule #6\n\n---",
+      "title": "Cleanup: Create ADR for Stripe approval\n\nCreate docs/adr/ADR-0079-stripe-approval.md:\n- ADR-0079: Stripe Connect Approved as Payment Gateway\n- Status: accepted\n- Context: CEO approved on 2026-08-11\n- Decision: Use existing lib/stripe.ts and lib/stripeService.ts\n- Supersedes AGENTS.md rule #6\n\n---",
+      "content": "## TASK 3: Cleanup: Create ADR for Stripe approval\n\nCreate docs/adr/ADR-0079-stripe-approval.md:\n- ADR-0079: Stripe Connect Approved as Payment Gateway\n- Status: accepted\n- Context: CEO approved on 2026-08-11\n- Decision: Use existing lib/stripe.ts and lib/stripeService.ts\n- Supersedes AGENTS.md rule #6\n\n---",
       "status": "completed",
       "completedAt": "2026-08-11T17:59:53.623Z"
     },

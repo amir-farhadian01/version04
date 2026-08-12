@@ -679,6 +679,11 @@ Introduce a dedicated `Payment` model with a `pending → captured → refunded/
 **Date:** 2026-05-27 **Status:** Accepted
 **Context:** Rule #6 in both `docs/AGENTS.md` and root `AGENTS.md` stated "NO Stripe or payment libraries — out of scope" but the Payment model in `prisma/schema.prisma` already contains `stripePaymentIntentId` and `stripeTransferId` fields from a previous schema design. This contradiction confused agents about whether Stripe was permitted. The `stripe` npm package is NOT in `package.json` (confirmed via grep). **Decision:** Rule #6 was updated to clarify that the schema is Stripe-compatible but no SDK is installed. Payment flows use internal `Transaction` records until a gateway ADR is approved. **Consequences:** ✅ Agents no longer confused by the contradiction; ✅ Schema fields documented as future-ready; ❌ Payment gateway integration still pending.
 
+> **⚠️ ADR renumbering note (2026-08-12):** Three `docs/adr/` files previously reused ADR numbers already assigned in this file. They were renumbered to the next free numbers to eliminate collisions. Decision content is unchanged:
+> - `docs/adr/0069-quick-start-onboarding-social-order.md` → **ADR-0080** (was 0069; ADR-0069 above = "Two-Way Rating System" is the original).
+> - `docs/adr/ADR-0070-mvp-contract-v1.md` → **ADR-0078** (was 0070; ADR-0070 above = "CI/CD Pipeline" is the original).
+> - `docs/adr/ADR-0072-stripe-approval.md` → **ADR-0079** (was 0072; ADR-0072 above = "AGENTS.md Rule #6 Clarification" is the original).
+
 ## ADR-0073 — P1.1 Business Services, Packages & Inventory UI: Soft-Delete, Cents, TanStack Query
 **Date:** 2026-05-28 **Status:** Accepted
 **Context:** Prompt P1.1 from `docs/permanent/PROMPTS-LIST.md` requires CRUD for services, packages, and inventory in the Business Workspace. The existing `routes/services.ts` used hard-delete and float prices (dollars). The existing frontend pages (`MyServicesPage.tsx`, `InventoryPage.tsx`, `MyPackagesPage.tsx`) used inline styles (not TailwindCSS), `any` types, mixed price handling (float vs cents), and raw axios calls without TanStack Query. **Decision:**

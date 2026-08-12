@@ -12,7 +12,7 @@ Append-only log. Never delete entries; supersede them.
 
 ## [2026-08-06] Quick-Start Package — Day-1 Audit & Architecture
 - **Goal:** بررسی پروژه بعنوان مدیر روز اول و آماده‌سازی پکیج استارت سریع (Onboarding سریع مثل اینستاگرام + Social Feed + Order Workflow)
-- **Decision:** ADR-0069 — سه Workstream موازی: (A) Social Login (Google/Apple) + Onboarding Wizard 3-Step، (B) Social Feed Polish (Stories Row + Post Card + Create Post + Order CTA)، (C) Unified Order Flow (Post→Order Bridge + One-Tap Reorder + Commission Visibility)
+- **Decision:** ADR-0080 — سه Workstream موازی: (A) Social Login (Google/Apple) + Onboarding Wizard 3-Step، (B) Social Feed Polish (Stories Row + Post Card + Create Post + Order CTA)، (C) Unified Order Flow (Post→Order Bridge + One-Tap Reorder + Commission Visibility)
 - **Alternatives rejected:** (1) Separate Marketplace tab — fragmented experience, rejected. (2) Firebase Auth — external dependency, rejected — our JWT system is clean. (3) Rewrite Flutter feed from scratch — too expensive, rejected — incremental polish on existing foundation.
 - **Rationale:** ~90% of backend infra is done (auth, matching, orders, payments, admin). The gap is consumer-facing UX layer. Social login cuts onboarding friction 70%. Post→Order bridge creates the core monetization loop. Commission visibility builds trust.
 
@@ -40,7 +40,7 @@ Append-only log. Never delete entries; supersede them.
 - **Status:** Superseded by 2026-08-11 MVP Scope Expanded decision above.
 - **Goal:** (Original) Produce a one-page MVP Contract — final correction per CEO: MVP v1 ends at provider acceptance. Start-job, complete, and payment lifecycle deferred to MVP v1.1 pending human-approved payment ADR.
 - **Decision:** (Original — SUPERSEDED) MVP v1 scope: Customer registers → browses → draft → submit → matching → provider accepts.
-- **Artifacts:** `docs/permanent/mvp-contract-v1.md` (superseded), `docs/permanent/mvp-implementation-tasks.md` (superseded), `docs/adr/ADR-0070-mvp-contract-v1.md` (superseded).
+- **Artifacts:** `docs/permanent/mvp-contract-v1.md` (superseded), `docs/permanent/mvp-implementation-tasks.md` (superseded), `docs/adr/ADR-0078-mvp-contract-v1.md` (superseded).
 
 ## [2026-08-12] 12-Plan Baseline Audit — Status Report Delivered
 - **Goal:** Audit the 13 files under `plans/` against the current repository and produce an implementation-ready status report before changing code.
