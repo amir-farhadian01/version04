@@ -41,3 +41,9 @@ Append-only log. Never delete entries; supersede them.
 - **Goal:** (Original) Produce a one-page MVP Contract — final correction per CEO: MVP v1 ends at provider acceptance. Start-job, complete, and payment lifecycle deferred to MVP v1.1 pending human-approved payment ADR.
 - **Decision:** (Original — SUPERSEDED) MVP v1 scope: Customer registers → browses → draft → submit → matching → provider accepts.
 - **Artifacts:** `docs/permanent/mvp-contract-v1.md` (superseded), `docs/permanent/mvp-implementation-tasks.md` (superseded), `docs/adr/ADR-0070-mvp-contract-v1.md` (superseded).
+
+## [2026-08-12] 12-Plan Baseline Audit — Status Report Delivered
+- **Goal:** Audit the 13 files under `plans/` against the current repository and produce an implementation-ready status report before changing code.
+- **Decision:** Concluded 10 of 12 workstreams are fully implemented and 2 partially done; remaining work is documentation reconciliation + QA verification, not feature code. Delivered `docs/PLAN_STATUS.md` and `docs/IMPLEMENTATION_ROADMAP.md`. Recommended first task: P0-1 (fix root `PORTS.md`, which still says "Redis removed").
+- **Alternatives rejected:** Accepting the ROADMAP "MVP complete" claim without code evidence (rejected — verified schema/routes/tests directly); re-running the full test suite (rejected — would require local Postgres and risk migrations).
+- **Rationale:** Establishes ground truth for subsequent implementation prompts; separates the few code gaps from the documentation gaps (stale root `PORTS.md`, stale `ORDER_FLOW_GAP_ANALYSIS.md`, ADR numbering collisions).
