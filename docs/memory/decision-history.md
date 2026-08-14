@@ -42,7 +42,12 @@ Append-only log. Never delete entries; supersede them.
 - **Decision:** (Original — SUPERSEDED) MVP v1 scope: Customer registers → browses → draft → submit → matching → provider accepts.
 - **Artifacts:** `docs/permanent/mvp-contract-v1.md` (superseded), `docs/permanent/mvp-implementation-tasks.md` (superseded), `docs/adr/ADR-0078-mvp-contract-v1.md` (superseded).
 
-## [2026-08-12] 12-Plan Baseline Audit — Status Report Delivered
+## [2026-08-13] QA Round 1 — Full Test Execution (38 tests across 3 dashboards)
+- **Goal:** Execute full QA test suite (AUTH / SOCIAL / ADMIN / ROLE / NAV) for Neighborly version04 and produce `docs/TEST_RESULTS.md`.
+- **Decision:** Ran tests against a locally-provisioned stack (PostgreSQL 16 clusters on 5432/5433 + `tsx server.ts` + Vite) because Docker was unavailable (daemon down, no root). Used only non-invasive workarounds to unblock testing: `prisma db push --force-reset` and `npm install @google/generative-ai --no-save` — no tracked files modified.
+- **Alternatives rejected:** Auto-fixing the broken migration file and the Google SDK import mismatch (rejected — STOP CONDITIONS require human approval before code fixes). Re-running in Docker (rejected — no root access to start dockerd).
+- **Rationale:** 4 CRITICAL findings surfaced (broken migration chain, `@google/generative-ai` vs `@google/genai` mismatch, JWT role-claim privilege escalation with weak default `JWT_SECRET`), plus HIGH issues (admin edit leaks password hash/refreshToken, no admin input validation, token-less password reset, broken business-dashboard API path). Report committed for human review before any fix.
+
 - **Goal:** Audit the 13 files under `plans/` against the current repository and produce an implementation-ready status report before changing code.
 - **Decision:** Concluded 10 of 12 workstreams are fully implemented and 2 partially done; remaining work is documentation reconciliation + QA verification, not feature code. Delivered `docs/PLAN_STATUS.md` and `docs/IMPLEMENTATION_ROADMAP.md`. Recommended first task: P0-1 (fix root `PORTS.md`, which still says "Redis removed").
 - **Alternatives rejected:** Accepting the ROADMAP "MVP complete" claim without code evidence (rejected — verified schema/routes/tests directly); re-running the full test suite (rejected — would require local Postgres and risk migrations).
