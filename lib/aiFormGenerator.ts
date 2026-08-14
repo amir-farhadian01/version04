@@ -9,7 +9,7 @@
  *   select | multiselect | boolean | file | photo | location | range | rating
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -228,22 +228,22 @@ export async function generateFormSchema(input: FormGenerationInput): Promise<Ge
     throw new Error('GEMINI_API_KEY is not configured');
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    generationConfig: {
-      temperature: 0.3,
-      maxOutputTokens: 2048,
-      responseMimeType: 'application/json',
-    },
-  });
+  const genAI = new GoogleGenAI({ apiKey });
 
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(input);
   const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}`;
 
-  const result = await model.generateContent(fullPrompt);
-  const responseText = result.response.text().trim();
+  const result = await genAI.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: fullPrompt,
+    config: {
+      temperature: 0.3,
+      maxOutputTokens: 2048,
+      responseMimeType: 'application/json',
+    },
+  });
+  const responseText = (result.text ?? '').trim();
 
   // Parse JSON — handle potential markdown wrapping
   let parsed: unknown;

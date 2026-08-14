@@ -119,7 +119,7 @@ export default function BusinessDashboard() {
   useEffect(() => {
     if (!workspaceId) return
     setLoading(true)
-    api.get(`/workspace/${workspaceId}/dashboard`)
+    api.get(`/workspaces/${workspaceId}/dashboard/overview`)
       .then((res) => setData(res.data))
       .catch((err) => setError(err?.response?.data?.error ?? 'Failed to load dashboard'))
       .finally(() => setLoading(false))

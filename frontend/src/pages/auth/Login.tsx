@@ -12,9 +12,14 @@ const ROLE_REDIRECTS: Record<string, string> = {
   customer: '/app/home',
 }
 
-function resolveRedirect(roles: string[]): string {
+function resolveRedirect(roles: string[], companyId?: string | null): string {
   for (const [roleKey, path] of Object.entries(ROLE_REDIRECTS)) {
     if (roles.some((r) => r.toUpperCase() === roleKey.toUpperCase())) {
+      // Business users are redirected to their actual workspace, not a
+      // hardcoded "default" id (which does not exist).
+      if (path === '/business/default') {
+        return companyId ? `/business/${companyId}` : '/app/home'
+      }
       return path
     }
   }
@@ -42,7 +47,9 @@ export default function Login() {
       await login({ email, password })
       // Read roles from the store after login() updates them
       const currentUser = useAuthStore.getState().user
-      const redirectPath = currentUser?.roles ? resolveRedirect(currentUser.roles) : '/app/home'
+      const redirectPath = currentUser?.roles
+        ? resolveRedirect(currentUser.roles, currentUser.companyId)
+        : '/app/home'
       navigate(redirectPath)
     } catch (err: unknown) {
       const msg =
