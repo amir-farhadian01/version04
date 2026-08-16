@@ -1,0 +1,4 @@
+# This folder is managed by QualityGuard agent.
+# Files here are automatically deleted after 7 days every Sunday.
+# DO NOT commit source code to this folder.
+# Patterns moved here: *.tmp, *.bak, *.pid, *.log (root-level), screenshots (>30 days)
