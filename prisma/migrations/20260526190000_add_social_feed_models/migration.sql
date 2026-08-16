@@ -7,7 +7,7 @@ ALTER TABLE "Post" DROP COLUMN IF EXISTS "businessId";
 ALTER TABLE "Post" DROP COLUMN IF EXISTS "location";
 ALTER TABLE "Post" DROP COLUMN IF EXISTS "interests";
 ALTER TABLE "Post" DROP COLUMN IF EXISTS "views";
-ALTER TABLE "Post" ALTER COLUMN "categoryId" SET NOT NULL;
+ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "categoryId" TEXT NOT NULL;
 ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "caption" TEXT;
 ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "locationId" TEXT;
 ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "serviceCatalogId" TEXT;
@@ -69,10 +69,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS "PostLike_postId_userId_key" ON "PostLike"("po
 CREATE UNIQUE INDEX IF NOT EXISTS "PostSave_postId_userId_key" ON "PostSave"("postId", "userId");
 CREATE INDEX IF NOT EXISTS "PostMedia_postId_idx" ON "PostMedia"("postId");
 CREATE INDEX IF NOT EXISTS "Post_authorId_idx" ON "Post"("authorId");
+CREATE INDEX IF NOT EXISTS "Post_categoryId_idx" ON "Post"("categoryId");
 CREATE INDEX IF NOT EXISTS "Post_publishedAt_idx" ON "Post"("publishedAt");
 CREATE INDEX IF NOT EXISTS "Post_moderationStatus_idx" ON "Post"("moderationStatus");
 
 -- AddForeignKey
+ALTER TABLE "Post" ADD CONSTRAINT "Post_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "PostMedia" ADD CONSTRAINT "PostMedia_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "Post" ADD CONSTRAINT "Post_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "PostLocation"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "PostLike" ADD CONSTRAINT "PostLike_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;

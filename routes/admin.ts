@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
 import prisma from '../lib/db.js';
+import { createPasswordResetToken } from '../lib/passwordReset.js';
 import { authenticate, isAdmin, requireRole, AuthRequest } from '../lib/auth.middleware.js';
 import {
   buildDefaultDependencyCatalog,
@@ -168,6 +169,18 @@ router.get('/users', async (req: AuthRequest, res: Response) => {
 // PUT /api/admin/users/:id
 router.put('/users/:id', async (req: AuthRequest, res: Response) => {
   const { role, status, isVerified, creditLimit, firstName, lastName, displayName, email, phone, gender, address, bio } = req.body;
+
+  // Input validation — reject malformed email and empty displayName.
+  if (email !== undefined && email !== null) {
+    const emailStr = String(email).trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
+  }
+  if (displayName !== undefined && typeof displayName === 'string' && displayName.trim() === '') {
+    return res.status(400).json({ error: 'displayName cannot be empty' });
+  }
+
   try {
     // Check for duplicate email (if email is being changed)
     if (email !== undefined) {
@@ -203,7 +216,29 @@ router.put('/users/:id', async (req: AuthRequest, res: Response) => {
     if (address !== undefined) data.address = address;
     if (bio !== undefined) data.bio = bio;
 
-    const updated = await prisma.user.update({ where: { id: req.params.id }, data });
+    const updated = await prisma.user.update({
+      where: { id: req.params.id },
+      data,
+      // Never expose password hash, refresh token, or other sensitive fields.
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        firstName: true,
+        lastName: true,
+        displayName: true,
+        username: true,
+        role: true,
+        staffRole: true,
+        status: true,
+        isVerified: true,
+        mfaEnabled: true,
+        companyId: true,
+        avatarUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
 
     await prisma.auditLog.create({
       data: {
@@ -240,9 +275,10 @@ router.post('/users/:id/reset-password-email', async (req: AuthRequest, res: Res
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // In production, this would send an actual email via a mail service.
-    // For now, we log it and return success.
-    const resetLink = `${req.protocol}://${req.get('host')}/auth/reset-password?userId=${user.id}&token=pending`;
+    // Generate a real, single-use reset token and log the link. Wire a mail
+    // provider (SendGrid/Resend/SES) here to actually deliver the email.
+    const token = await createPasswordResetToken(user.id);
+    const resetLink = `${req.protocol}://${req.get('host')}/auth/reset-password?token=${token}`;
     console.log(`[ADMIN] Password reset email for ${user.email}: ${resetLink}`);
 
     await prisma.auditLog.create({
@@ -575,7 +611,7 @@ router.post('/dependency-catalog/reset', requireRole('owner', 'platform_admin', 
 router.get('/dependency-catalog/export.txt', async (req: AuthRequest, res: Response) => {
   try {
     const profile = typeof req.query.profile === 'string' && req.query.profile ? req.query.profile : undefined;
-    let config = await prisma.systemConfig.findUnique({ where: { key: 'global' } });
+    const config = await prisma.systemConfig.findUnique({ where: { key: 'global' } });
     let catalog = config?.dependencyCatalog as unknown;
     if (!catalog || !isDependencyCatalogV1(catalog)) {
       const built = buildDefaultDependencyCatalog();

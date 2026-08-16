@@ -41,7 +41,7 @@ function makeOrderWithBom(
     matchedPackageId: 'pkg-1',
     matchedPackage: {
       id: 'pkg-1',
-      bomItems,
+      bom: bomItems,
     },
   };
 }
@@ -66,7 +66,7 @@ function makeOrderWithEmptyBom() {
     matchedPackageId: 'pkg-2',
     matchedPackage: {
       id: 'pkg-2',
-      bomItems: [],
+      bom: [],
     },
   };
 }

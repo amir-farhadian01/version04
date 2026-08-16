@@ -15,7 +15,7 @@ if (!fs.existsSync(uploadDir)) {
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
   filename: (_req, file, cb) => {
-    const safe = file.originalname.replace(/[^\w.\-]/g, "_");
+    const safe = file.originalname.replace(/[^\w.-]/g, "_");
     cb(null, `${Date.now()}-${safe}`);
   },
 });

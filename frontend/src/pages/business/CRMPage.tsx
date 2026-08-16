@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Plus, FileText, MessageCircle, Clock, DollarSign } from 'lucide-react';
-import { api } from '../../app/api';
+import api from '../../lib/api';
 
 interface Customer {
   id: string;

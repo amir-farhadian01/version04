@@ -199,7 +199,7 @@ async function simulateCreateQuote(
       status: QuoteStatus.DRAFT,
       title: (body.title as string) ?? `Quote #${versionNumber}`,
       description: (body.description as string) ?? null,
-      lineItems: (body.lineItems as Array<unknown>) ?? [],
+      lineItems: (body.lineItems as object[]) ?? [],
       subtotal: body.subtotal as number,
       tax: body.tax as number,
       total: body.total as number,

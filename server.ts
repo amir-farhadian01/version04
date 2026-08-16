@@ -243,6 +243,14 @@ function createWebApp(opts?: { adminOnly?: boolean }): Express {
 }
 
 async function startServer() {
+  // Security guard: refuse to boot with a missing or default JWT secret.
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret || jwtSecret === 'dev-secret-local' || jwtSecret === 'replace-this-in-production') {
+    throw new Error(
+      'FATAL: JWT_SECRET is not set or is using a default/insecure value. Generate a strong secret with: openssl rand -base64 64'
+    );
+  }
+
   const PORT = parseInt(process.env.PORT || "8080", 10);
   const ADMIN_PORT = parseInt(process.env.ADMIN_PORT || "9090", 10);
   if (PORT === ADMIN_PORT) {

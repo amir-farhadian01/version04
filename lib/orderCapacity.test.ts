@@ -272,7 +272,7 @@ describe('releaseProviderSlot', () => {
 
     // Verify it's reserved
     const pkg = makeEligiblePackage('pkg-1', 'provider-1', 10);
-    let result = await checkPackageCapacity([pkg], makeDate(9, 0));
+    const result = await checkPackageCapacity([pkg], makeDate(9, 0));
     expect(result.underCapacity[0].reservedSlots).toBe(1);
 
     // Release the slot

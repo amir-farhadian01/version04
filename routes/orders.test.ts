@@ -340,7 +340,7 @@ async function simulateCancel(
   }
 
   // Validate state
-  const allowedStates = [
+  const allowedStates: OrderStatus[] = [
     OrderStatus.draft,
     OrderStatus.submitted,
     OrderStatus.matching,
@@ -990,6 +990,10 @@ async function simulateWalkInOrder(
         serviceCatalogId,
         description,
         address: addressId,
+        schemaSnapshot: {},
+        answers: {},
+        photos: [],
+        scheduleFlexibility: 'asap',
         entryPoint: 'direct',
         status: OrderStatus.contracted,
         matchedProviderId: providerId,

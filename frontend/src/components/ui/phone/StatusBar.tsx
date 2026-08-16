@@ -18,7 +18,7 @@ export function StatusBar({ title, onNotifClick, showNotifDot }: StatusBarProps)
           <path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
         </svg>
         {onNotifClick && (
-          <div className="relative cursor-pointer" onClick={onNotifClick}>
+          <div className="notif-bell relative cursor-pointer" onClick={onNotifClick}>
             <svg width="18" height="18" viewBox="0 0 24 24" className="fill-nh-text-secondary">
               <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
             </svg>

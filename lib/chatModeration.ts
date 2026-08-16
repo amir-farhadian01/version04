@@ -36,7 +36,7 @@ const PO_BOX_RE = /\bP\.?\s*O\.?\s*Box\s+\d+\b/i;
 
 /** Explicit contact-sharing patterns that should always block */
 const EXPLICIT_SHARE_RE =
-  /\b(call\s+me\s+(at|on|@)\s*[\d\s().-]{7,}|my\s+(number|phone|email|address|cell|mobile)\s+is|here('s| is)\s+my\s+(number|phone|email|address)|reach\s+me\s+at\s+[\d@]|text\s+me\s+(at|on)\s*[\d\s().-]{7,}|email\s+me\s+(at|@)\s*[\w@.\-]+|shoot\s+me\s+(a\s+)?(text|message|email)\s+(at|@)|give\s+me\s+a\s+call\s+(at|on)|you\s+can\s+(call|text|reach|contact)\s+me\s+(at|on|@))\b/i;
+  /\b(call\s+me\s+(at|on|@)\s*[\d\s().-]{7,}|my\s+(number|phone|email|address|cell|mobile)\s+is|here('s| is)\s+my\s+(number|phone|email|address)|reach\s+me\s+at\s+[\d@]|text\s+me\s+(at|on)\s*[\d\s().-]{7,}|email\s+me\s+(at|@)\s*[\w@.-]+|shoot\s+me\s+(a\s+)?(text|message|email)\s+(at|@)|give\s+me\s+a\s+call\s+(at|on)|you\s+can\s+(call|text|reach|contact)\s+me\s+(at|on|@))\b/i;
 
 function safeReplace(input: string, re: RegExp, reason: string, reasons: Set<string>): string {
   try {
@@ -270,7 +270,7 @@ export async function incrementCircumventionScore(
     await prisma.$disconnect();
     return { score: newScore, flaggedForReview, restrictionChanged, restrictionLevel: newRestrictionLevel };
   } catch {
-    try { await (await import('@prisma/client')).PrismaClient.prototype.$disconnect?.(); } catch {}
+    try { await (await import('@prisma/client')).PrismaClient.prototype.$disconnect?.(); } catch { /* ignore */ }
     return { score: 1, flaggedForReview: false, restrictionChanged: false, restrictionLevel: 'none' };
   }
 }

@@ -1,12 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, JwtPayload } from './jwt.js';
 import { isTokenBlacklisted } from './tokenBlacklist.js';
+import prisma from './db.js';
 
 export interface AuthRequest extends Request {
   user?: JwtPayload;
 }
 
-export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
+export async function authenticate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({ error: 'No token provided' });
@@ -14,22 +15,40 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
   }
 
   const token = authHeader.slice(7);
+  let decoded: JwtPayload;
   try {
-    req.user = verifyAccessToken(token);
-    // Check if token has been blacklisted (logged out)
-    isTokenBlacklisted(token).then(blacklisted => {
-      if (blacklisted) {
-        res.status(401).json({ code: 'TOKEN_BLACKLISTED', message: 'Token has been invalidated' });
-        return;
-      }
-      next();
-    }).catch(() => {
-      // If blacklist check fails, allow the request through (fail open)
-      next();
-    });
+    decoded = verifyAccessToken(token);
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
+    return;
   }
+
+  try {
+    // Re-validate the user's role against the database. Never trust the JWT
+    // role claim alone — a forged or stale token could otherwise escalate privileges.
+    const dbUser = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { role: true },
+    });
+    if (!dbUser) {
+      res.status(401).json({ error: 'Account not found' });
+      return;
+    }
+    req.user = { ...decoded, role: dbUser.role };
+  } catch {
+    res.status(401).json({ error: 'Authentication failed' });
+    return;
+  }
+
+  // Check if the token has been blacklisted (logged out). isTokenBlacklisted
+  // swallows Redis errors internally, so this is safe even if Redis is down.
+  const blacklisted = await isTokenBlacklisted(token);
+  if (blacklisted) {
+    res.status(401).json({ code: 'TOKEN_BLACKLISTED', message: 'Token has been invalidated' });
+    return;
+  }
+
+  next();
 }
 
 export function requireRole(...roles: string[]) {

@@ -26,7 +26,7 @@ const wizardPrefillSchema = z.object({
   scheduledAt: z.string().datetime().optional(),
   address: z.string().min(5).max(500).optional(),
   urgency: z.enum(['standard', 'urgent', 'emergency']).optional(),
-  answers: z.record(z.unknown()).optional(),
+  answers: z.record(z.string(), z.unknown()).optional(),
   photos: z.array(z.string()).optional(),
   bookingMode: z.enum(['booking', 'direct_booking', 'hybrid', 'quote_first', 'walk_in', 'inherit_from_catalog']).optional(),
   source: z.enum(['wizard', 'explorer', 'direct', 'reorder']).optional(),
@@ -126,7 +126,6 @@ router.post('/checkout', async (req: Request, res: Response, next: NextFunction)
         status: 'submitted',
         phase: 'order',
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        bookingMode: pkg.bookingMode,
       },
     });
 
@@ -185,7 +184,7 @@ router.get('/orders/:token', async (req: Request, res: Response, next: NextFunct
     const orders = await prisma.order.findMany({
       where: { customerId: userId },
       include: {
-        servicePackage: {
+        matchedPackage: {
           select: { name: true },
         },
       },

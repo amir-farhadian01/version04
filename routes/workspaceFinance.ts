@@ -49,7 +49,7 @@ function serializeTransaction(t: Record<string, unknown>) {
     staffId: t.matchedProviderId,
     amount: t.amount ?? 0,
     commission: t.commission ?? 0,
-    net: (t.amount ?? 0) - (t.commission ?? 0),
+    net: (Number(t.amount ?? 0)) - (Number(t.commission ?? 0)),
     paymentRef: (t.payment as Record<string, unknown>)?.stripePaymentIntentId ?? null,
     status: (t.payment as Record<string, unknown>)?.status ?? null,
     paymentMethod: (t.payment as Record<string, unknown>)?.method ?? null,
@@ -154,8 +154,8 @@ router.get('/:workspaceId/finance/transactions', authenticate, async (req: AuthR
         net,
         paymentRef: o.payment?.stripePaymentIntentId ?? null,
         status: o.payment?.status ?? null,
-        paymentMethod: o.payment?.method ?? null,
-        invoiceId: o.payment?.invoiceId ?? null,
+        paymentMethod: (o.payment as { method?: string } | null)?.method ?? null,
+        invoiceId: (o.payment as { invoiceId?: string } | null)?.invoiceId ?? null,
       };
     });
 

@@ -14,6 +14,7 @@ import { authenticate, AuthRequest } from '../lib/auth.middleware.js';
 import { publish } from '../lib/bus.js';
 import { authLimiter } from '../lib/rateLimiter.js';
 import { blacklistToken } from '../lib/tokenBlacklist.js';
+import { createPasswordResetToken, consumePasswordResetToken } from '../lib/passwordReset.js';
 import {
   normalizeUsername,
   isValidUsername,
@@ -296,10 +297,20 @@ router.post('/forgot-password', authLimiter, async (req: Request, res: Response)
 
   try {
     const user = await prisma.user.findUnique({ where: { email } });
+
+    // Always return the same generic response to prevent email enumeration.
     if (!user || !user.password) {
-      return res.status(404).json({ error: 'Email does not exist', code: 'EMAIL_NOT_FOUND' });
+      return res.json({ success: true });
     }
-    // We currently do direct in-app reset flow (email + new password) from trusted clients.
+
+    const token = await createPasswordResetToken(user.id);
+    const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 8080}`;
+    const resetLink = `${baseUrl}/auth/reset-password?token=${token}`;
+
+    // No email transport is configured yet — log the link and surface it in
+    // development. Wire a mail provider (SendGrid/Resend/SES) here in production.
+    console.log(`[PasswordReset] Reset link for ${user.email}: ${resetLink}`);
+
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Forgot password failed' });
@@ -307,21 +318,24 @@ router.post('/forgot-password', authLimiter, async (req: Request, res: Response)
 });
 
 router.post('/reset-password', authLimiter, async (req: Request, res: Response) => {
-  const { email, newPassword } = req.body as { email?: string; newPassword?: string };
-  if (!email || !newPassword) return res.status(400).json({ error: 'Email and newPassword are required' });
+  const { token, newPassword } = req.body as { token?: string; newPassword?: string };
+  if (!token || !newPassword) return res.status(400).json({ error: 'Token and newPassword are required' });
   if (newPassword.length < 8) {
     return res.status(400).json({ error: 'New password must be at least 8 characters' });
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.password) {
-      return res.status(404).json({ error: 'Email does not exist', code: 'EMAIL_NOT_FOUND' });
+    const result = await consumePasswordResetToken(token);
+    if (!result.ok || !result.userId) {
+      return res.status(400).json({
+        error: result.error ?? 'Invalid or expired token',
+        code: result.code ?? 'INVALID_TOKEN',
+      });
     }
 
     const hashed = await bcrypt.hash(newPassword, 12);
     await prisma.user.update({
-      where: { id: user.id },
+      where: { id: result.userId },
       data: { password: hashed, refreshToken: null },
     });
 

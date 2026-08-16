@@ -1,15 +1,37 @@
--- AlterTable: UtilityLink - update columns for Prompt 05 schema
-ALTER TABLE "UtilityLink" DROP COLUMN IF EXISTS "logoUrl";
-ALTER TABLE "UtilityLink" ADD COLUMN IF NOT EXISTS "iconUrl" TEXT;
-ALTER TABLE "UtilityLink" ADD COLUMN IF NOT EXISTS "revenue" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "UtilityLink" ADD COLUMN IF NOT EXISTS "sortOrder" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "UtilityLink" ADD COLUMN IF NOT EXISTS "uniqueClicks" INTEGER NOT NULL DEFAULT 0;
+-- CreateTable: UtilityLink (missing from valid migration history; was only in a bare snapshot)
+CREATE TABLE IF NOT EXISTS "UtilityLink" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "category" TEXT NOT NULL,
+    "iconUrl" TEXT,
+    "description" TEXT,
+    "commissionRate" DOUBLE PRECISION,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "clickCount" INTEGER NOT NULL DEFAULT 0,
+    "uniqueClicks" INTEGER NOT NULL DEFAULT 0,
+    "revenue" INTEGER NOT NULL DEFAULT 0,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "archivedAt" TIMESTAMP(3),
 
--- AlterTable: UtilityLinkClick - update columns for Prompt 05 schema
-ALTER TABLE "UtilityLinkClick" DROP COLUMN IF EXISTS "clickedAt";
-ALTER TABLE "UtilityLinkClick" DROP COLUMN IF EXISTS "userAgent";
-ALTER TABLE "UtilityLinkClick" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE "UtilityLinkClick" ADD COLUMN IF NOT EXISTS "ipHash" TEXT;
+    CONSTRAINT "UtilityLink_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable: UtilityLinkClick
+CREATE TABLE IF NOT EXISTS "UtilityLinkClick" (
+    "id" TEXT NOT NULL,
+    "linkId" TEXT NOT NULL,
+    "userId" TEXT,
+    "ipHash" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "UtilityLinkClick_pkey" PRIMARY KEY ("id")
+);
+
+-- AddForeignKey
+ALTER TABLE "UtilityLinkClick" ADD CONSTRAINT "UtilityLinkClick_linkId_fkey" FOREIGN KEY ("linkId") REFERENCES "UtilityLink"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- CreateTable: HomeBanner
 CREATE TABLE IF NOT EXISTS "HomeBanner" (

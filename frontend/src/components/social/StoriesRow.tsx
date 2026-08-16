@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useStoriesFeed, type StoryGroup, type StoryItem } from '../../services/socialFeedApi'
+import { useStoriesFeed, type StoryItem } from '../../services/socialFeedApi'
 import StoryViewer from './StoryViewer'
 
 interface StoriesRowProps {

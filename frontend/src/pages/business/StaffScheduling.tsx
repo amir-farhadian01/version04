@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Calendar, UserPlus, Clock, CheckCircle, X, Trash2 } from 'lucide-react';
-import { api } from '../../app/api';
+import { UserPlus, Clock, CheckCircle, X, Trash2 } from 'lucide-react';
+import api from '../../lib/api';
 
 interface StaffMember {
   id: string;
