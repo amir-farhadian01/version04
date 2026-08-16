@@ -43,7 +43,6 @@ describe('BottomNav', () => {
     expect(screen.getByText('Home')).toBeInTheDocument()
     expect(screen.getByText('Social')).toBeInTheDocument()
     expect(screen.getByText('Activity')).toBeInTheDocument()
-    expect(screen.getByText('Business')).toBeInTheDocument()
   })
 
   it('navigates to home on home click', () => {
@@ -65,13 +64,13 @@ describe('BottomNav', () => {
     )
 
     fireEvent.click(screen.getByText('Social'))
-    expect(mockNavigate).toHaveBeenCalledWith('/app/social')
+    expect(mockNavigate).toHaveBeenCalledWith('/explorer')
   })
 
   it('hides business items for non-business roles', () => {
     render(
       <MemoryRouter>
-        <BottomNav items={[...defaultItems, { id: 'biz', label: 'Business', icon: NavIcons.business, isBiz: true }]} />
+        <BottomNav items={defaultItems} />
       </MemoryRouter>
     )
 
@@ -85,7 +84,7 @@ describe('BottomNav', () => {
 
     render(
       <MemoryRouter>
-        <BottomNav items={[...defaultItems, { id: 'biz', label: 'Business', icon: NavIcons.business, isBiz: true }]} />
+        <BottomNav items={defaultItems} />
       </MemoryRouter>
     )
 

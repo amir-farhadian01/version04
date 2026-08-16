@@ -270,16 +270,16 @@ router.get(
       const win = fresh.matchingExpiresAt?.getTime() ?? null;
       const secondsRemaining =
         win == null ? null : Math.max(0, Math.floor((win - nowMs) / 1000));
-      function providerName(p: {
+      const providerName = (p: {
         displayName: string | null;
         firstName: string | null;
         lastName: string | null;
         email: string;
-      }): string {
+      }): string => {
         if (p.displayName?.trim()) return p.displayName.trim();
         const n = `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim();
         return n || p.email;
-      }
+      };
       res.json({
         orderId: id,
         status: fresh.status,

@@ -114,7 +114,7 @@ router.get("/status", authenticate, async (req: AuthRequest, res: Response) => {
     const emailVerified = user?.isVerified ?? false;
     const phoneVerified =
       l0?.phoneVerifiedAt != null || (!!user?.phone && user.phone.length > 0);
-    let identityVerified =
+    const identityVerified =
       personalLatest?.status === KycStatus.approved ||
       (row?.status === "verified" && row?.type === "personal");
 

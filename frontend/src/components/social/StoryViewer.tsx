@@ -1,25 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import type { StoryItem, StoryAuthor } from '../../services/socialFeedApi'
 
-interface StoryAuthor {
-  id: string
-  displayName: string
-  avatarUrl: string | null
-}
-
-interface Story {
-  id: string
-  authorId: string
-  author: StoryAuthor
-  mediaUrl: string
-  thumbnailUrl: string | null
-  caption: string | null
-  linkUrl: string | null
-  linkLabel: string | null
-  views: number
-  expiresAt: string
-  createdAt: string
-  viewed: boolean
-  _count?: { viewers: number }
+interface Story extends StoryItem {
+  author?: StoryAuthor
+  caption?: string | null
+  linkUrl?: string | null
+  linkLabel?: string | null
 }
 
 interface StoryViewerProps {
@@ -105,11 +91,11 @@ export default function StoryViewer({ stories, initialIndex = 0, onClose }: Stor
       {/* Header */}
       <div className="flex items-center gap-2.5 px-4 py-3 relative z-10">
         <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden text-nh-primary"
-          style={{ background: currentStory.author.avatarUrl ? `url(${currentStory.author.avatarUrl}) center/cover` : undefined }}>
-          {!currentStory.author.avatarUrl && currentStory.author.displayName?.charAt(0).toUpperCase()}
+          style={{ background: currentStory.author?.avatarUrl ? `url(${currentStory.author?.avatarUrl}) center/cover` : undefined }}>
+          {!currentStory.author?.avatarUrl && currentStory.author?.displayName?.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1">
-          <div className="text-[13px] font-semibold text-white">{currentStory.author.displayName}</div>
+          <div className="text-[13px] font-semibold text-white">{currentStory.author?.displayName}</div>
           <div className="text-[11px] text-white/60">{new Date(currentStory.createdAt).toLocaleDateString()}</div>
         </div>
         <button onClick={(e) => { e.stopPropagation(); onClose() }} className="bg-white/15 border-0 rounded-full w-8 h-8 text-white text-lg cursor-pointer flex items-center justify-center leading-none" aria-label="Close">✕</button>

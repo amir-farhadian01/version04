@@ -200,8 +200,8 @@ describe('CustomerDashboard', () => {
     })
 
     const badge = screen.getByText('In Progress')
-    expect(badge.className).toContain('bg-teal-100')
-    expect(badge.className).toContain('text-teal-700')
+    expect(badge.className).toContain('bg-cyan-500/20')
+    expect(badge.className).toContain('text-cyan-300')
   })
 
   // ── New F1 Tests ──────────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ describe('CustomerDashboard', () => {
     renderDashboard()
 
     await waitFor(() => {
-      expect(screen.getByText('در حال پیدا کردن متخصص')).toBeInTheDocument()
+      expect(screen.getByText('Finding provider')).toBeInTheDocument()
     })
   })
 
@@ -322,8 +322,8 @@ describe('CustomerDashboard', () => {
     })
 
     const paymentBadge = screen.getByText('CAPTURED')
-    expect(paymentBadge.className).toContain('bg-green-100')
-    expect(paymentBadge.className).toContain('text-green-700')
+    expect(paymentBadge.className).toContain('bg-nh-success/20')
+    expect(paymentBadge.className).toContain('text-nh-success')
   })
 
   it('shows escrow release date when set', async () => {

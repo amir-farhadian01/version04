@@ -128,9 +128,8 @@ async function simulateGuestCheckout(input: GuestCheckoutInput) {
       entryPoint: 'guest',
       urgency: urgency as any,
       status: 'submitted',
-      phase: 'matching',
+      phase: 'order',
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-      bookingMode: pkg.bookingMode,
     },
   });
 
@@ -174,7 +173,7 @@ async function simulateGetGuestOrders(token: string) {
   const orders = await prisma.order.findMany({
     where: { customerId: userId },
     include: {
-      servicePackage: {
+      matchedPackage: {
         select: { name: true },
       },
     },
@@ -309,7 +308,7 @@ describe('Guest Checkout', () => {
         status: 'submitted',
         description: 'I need help fixing my kitchen sink faucet',
         createdAt: new Date('2026-05-26T00:00:00Z'),
-        servicePackage: { name: 'Plumbing Fix' },
+        matchedPackage: { name: 'Plumbing Fix' },
       },
     ];
 
@@ -322,7 +321,7 @@ describe('Guest Checkout', () => {
     expect(result.body).toHaveProperty('data');
     expect(result.body.data).toHaveLength(1);
     expect(result.body.data[0].id).toBe('order-1');
-    expect(result.body.data[0].servicePackage.name).toBe('Plumbing Fix');
+    expect(result.body.data[0].matchedPackage.name).toBe('Plumbing Fix');
   });
 
   // ── Test 6: Reject invalid token ───────────────────────────────────────

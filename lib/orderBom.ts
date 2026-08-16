@@ -35,7 +35,7 @@ export async function deductBomInventory(orderId: string): Promise<BomDeductionR
         matchedPackageId: true,
         matchedPackage: {
           include: {
-            bomItems: {
+            bom: {
               include: { product: true },
             },
           },
@@ -43,7 +43,7 @@ export async function deductBomInventory(orderId: string): Promise<BomDeductionR
       },
     });
 
-    const bomItems = order?.matchedPackage?.bomItems;
+    const bomItems = order?.matchedPackage?.bom;
     if (!bomItems || bomItems.length === 0) {
       return result; // No BOM items to deduct
     }
@@ -111,7 +111,7 @@ export async function restoreBomInventory(orderId: string): Promise<BomDeduction
         matchedPackageId: true,
         matchedPackage: {
           include: {
-            bomItems: {
+            bom: {
               include: { product: true },
             },
           },
@@ -119,7 +119,7 @@ export async function restoreBomInventory(orderId: string): Promise<BomDeduction
       },
     });
 
-    const bomItems = order?.matchedPackage?.bomItems;
+    const bomItems = order?.matchedPackage?.bom;
     if (!bomItems || bomItems.length === 0) {
       return result; // No BOM items to restore
     }

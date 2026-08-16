@@ -611,7 +611,7 @@ router.post('/dependency-catalog/reset', requireRole('owner', 'platform_admin', 
 router.get('/dependency-catalog/export.txt', async (req: AuthRequest, res: Response) => {
   try {
     const profile = typeof req.query.profile === 'string' && req.query.profile ? req.query.profile : undefined;
-    let config = await prisma.systemConfig.findUnique({ where: { key: 'global' } });
+    const config = await prisma.systemConfig.findUnique({ where: { key: 'global' } });
     let catalog = config?.dependencyCatalog as unknown;
     if (!catalog || !isDependencyCatalogV1(catalog)) {
       const built = buildDefaultDependencyCatalog();

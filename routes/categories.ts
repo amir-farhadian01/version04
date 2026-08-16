@@ -97,7 +97,7 @@ router.get('/search', async (req: AuthRequest, res: Response) => {
     const allCats: CatRow[] = await prisma.category.findMany({ orderBy: { name: 'asc' } });
     const catById = new Map(allCats.map((c) => [c.id, c] as const));
 
-    function pathIdsFor(leafId: string): string[] {
+    const pathIdsFor = (leafId: string): string[] => {
       const ids: string[] = [];
       let id: string | null = leafId;
       const seen = new Set<string>();
@@ -109,7 +109,7 @@ router.get('/search', async (req: AuthRequest, res: Response) => {
         id = row.parentId;
       }
       return ids;
-    }
+    };
 
     const [catRows, catalogRows] = await Promise.all([
       prisma.category.findMany({

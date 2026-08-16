@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../../test-helpers/app.js';
+import type { Express } from 'express';
 
-let app: ReturnType<typeof createApp>;
+let app: Express;
 let customerToken: string;
 
 beforeAll(async () => {
@@ -13,14 +14,14 @@ beforeAll(async () => {
   await request(app).post('/api/auth/register').send({
     email,
     password: 'TestPass123!',
-    name: 'Draft Tester',
+    displayName: 'Draft Tester',
     role: 'customer',
   });
   const loginRes = await request(app).post('/api/auth/login').send({
-    email,
+    login: email,
     password: 'TestPass123!',
   });
-  customerToken = loginRes.body.data?.token ?? loginRes.body.token;
+  customerToken = loginRes.body.accessToken;
 });
 
 afterAll(async () => {

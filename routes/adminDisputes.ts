@@ -39,7 +39,7 @@ router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
         customer: {
           select: { id: true, firstName: true, lastName: true, email: true },
         },
-        providerWorkspace: {
+        matchedWorkspace: {
           select: { id: true, name: true },
         },
         payment: {
@@ -70,11 +70,11 @@ router.get('/:id', async (req: AuthRequest, res: Response, next: NextFunction) =
         customer: {
           select: { id: true, firstName: true, lastName: true, email: true, phone: true },
         },
-        providerWorkspace: {
+        matchedWorkspace: {
           select: { id: true, name: true },
         },
         payment: true,
-        servicePackage: {
+        matchedPackage: {
           select: { name: true },
         },
       },
@@ -124,7 +124,7 @@ router.post('/:id/resolve', async (req: AuthRequest, res: Response, next: NextFu
       // Update order status to resolved
       await tx.order.update({
         where: { id: order.id },
-        data: { status: 'resolved' },
+        data: { status: 'closed' },
       });
 
       // Handle payment based on resolution

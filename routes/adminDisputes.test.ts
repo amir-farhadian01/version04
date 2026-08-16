@@ -106,7 +106,7 @@ describe('GET /admin/disputes', () => {
         id: 'order-1',
         status: 'disputed',
         customer: { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@test.com' },
-        providerWorkspace: { id: 'ws-1', name: 'Test Workspace' },
+        matchedWorkspace: { id: 'ws-1', name: 'Test Workspace' },
         payment: { amount: 100, commission: 10, status: 'pending' },
         dispute: { id: 'dispute-1', reason: 'Service was not completed properly' },
       },
@@ -147,9 +147,9 @@ describe('GET /admin/disputes/:id', () => {
       status: 'disputed',
       dispute: { id: 'dispute-1', reason: 'Poor service quality' },
       customer: { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@test.com', phone: '+1234567890' },
-      providerWorkspace: { id: 'ws-1', name: 'Test Workspace' },
+      matchedWorkspace: { id: 'ws-1', name: 'Test Workspace' },
       payment: { amount: 100, commission: 10, status: 'pending' },
-      servicePackage: { name: 'Basic Cleaning' },
+      matchedPackage: { name: 'Basic Cleaning' },
     };
 
     (prisma.order.findUnique as any).mockResolvedValue(mockOrder);
@@ -163,9 +163,9 @@ describe('GET /admin/disputes/:id', () => {
       include: expect.objectContaining({
         dispute: true,
         customer: expect.any(Object),
-        providerWorkspace: expect.any(Object),
+        matchedWorkspace: expect.any(Object),
         payment: true,
-        servicePackage: expect.any(Object),
+        matchedPackage: expect.any(Object),
       }),
     });
   });
@@ -214,7 +214,7 @@ describe('POST /admin/disputes/:id/resolve', () => {
       await cb(tx);
       expect(tx.order.update).toHaveBeenCalledWith({
         where: { id: 'order-1' },
-        data: { status: 'resolved' },
+        data: { status: 'closed' },
       });
       expect(tx.payment.update).toHaveBeenCalledWith({
         where: { orderId: 'order-1' },

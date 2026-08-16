@@ -2131,15 +2131,15 @@ router.get('/:id/matched-providers', async (req: AuthRequest, res: Response) => 
         },
       ]),
     );
-    function providerDisplayName(p: {
+    const providerDisplayName = (p: {
       displayName: string | null;
       firstName: string | null;
       lastName: string | null;
-    }): string {
+    }): string => {
       if (p.displayName?.trim()) return p.displayName.trim();
       const n = `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim();
       return n || 'Provider';
-    }
+    };
     const providers = [...bestByProvider.values()].map((row) => {
       const p = row.package.provider;
       const st = statMap.get(p.id);
@@ -2299,15 +2299,15 @@ router.get('/:id/candidates', async (req: AuthRequest, res: Response) => {
         : [];
     const ratingByProvider = new Map(ratingGroups.map((g) => [g.providerId, g._avg.rating ?? 0]));
 
-    function providerDisplayName(p: {
+    const providerDisplayName = (p: {
       displayName: string | null;
       firstName: string | null;
       lastName: string | null;
-    }): string {
+    }): string => {
       if (p.displayName?.trim()) return p.displayName.trim();
       const n = `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim();
       return n || 'Provider';
-    }
+    };
 
     return res.json({
       windowExpiresAt: fresh.matchingExpiresAt?.toISOString() ?? null,

@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod';
 import prisma from '../lib/db.js';
 import { authenticate, isAdmin } from '../lib/auth.middleware.js';
-import { generateFormSchema } from '../lib/aiFormGenerator.js';
+import { generateFormSchema, type DynamicFieldSpec } from '../lib/aiFormGenerator.js';
 
 const router = Router();
 
@@ -13,11 +13,11 @@ const GenerateFormSchema = z.object({
   category: z.string().min(1).max(100),
   description: z.string().min(10).max(2000),
   businessType: z.string().min(1).max(100),
-  existingSchema: z.array(z.record(z.unknown())).optional(),
+  existingSchema: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
 const SaveTemplateSchema = z.object({
-  schema: z.array(z.record(z.unknown())).min(1).max(20),
+  schema: z.array(z.record(z.string(), z.unknown())).min(1).max(20),
   generatedByAi: z.boolean().default(false),
   aiPrompt: z.string().optional(),
   aiModel: z.string().optional(),
@@ -110,10 +110,10 @@ router.post(
       // Generate schema using Gemini
       const generated = await generateFormSchema({
         serviceName: input.serviceName || catalog.name,
-        category: input.category || catalog.category?.name || 'General',
+        category: input.category || catalog.category || 'General',
         description: input.description,
         businessType: input.businessType,
-        existingSchema: input.existingSchema as unknown[],
+        existingSchema: input.existingSchema as unknown as DynamicFieldSpec[],
       });
 
       // Get next version number
@@ -228,7 +228,7 @@ router.put(
 
       const updated = await prisma.serviceFormTemplate.update({
         where: { id: templateId },
-        data: { schema: input.schema },
+        data: { schema: input.schema as object[] },
       });
 
       res.json({ data: updated });

@@ -5,6 +5,7 @@ import {
   type StripePayoutResult,
   type WebhookProcessingResult,
 } from '../stripeService.js';
+import type Stripe from 'stripe';
 
 // ── Mock Prisma ──────────────────────────────────────────────────────────────
 const mockPrisma = {
