@@ -20,4 +20,9 @@ Append after every completed goal or notable failure.
 - **Root cause:** The prompt assumed a single navigation entry point; the route string actually had two callers (route table + feed_screen). The import-depth note didn't account for `features/` and `screens/` being the same depth under `lib/`.
 - **Rule for next time:** When renaming a route, grep the whole `lib/` for the old route string and update every `pushNamed` caller, not just the route table. Verify relative-import depth against the actual directory tree instead of trusting prompt notes.
 
+
+## [2026-08-16] Story viewer — prompt's API spec didn't match the real backend
+- **What happened:** The task's `_loadStory()`/`_buildStoryContent()` used `GET /social/stories/:id`, unwrapped `result['data']`, and read `_story['media'][0]['url']`. The real backend has no `GET /social/stories/:id` (single story is `GET /api/stories/:id`, returned directly without a `data` wrapper), and the Story model stores `mediaUrl`/`thumbnailUrl` strings — no `media` array.
+- **Root cause:** bad research — the prompt was written against `plans/social-layer-plan.md` rather than the implemented code; two story routers exist (`routes/stories.ts` at `/api/stories` vs `routes/socialFeed.ts` at `/api/social/stories/*`).
+- **Rule for next time:** Before wiring a Flutter screen to an API, grep the actual route files + `server.ts` mount points for the exact endpoint and response shape (does it wrap in `data`? which Prisma fields exist?), instead of trusting prompt field names.
 - **Rule for next time:** `.clinerules/` حتماً باید در ریشه پروژه باشه — Cline فقط از ریشه auto-detect می‌کنه. اگه پکیجی حاوی `.clinerules/` دریافت شد، اول `.clinerules/` رو به ریشه منتقل کن، بعد بقیه محتوا رو مرتب کن. فایل‌های `:Zone.Identifier` ویندوز همیشه باید پاک بشن.
