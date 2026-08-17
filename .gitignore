@@ -46,3 +46,12 @@ Thumbs.db
 
 # AI agent generated plan/session artifacts
 .zcode/
+
+# Runtime/temp files (process IDs captured by start scripts)
+.start-all-pids
+
+# User-uploaded files (runtime data, not source)
+uploads/
+
+# Playwright / UI verification screenshots
+screenshots/
