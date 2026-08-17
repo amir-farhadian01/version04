@@ -18,7 +18,8 @@ import 'screens/customer/contract_chat_screen.dart';
 import 'screens/customer/new_order_screen.dart';
 import 'screens/business/business_page_screen.dart';
 import 'screens/profile/upgrade_to_business_screen.dart';
-import 'screens/explorer/story_screen.dart';
+import 'features/story/story_screen.dart';
+import 'features/story/create_story_screen.dart';
 import 'features/comments/comments_screen.dart';
 import 'screens/post_detail_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
@@ -76,6 +77,7 @@ class NeighborHubApp extends StatelessWidget {
           showBack: true,
           child: CreatePostScreen(),
         ),
+        '/create-story': (context) => const CreateStoryScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/customer/order-detail') {

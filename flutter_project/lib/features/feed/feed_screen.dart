@@ -324,7 +324,11 @@ class _FeedScreenState extends State<FeedScreen> {
             // ── Search + Filter ──
             _buildSearchBar(border),
             // ── Stories row (Explorer only) ──
-            if (_tabIndex == 0) StoriesRow(stories: _stories),
+            if (_tabIndex == 0)
+              StoriesRow(
+                stories: _stories,
+                onAddStory: () => Navigator.pushNamed(context, '/create-story'),
+              ),
             // ── Business Hub header + cards ──
             if (_tabIndex == 1) _buildBusinessSection(),
             // ── Posts feed ──
