@@ -312,6 +312,7 @@ class _FeedScreenState extends State<FeedScreen> {
     final border = isDark ? AppColors.border : AppColorsLight.border;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Container(
         color: bg,
         child: Column(
@@ -338,7 +339,10 @@ class _FeedScreenState extends State<FeedScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.pushNamed(context, '/create-post'),
+        onPressed: () async {
+          final created = await Navigator.pushNamed(context, '/create-post');
+          if (created == true) _onRefresh();
+        },
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white),
       ),
