@@ -1,3 +1,5 @@
+> Naming reconciled 2026-08-16: BusinessPage.tsx is the canonical name.
+
 # Plan: Make React Frontend Visually Identical to Flutter App
 
 ## Goal
@@ -134,7 +136,7 @@ Make the React frontend (port 5173) look **exactly** like the Flutter app (ports
 
 ### Phase 8: Create Business Profile Screen (NEW)
 **Files to create:**
-- [`frontend/src/pages/public/BusinessProfile.tsx`](frontend/src/pages/public/BusinessProfile.tsx) - New page matching Flutter's BusinessProfileScreen
+- [`frontend/src/pages/public/BusinessPage.tsx`](frontend/src/pages/public/BusinessPage.tsx) - New page matching Flutter's BusinessProfileScreen
 
 **Flutter reference:**
 - [`flutter_project/lib/screens/business_profile_screen.dart`](flutter_project/lib/screens/business_profile_screen.dart) - Cover, logo, business info, package tabs, package cards
