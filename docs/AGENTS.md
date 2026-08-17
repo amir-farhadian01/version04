@@ -1,5 +1,5 @@
 # Neighborly — AGENTS.md
-**Version:** 3.1.0 | **Updated:** 2026-05-23
+**Version:** 3.0.0 | **Updated:** 2026-08-17
 **STATUS: ALL THREE DASHBOARDS ARE LIVE. We are now in FEATURE ADDITION phase only.**
 
 > **READ THIS FILE COMPLETELY BEFORE ANY ACTION.**
