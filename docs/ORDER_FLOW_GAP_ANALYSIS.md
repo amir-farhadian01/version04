@@ -1,4 +1,7 @@
+> Status: CLOSED — audit date 2026-08-16
+
 # Order Flow — Comprehensive Gap Analysis & Bug Report
+⚠️ ARCHIVED — All items implemented as of 2026-08-16. See docs/PLAN_STATUS.md.
 
 > **UPDATE 2026-05-26:** Most gaps (G1-G5, G9, G13-G16) and bugs (B1, B2, B4-B8) have been resolved.
 > See ADR-0061 through ADR-0067 for implementations.
