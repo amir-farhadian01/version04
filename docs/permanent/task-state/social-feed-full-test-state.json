@@ -1,0 +1,223 @@
+{
+  "sourceFile": "/home/amir/version04/docs/permanent/social-feed-full-test.md",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Verify Flutter Web is running and accessible\n\nNavigate to http://localhost:7357, take a screenshot, confirm the app loads. Check console for errors.\n\n---",
+      "content": "## TASK 1: Verify Flutter Web is running and accessible\n\nNavigate to http://localhost:7357, take a screenshot, confirm the app loads. Check console for errors.\n\n---",
+      "status": "completed",
+      "startedAt": "2026-08-12T05:31:46.929Z",
+      "completedAt": "2026-08-12T05:33:36.221Z"
+    },
+    {
+      "id": 2,
+      "title": "Login with valid customer account\n\nOn http://localhost:7357, login with customer@neighborly.local / 12345678. Take screenshot after login. Verify the feed screen appears.\n\n---",
+      "content": "## TASK 2: Login with valid customer account\n\nOn http://localhost:7357, login with customer@neighborly.local / 12345678. Take screenshot after login. Verify the feed screen appears.\n\n---",
+      "status": "completed",
+      "startedAt": "2026-08-12T05:33:44.492Z",
+      "completedAt": "2026-08-12T05:35:06.696Z"
+    },
+    {
+      "id": 3,
+      "title": "Login with invalid password (error handling)\n\nFirst logout, then attempt login with customer@neighborly.local / wrongpassword. Verify error message appears. Take screenshot.\n\n---",
+      "content": "## TASK 3: Login with invalid password (error handling)\n\nFirst logout, then attempt login with customer@neighborly.local / wrongpassword. Verify error message appears. Take screenshot.\n\n---",
+      "status": "completed",
+      "startedAt": "2026-08-12T05:35:13.543Z",
+      "completedAt": "2026-08-12T05:36:31.720Z"
+    },
+    {
+      "id": 4,
+      "title": "Logout functionality\n\nAfter valid login, find and click logout. Verify returned to login screen. Take screenshot.\n\n---",
+      "content": "## TASK 4: Logout functionality\n\nAfter valid login, find and click logout. Verify returned to login screen. Take screenshot.\n\n---",
+      "status": "in_progress",
+      "startedAt": "2026-08-12T05:36:42.107Z"
+    },
+    {
+      "id": 5,
+      "title": "Re-login for remaining tests\n\nLogin again with customer@neighborly.local / 12345678 to prepare for feature tests.\n\n---",
+      "content": "## TASK 5: Re-login for remaining tests\n\nLogin again with customer@neighborly.local / 12345678 to prepare for feature tests.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 6,
+      "title": "Create Post - navigate to create post screen\n\nFind and tap the 'Create Post' button/icon. Verify the create post screen opens. Take screenshot.\n\n---",
+      "content": "## TASK 6: Create Post - navigate to create post screen\n\nFind and tap the 'Create Post' button/icon. Verify the create post screen opens. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 7,
+      "title": "Create Post - text only\n\nType a caption: 'Test post from automated testing - Flutter'. Select a category if required. Submit. Verify post appears in feed. Take screenshot.\n\n---",
+      "content": "## TASK 7: Create Post - text only\n\nType a caption: 'Test post from automated testing - Flutter'. Select a category if required. Submit. Verify post appears in feed. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 8,
+      "title": "Create Post - empty caption validation\n\nTry to create a post with empty caption. Verify validation error appears. Take screenshot.\n\n---",
+      "content": "## TASK 8: Create Post - empty caption validation\n\nTry to create a post with empty caption. Verify validation error appears. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 9,
+      "title": "Create Post - cancel/dismiss\n\nOpen create post screen, type something, then cancel/close. Verify returned to feed without changes. Take screenshot.\n\n---",
+      "content": "## TASK 9: Create Post - cancel/dismiss\n\nOpen create post screen, type something, then cancel/close. Verify returned to feed without changes. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 10,
+      "title": "Like a post - toggle on\n\nFind a post with visible like button. Tap the like button. Verify the like count increases or icon changes (filled/red). Take screenshot.\n\n---",
+      "content": "## TASK 10: Like a post - toggle on\n\nFind a post with visible like button. Tap the like button. Verify the like count increases or icon changes (filled/red). Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 11,
+      "title": "Unlike a post - toggle off\n\nTap the like button again on the same post. Verify the like is removed (count decreases, icon unfilled). Take screenshot.\n\n---",
+      "content": "## TASK 11: Unlike a post - toggle off\n\nTap the like button again on the same post. Verify the like is removed (count decreases, icon unfilled). Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 12,
+      "title": "Open comments on a post\n\nTap the comment button/icon on a post. Verify the comments screen opens. Take screenshot.\n\n---",
+      "content": "## TASK 12: Open comments on a post\n\nTap the comment button/icon on a post. Verify the comments screen opens. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 13,
+      "title": "Write a comment on a post\n\nType a comment: 'This is a test comment from automation!'. Submit. Verify the comment appears in the list. Take screenshot.\n\n---",
+      "content": "## TASK 13: Write a comment on a post\n\nType a comment: 'This is a test comment from automation!'. Submit. Verify the comment appears in the list. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 14,
+      "title": "Write empty comment (validation)\n\nTry to submit an empty comment. Verify error/validation message appears or submit is disabled. Take screenshot.\n\n---",
+      "content": "## TASK 14: Write empty comment (validation)\n\nTry to submit an empty comment. Verify error/validation message appears or submit is disabled. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 15,
+      "title": "Reply to a comment\n\nFind a comment, tap reply. Type 'This is a test reply'. Submit. Verify reply appears nested under the comment. Take screenshot.\n\n---",
+      "content": "## TASK 15: Reply to a comment\n\nFind a comment, tap reply. Type 'This is a test reply'. Submit. Verify reply appears nested under the comment. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 16,
+      "title": "Like a comment\n\nFind the like button on a comment. Tap it. Verify like count changes or icon toggles. Take screenshot.\n\n---",
+      "content": "## TASK 16: Like a comment\n\nFind the like button on a comment. Tap it. Verify like count changes or icon toggles. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 17,
+      "title": "Unlike a comment\n\nTap like button again on the same comment. Verify like is removed. Take screenshot.\n\n---",
+      "content": "## TASK 17: Unlike a comment\n\nTap like button again on the same comment. Verify like is removed. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 18,
+      "title": "Like a reply\n\nFind a reply, tap its like button. Verify like registers. Take screenshot.\n\n---",
+      "content": "## TASK 18: Like a reply\n\nFind a reply, tap its like button. Verify like registers. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 19,
+      "title": "Unlike a reply\n\nTap like button again on the reply. Verify unlike works. Take screenshot.\n\n---",
+      "content": "## TASK 19: Unlike a reply\n\nTap like button again on the reply. Verify unlike works. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 20,
+      "title": "Delete own comment\n\nFind a comment you wrote. Long press or use menu to delete it. Verify comment is removed. Take screenshot.\n\n---",
+      "content": "## TASK 20: Delete own comment\n\nFind a comment you wrote. Long press or use menu to delete it. Verify comment is removed. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 21,
+      "title": "Scroll comments / load more\n\nIf many comments exist, scroll down to load more. Verify pagination works. Take screenshot.\n\n---",
+      "content": "## TASK 21: Scroll comments / load more\n\nIf many comments exist, scroll down to load more. Verify pagination works. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 22,
+      "title": "Close comments and return to feed\n\nNavigate back from comments screen to the main feed. Take screenshot.\n\n---",
+      "content": "## TASK 22: Close comments and return to feed\n\nNavigate back from comments screen to the main feed. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 23,
+      "title": "Save/Bookmark a post\n\nFind the save/bookmark icon on a post. Tap it. Verify save state changes. Take screenshot.\n\n---",
+      "content": "## TASK 23: Save/Bookmark a post\n\nFind the save/bookmark icon on a post. Tap it. Verify save state changes. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 24,
+      "title": "Unsave a post\n\nTap save/bookmark again on the same post. Verify unsaved. Take screenshot.\n\n---",
+      "content": "## TASK 24: Unsave a post\n\nTap save/bookmark again on the same post. Verify unsaved. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 25,
+      "title": "Open post detail screen\n\nTap on a post (not the buttons, the content area). Verify the post detail screen opens. Take screenshot.\n\n---",
+      "content": "## TASK 25: Open post detail screen\n\nTap on a post (not the buttons, the content area). Verify the post detail screen opens. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 26,
+      "title": "Like from post detail screen\n\nOn the post detail screen, tap like button. Verify it works. Take screenshot.\n\n---",
+      "content": "## TASK 26: Like from post detail screen\n\nOn the post detail screen, tap like button. Verify it works. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 27,
+      "title": "Comment from post detail screen\n\nOn post detail screen, write a comment and submit. Verify it appears. Take screenshot.\n\n---",
+      "content": "## TASK 27: Comment from post detail screen\n\nOn post detail screen, write a comment and submit. Verify it appears. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 28,
+      "title": "Follow a user\n\nFind a follow button on a user profile or post. Tap follow. Verify follow state changes. Take screenshot.\n\n---",
+      "content": "## TASK 28: Follow a user\n\nFind a follow button on a user profile or post. Tap follow. Verify follow state changes. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 29,
+      "title": "Unfollow a user\n\nTap follow again to unfollow. Verify unfollow. Take screenshot.\n\n---",
+      "content": "## TASK 29: Unfollow a user\n\nTap follow again to unfollow. Verify unfollow. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 30,
+      "title": "Pull-to-refresh feed\n\nScroll to top of feed and pull down to refresh. Verify loading indicator appears and feed refreshes. Take screenshot.\n\n---",
+      "content": "## TASK 30: Pull-to-refresh feed\n\nScroll to top of feed and pull down to refresh. Verify loading indicator appears and feed refreshes. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 31,
+      "title": "Tab navigation - Explorer tab\n\nTap the Explorer tab in bottom navigation. Verify explorer screen loads. Take screenshot.\n\n---",
+      "content": "## TASK 31: Tab navigation - Explorer tab\n\nTap the Explorer tab in bottom navigation. Verify explorer screen loads. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 32,
+      "title": "Tab navigation - Home tab\n\nTap the Home tab. Verify home screen loads. Take screenshot.\n\n---",
+      "content": "## TASK 32: Tab navigation - Home tab\n\nTap the Home tab. Verify home screen loads. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 33,
+      "title": "View stories\n\nIf stories row is visible, tap a story. Verify story viewer opens and plays. Take screenshot.\n\n---",
+      "content": "## TASK 33: View stories\n\nIf stories row is visible, tap a story. Verify story viewer opens and plays. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 34,
+      "title": "Story auto-advance / close\n\nWait for story to advance or close. Verify return to feed. Take screenshot.\n\n---",
+      "content": "## TASK 34: Story auto-advance / close\n\nWait for story to advance or close. Verify return to feed. Take screenshot.\n\n---",
+      "status": "pending"
+    },
+    {
+      "id": 35,
+      "title": "Final console check & summary\n\nCheck browser console for any errors during the entire session. Take a final screenshot of the feed.\n\n---",
+      "content": "## TASK 35: Final console check & summary\n\nCheck browser console for any errors during the entire session. Take a final screenshot of the feed.\n\n---",
+      "status": "pending"
+    }
+  ],
+  "lastUpdated": "2026-08-12T05:36:42.107Z"
+}

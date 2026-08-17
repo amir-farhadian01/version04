@@ -43,3 +43,6 @@ coverage/
 # Windows
 Thumbs.db
 .agent-credentials/
+
+# AI agent generated plan/session artifacts
+.zcode/

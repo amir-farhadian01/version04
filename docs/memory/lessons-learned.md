@@ -14,4 +14,15 @@ Append after every completed goal or notable failure.
 - **Rule for next time:** On a fresh/headless machine, verify `docker`/`dockerd` and root access before assuming `docker-compose up` will work; provision a local Postgres as fallback. When testing authorization, always test with a forged/self-signed token to confirm the server re-reads roles from the DB, not just the token claim.
 
 - **What happened:** پکیج `cline-package/` که یک Enterprise AI Company OS کامل بود، در سه لایه `.clinerules/` (قوانین Cline)، `docs/` (معماری سازمان)، و README تجزیه و در جای صحیح قرار گرفت. اسکیل‌های قدیمی `.agents/skills/` حذف شدن.
+
+## [2026-08-16] Route rename — grep verification caught an extra caller
+- **What happened:** Task renamed `/explorer/comments` → `/comments` in `main.dart`, but the verification `grep -r "explorer/comments" flutter_project/lib/` (expected "none found") revealed `features/feed/feed_screen.dart` also pushed to the old route. The prompt's "adjust imports to 3 levels (../../../)" note was also wrong — the moved file stays at the same directory depth, so `../../` imports are correct.
+- **Root cause:** The prompt assumed a single navigation entry point; the route string actually had two callers (route table + feed_screen). The import-depth note didn't account for `features/` and `screens/` being the same depth under `lib/`.
+- **Rule for next time:** When renaming a route, grep the whole `lib/` for the old route string and update every `pushNamed` caller, not just the route table. Verify relative-import depth against the actual directory tree instead of trusting prompt notes.
+
+
+## [2026-08-16] Story viewer — prompt's API spec didn't match the real backend
+- **What happened:** The task's `_loadStory()`/`_buildStoryContent()` used `GET /social/stories/:id`, unwrapped `result['data']`, and read `_story['media'][0]['url']`. The real backend has no `GET /social/stories/:id` (single story is `GET /api/stories/:id`, returned directly without a `data` wrapper), and the Story model stores `mediaUrl`/`thumbnailUrl` strings — no `media` array.
+- **Root cause:** bad research — the prompt was written against `plans/social-layer-plan.md` rather than the implemented code; two story routers exist (`routes/stories.ts` at `/api/stories` vs `routes/socialFeed.ts` at `/api/social/stories/*`).
+- **Rule for next time:** Before wiring a Flutter screen to an API, grep the actual route files + `server.ts` mount points for the exact endpoint and response shape (does it wrap in `data`? which Prisma fields exist?), instead of trusting prompt field names.
 - **Rule for next time:** `.clinerules/` حتماً باید در ریشه پروژه باشه — Cline فقط از ریشه auto-detect می‌کنه. اگه پکیجی حاوی `.clinerules/` دریافت شد، اول `.clinerules/` رو به ریشه منتقل کن، بعد بقیه محتوا رو مرتب کن. فایل‌های `:Zone.Identifier` ویندوز همیشه باید پاک بشن.

@@ -18,12 +18,14 @@ import 'screens/customer/contract_chat_screen.dart';
 import 'screens/customer/new_order_screen.dart';
 import 'screens/business/business_page_screen.dart';
 import 'screens/profile/upgrade_to_business_screen.dart';
-import 'screens/explorer/story_screen.dart';
-import 'screens/explorer/comments_screen.dart';
+import 'features/story/story_screen.dart';
+import 'features/story/create_story_screen.dart';
+import 'features/comments/comments_screen.dart';
 import 'screens/post_detail_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
-import 'screens/post/create_post_screen.dart';
+import 'features/post/create_post_screen.dart';
 import 'widgets/responsive_scaffold.dart';
+import 'widgets/flutter_app_scaffold.dart';
 
 void main() {
   runApp(
@@ -53,12 +55,15 @@ class NeighborHubApp extends StatelessWidget {
       routes: {
         '/auth': (_) => const ResponsiveScaffold(child: AuthScreen()),
         '/home': (_) => const ResponsiveScaffold(child: HomeScreen()),
-        '/social': (_) => const ResponsiveScaffold(child: FeedScreen()),
+        '/feed': (_) => const FlutterAppScaffold(
+          showBottomNav: true,
+          currentTab: 'explorer',
+          child: FeedScreen(),
+        ),
         '/activity': (_) => const ResponsiveScaffold(child: ActivityScreen()),
         '/profile': (_) => const ResponsiveScaffold(child: ProfileScreen()),
         '/biz-profile': (_) => const ResponsiveScaffold(child: BusinessProfileScreen()),
         '/dashboard': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: DashboardScreen()),
-        '/explorer': (_) => const ResponsiveScaffold(child: FeedScreen()),
         '/new-home': (_) => const ResponsiveScaffold(child: home_new.FlutterHomeScreen()),
         '/services': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerDashboardScreen()),
         '/customer/orders': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerOrdersScreen()),
@@ -66,7 +71,12 @@ class NeighborHubApp extends StatelessWidget {
         '/profile/upgrade': (_) => const ResponsiveScaffold(child: UpgradeToBusinessScreen()),
               '/order/new': (_) => const ResponsiveScaffold(child: NewOrderScreen()),
         '/onboarding': (_) => const ResponsiveScaffold(child: OnboardingScreen()),
-        '/post/create': (_) => const ResponsiveScaffold(child: CreatePostScreen()),
+        '/create-post': (_) => const FlutterAppScaffold(
+          title: 'Create Post',
+          showBack: true,
+          child: CreatePostScreen(),
+        ),
+        '/create-story': (context) => const CreateStoryScreen(),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/customer/order-detail') {
@@ -95,7 +105,7 @@ class NeighborHubApp extends StatelessWidget {
             ),
           );
         }
-        if (settings.name == '/explorer/story') {
+        if (settings.name == '/story') {
           final storyId = settings.arguments as String? ?? '';
           return MaterialPageRoute(
             builder: (_) => ResponsiveScaffold(
@@ -103,7 +113,7 @@ class NeighborHubApp extends StatelessWidget {
             ),
           );
         }
-        if (settings.name == '/explorer/comments') {
+        if (settings.name == '/comments') {
           final postId = settings.arguments as String? ?? '';
           return MaterialPageRoute(
             builder: (_) => ResponsiveScaffold(

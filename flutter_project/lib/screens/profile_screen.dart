@@ -514,7 +514,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Navigator.pushReplacementNamed(context, '/home');
               }
               if (id == 'social') {
-                Navigator.pushReplacementNamed(context, '/social');
+                Navigator.pushReplacementNamed(context, '/feed');
               }
               if (id == 'activity') {
                 Navigator.pushReplacementNamed(context, '/activity');
