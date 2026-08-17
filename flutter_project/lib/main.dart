@@ -22,7 +22,7 @@ import 'screens/explorer/story_screen.dart';
 import 'screens/explorer/comments_screen.dart';
 import 'screens/post_detail_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
-import 'screens/post/create_post_screen.dart';
+import 'features/post/create_post_screen.dart';
 import 'widgets/responsive_scaffold.dart';
 import 'widgets/flutter_app_scaffold.dart';
 
