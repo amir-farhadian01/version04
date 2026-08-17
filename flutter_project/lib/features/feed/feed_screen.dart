@@ -311,29 +311,36 @@ class _FeedScreenState extends State<FeedScreen> {
     final text3 = isDark ? AppColors.text3 : AppColorsLight.text3;
     final border = isDark ? AppColors.border : AppColorsLight.border;
 
-    return Container(
-      color: bg,
-      child: Column(
-        children: [
-          // ── Tab bar ──
-          _buildTabBar(bg, text3, border),
-          // ── Location bar ──
-          _buildLocationBar(),
-          // ── Search + Filter ──
-          _buildSearchBar(border),
-          // ── Stories row (Explorer only) ──
-          if (_tabIndex == 0) StoriesRow(stories: _stories),
-          // ── Business Hub header + cards ──
-          if (_tabIndex == 1) _buildBusinessSection(),
-          // ── Posts feed ──
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _onRefresh,
-              color: AppColors.primary,
-              child: _buildFeedList(),
+    return Scaffold(
+      body: Container(
+        color: bg,
+        child: Column(
+          children: [
+            // ── Tab bar ──
+            _buildTabBar(bg, text3, border),
+            // ── Location bar ──
+            _buildLocationBar(),
+            // ── Search + Filter ──
+            _buildSearchBar(border),
+            // ── Stories row (Explorer only) ──
+            if (_tabIndex == 0) StoriesRow(stories: _stories),
+            // ── Business Hub header + cards ──
+            if (_tabIndex == 1) _buildBusinessSection(),
+            // ── Posts feed ──
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                color: AppColors.primary,
+                child: _buildFeedList(),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.pushNamed(context, '/create-post'),
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

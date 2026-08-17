@@ -203,7 +203,7 @@ class _HomeScreenState extends State<HomeScreen> {
             showBizTab: _showBizTab,
             onItemTap: (id) {
               if (id == 'home') Navigator.pushReplacementNamed(context, '/home');
-              if (id == 'social') Navigator.pushReplacementNamed(context, '/social');
+              if (id == 'social') Navigator.pushReplacementNamed(context, '/feed');
               if (id == 'activity') Navigator.pushReplacementNamed(context, '/activity');
               if (id == 'biz') Navigator.pushReplacementNamed(context, '/dashboard');
             },

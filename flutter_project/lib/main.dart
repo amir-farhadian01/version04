@@ -24,6 +24,7 @@ import 'screens/post_detail_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/post/create_post_screen.dart';
 import 'widgets/responsive_scaffold.dart';
+import 'widgets/flutter_app_scaffold.dart';
 
 void main() {
   runApp(
@@ -53,12 +54,15 @@ class NeighborHubApp extends StatelessWidget {
       routes: {
         '/auth': (_) => const ResponsiveScaffold(child: AuthScreen()),
         '/home': (_) => const ResponsiveScaffold(child: HomeScreen()),
-        '/social': (_) => const ResponsiveScaffold(child: FeedScreen()),
+        '/feed': (_) => const FlutterAppScaffold(
+          showBottomNav: true,
+          currentTab: 'explorer',
+          child: FeedScreen(),
+        ),
         '/activity': (_) => const ResponsiveScaffold(child: ActivityScreen()),
         '/profile': (_) => const ResponsiveScaffold(child: ProfileScreen()),
         '/biz-profile': (_) => const ResponsiveScaffold(child: BusinessProfileScreen()),
         '/dashboard': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: DashboardScreen()),
-        '/explorer': (_) => const ResponsiveScaffold(child: FeedScreen()),
         '/new-home': (_) => const ResponsiveScaffold(child: home_new.FlutterHomeScreen()),
         '/services': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerDashboardScreen()),
         '/customer/orders': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerOrdersScreen()),
@@ -67,6 +71,11 @@ class NeighborHubApp extends StatelessWidget {
               '/order/new': (_) => const ResponsiveScaffold(child: NewOrderScreen()),
         '/onboarding': (_) => const ResponsiveScaffold(child: OnboardingScreen()),
         '/post/create': (_) => const ResponsiveScaffold(child: CreatePostScreen()),
+        '/create-post': (_) => const FlutterAppScaffold(
+          title: 'Create Post',
+          showBack: true,
+          child: CreatePostScreen(),
+        ),
       },
       onGenerateRoute: (settings) {
         if (settings.name == '/customer/order-detail') {
