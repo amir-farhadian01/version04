@@ -19,7 +19,7 @@ import 'screens/customer/new_order_screen.dart';
 import 'screens/business/business_page_screen.dart';
 import 'screens/profile/upgrade_to_business_screen.dart';
 import 'screens/explorer/story_screen.dart';
-import 'screens/explorer/comments_screen.dart';
+import 'features/comments/comments_screen.dart';
 import 'screens/post_detail_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'features/post/create_post_screen.dart';
@@ -112,7 +112,7 @@ class NeighborHubApp extends StatelessWidget {
             ),
           );
         }
-        if (settings.name == '/explorer/comments') {
+        if (settings.name == '/comments') {
           final postId = settings.arguments as String? ?? '';
           return MaterialPageRoute(
             builder: (_) => ResponsiveScaffold(

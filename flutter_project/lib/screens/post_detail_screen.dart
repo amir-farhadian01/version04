@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../cache/image_cache_config.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final String postId;
@@ -190,15 +192,26 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     // Media
                     if (media.isNotEmpty)
                       ClipRRect(
-                        child: Image.network(
-                          (media.first as Map<String, dynamic>)['url'] as String? ?? '',
+                        child: CachedNetworkImage(
+                          imageUrl: (media.first as Map<String, dynamic>)['url'] as String? ?? '',
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
+                          cacheManager: ImageCacheConfig.manager,
+                          placeholder: (context, url) => Container(
                             height: 280,
                             color: AppColors.border2.withValues(alpha: 0.2),
                             child: const Center(
-                              child: Icon(Icons.image, size: 64, color: AppColors.text3),
+                              child: SizedBox(
+                                width: 24, height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            height: 280,
+                            color: AppColors.border2.withValues(alpha: 0.2),
+                            child: const Center(
+                              child: Icon(Icons.broken_image, size: 48, color: AppColors.text3),
                             ),
                           ),
                         ),
@@ -316,20 +329,33 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           ),
                           const SizedBox(width: 12),
                           // Comment count
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.chat_bubble_outline, size: 18, color: AppColors.text3),
-                              const SizedBox(width: 4),
-                              Text(
-                                commentCount.toString(),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.text2,
-                                ),
+                          GestureDetector(
+                            onTap: () => Navigator.pushNamed(
+                              context,
+                              '/comments',
+                              arguments: widget.postId,
+                            ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.chat_bubble_outline, size: 18, color: AppColors.text3),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    commentCount.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.text2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                           const Spacer(),
                           // Save / Unsave toggle

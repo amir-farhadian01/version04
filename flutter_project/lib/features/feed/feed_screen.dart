@@ -594,7 +594,7 @@ class _FeedScreenState extends State<FeedScreen> {
             onFollow: authorId.isNotEmpty ? () => _toggleFollow(authorId) : null,
             onComment: () => Navigator.pushNamed(
               context,
-              '/explorer/comments',
+              '/comments',
               arguments: postId,
             ),
             onAuthorTap: authorId.isNotEmpty

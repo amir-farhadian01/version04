@@ -14,7 +14,7 @@ import '../../services/api_service.dart';
 /// - Comment likes (heart toggle)
 /// - Comment input bar at bottom
 ///
-/// Route: /explorer/comments with postId as argument.
+/// Route: /comments with postId as argument.
 class CommentsScreen extends StatefulWidget {
   final String postId;
 
