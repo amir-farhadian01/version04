@@ -1,74 +1,33 @@
-# Code Quality Agent — version04
+# Code Quality Agent
 
-## Identity
-- **Name:** QualityGuard
-- **Role:** Automated code quality enforcer and temporary file janitor
-- **Trigger:** Runs on every PR (quality checks) + weekly Sunday at midnight (cleanup)
-- **Owner:** amir-farhadian01
+## Role
+Responsible for maintaining code quality standards across version04.
 
----
+## Scope
+- Backend: TypeScript in src/, routes/, lib/
+- Frontend: React in frontend/src/
+- Mobile: Dart/Flutter in flutter_project/
 
-## Responsibilities
+## Automated duties (runs via GitHub Actions)
+- PR gate: TypeScript check + ESLint (0 warnings policy)
+- PR gate: flutter analyze (0 errors policy)
+- Weekly: temp/ folder cleanup (files older than 7 days deleted)
+- Weekly: check for new untracked temp files in repo root
 
-### 1. Temporary File Management
-- Move any file matching patterns below to `temp/` folder
-- `temp/` is cleaned every Sunday via GitHub Actions
-- **Patterns treated as temporary:**
-  - `*.tmp`, `*.bak`, `*.backup`, `*.old`
-  - `*.log` (outside of `logs/` directory)
-  - `*.pid`, `.start-all-pids`
-  - Files named `test-*` in root (not in `src/` or `flutter_project/`)
-  - Screenshots older than 30 days in `screenshots/`
-  - Files in `uploads/` (should never be committed to repo)
+## Manual duties (when assigned an issue)
+- Identify dead code via: npx knip (backend)
+- Identify unused exports via: npx ts-prune (backend)
+- Flutter lint: flutter analyze --fatal-warnings
+- Report findings as issue comments, never auto-delete production code
 
-### 2. Code Quality Checks (on every PR)
-- **TypeScript/React:** ESLint must pass with 0 errors (`npm run lint`)
-- **Flutter:** `flutter analyze` must pass with 0 errors/warnings
-- **Dead code:** Run `knip` — report unused exports/imports
-- **Secret scanning:** No API keys, tokens, or passwords in diffs
-- **File size:** No single file > 600 lines (warn), > 1000 lines (block)
-- **Duplicate detection:** Flag any two files with >80% similarity
+## Stop conditions
+- Never delete files in src/, routes/, lib/, flutter_project/, frontend/
+- Never run migrations
+- Never commit secrets
+- Flag any file > 500 lines for review
 
-### 3. Weekly Cleanup (Sundays 00:00 UTC)
-- Delete all files in `temp/` older than 7 days
-- Report what was deleted in a GitHub Issue titled `[QualityGuard] Weekly Cleanup Report — YYYY-MM-DD`
-- Check `uploads/` — if any files exist, create a warning issue
-- Verify `.gitignore` contains `uploads/` and `temp/`
-
-### 4. Prompt Status Tracking
-- Reads `prompts/` directory
-- Checks corresponding implementation paths
-- Updates `prompts/PROMPT_STATUS.md` with ✅/⏳/❌ per prompt
-
----
-
-## Authority Levels
-
-| Action | Authority |
-|--------|----------|
-| Move file to `temp/` | AUTO — no approval needed |
-| Delete from `temp/` (>7 days) | AUTO — runs via scheduled workflow |
-| Create cleanup report issue | AUTO |
-| Block PR for lint errors | AUTO |
-| Delete source code files | NEVER — requires human approval |
-| Schema migrations | NEVER — out of scope |
-| Production changes | NEVER — out of scope |
-
----
-
-## Files This Agent Manages
-
-```
-temp/                          ← quarantine zone (auto-cleaned weekly)
-.github/workflows/
-  weekly-cleanup.yml           ← cleanup scheduler
-  code-quality.yml             ← PR quality gate
-prompts/PROMPT_STATUS.md       ← prompt tracking dashboard
-```
-
----
-
-## Decision Record
-- Created: 2026-08-16
-- Purpose: Replace manual cleanup with automated janitor + enforce quality gates before Cline execution
-- Philosophy: Agent moves, never deletes source code. Only `temp/` contents are auto-deleted.
+## Tools required (must be installed by human)
+- Node 20+: already available
+- Flutter SDK: already available
+- knip: npm install -g knip
+- ts-prune: npm install -g ts-prune

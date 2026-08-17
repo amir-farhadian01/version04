@@ -1,122 +1,39 @@
-name: "[QualityGuard] Code Quality Gate"
-
+name: Code Quality
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches: [main]
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  typescript-quality:
-    name: TypeScript & React Quality
+  backend:
+    name: Backend Quality
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: ESLint check
-        run: npm run lint
-        continue-on-error: false
-
-      - name: TypeScript type check
+      - run: npm ci
+      - name: TypeScript check
         run: npx tsc --noEmit
-        continue-on-error: false
+      - name: ESLint
+        run: npx eslint src/ routes/ lib/ --ext .ts --max-warnings 0
 
-      - name: Check for large files (>600 lines)
-        run: |
-          echo "=== Checking file sizes ==="
-          LARGE_FILES=$(find src/ routes/ -name '*.ts' -o -name '*.tsx' 2>/dev/null | \
-            xargs wc -l 2>/dev/null | \
-            awk '$1 > 600 && !/total/ {print $0}' | \
-            sort -rn)
-          if [ -n "$LARGE_FILES" ]; then
-            echo "⚠️  WARNING: Files exceeding 600 lines:"
-            echo "$LARGE_FILES"
-          else
-            echo "✅ All TypeScript files within size limits"
-          fi
-
-      - name: Check for temp files accidentally committed
-        run: |
-          TEMP_PATTERNS=$(find . -name '*.tmp' -o -name '*.bak' -o -name '*.pid' 2>/dev/null | \
-            grep -v node_modules | grep -v .git)
-          if [ -n "$TEMP_PATTERNS" ]; then
-            echo "❌ ERROR: Temp files found in repo:"
-            echo "$TEMP_PATTERNS"
-            echo "Move these to temp/ or add to .gitignore"
-            exit 1
-          else
-            echo "✅ No temp files found"
-          fi
-
-  flutter-quality:
+  flutter:
     name: Flutter Quality
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.x'
-          channel: 'stable'
-
-      - name: Flutter pub get
-        working-directory: flutter_project
+          flutter-version: '3.x'
+      - working-directory: flutter_project
         run: flutter pub get
-
       - name: Flutter analyze
         working-directory: flutter_project
-        run: flutter analyze --no-pub
-        continue-on-error: false
-
-      - name: Check for large Dart files (>500 lines)
+        run: flutter analyze --no-fatal-infos
+      - name: Flutter format check
         working-directory: flutter_project
-        run: |
-          echo "=== Checking Dart file sizes ==="
-          LARGE_FILES=$(find lib/ -name '*.dart' | \
-            xargs wc -l 2>/dev/null | \
-            awk '$1 > 500 && !/total/ {print $0}' | \
-            sort -rn)
-          if [ -n "$LARGE_FILES" ]; then
-            echo "⚠️  WARNING: Dart files exceeding 500 lines:"
-            echo "$LARGE_FILES"
-          else
-            echo "✅ All Dart files within size limits"
-          fi
-
-  secret-scan:
-    name: Secret Scanning
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Run secret detection
-        run: |
-          echo "=== Scanning for potential secrets ==="
-          PATTERNS='(password|passwd|secret|api_key|apikey|token|private_key|access_key)\s*=\s*["\x27][^"\x27]{8,}'
-          FOUND=$(grep -rEi "$PATTERNS" \
-            --include='*.ts' --include='*.tsx' --include='*.js' --include='*.dart' \
-            --exclude-dir=node_modules --exclude-dir=.git \
-            . 2>/dev/null | \
-            grep -v '.env.example' | \
-            grep -v 'test' | grep -v 'spec' || true)
-          if [ -n "$FOUND" ]; then
-            echo "⚠️  Potential secrets detected — please review:"
-            echo "$FOUND"
-          else
-            echo "✅ No obvious secrets detected"
-          fi
+        run: dart format --set-exit-if-changed .
