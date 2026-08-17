@@ -4,4 +4,4 @@
  */
 export {
   PAINTING_SERVICE_QUESTIONNAIRE as PAINTING_RESIDENTIAL_QUESTIONNAIRE,
-} from '../src/components/admin/serviceDefinitions/paintingQuestionnairePreset.js';
+} from './serviceDefinitions/paintingQuestionnairePreset.js';
