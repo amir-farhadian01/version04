@@ -1,5 +1,0 @@
-{
-  "name": "Neighborly Admin Dashboard",
-  "description": "Premium service marketplace management system with real-time data and KYC verification.",
-  "requestFramePermissions": ["camera", "microphone", "geolocation"]
-}
