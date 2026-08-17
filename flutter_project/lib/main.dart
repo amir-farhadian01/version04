@@ -71,7 +71,6 @@ class NeighborHubApp extends StatelessWidget {
         '/profile/upgrade': (_) => const ResponsiveScaffold(child: UpgradeToBusinessScreen()),
               '/order/new': (_) => const ResponsiveScaffold(child: NewOrderScreen()),
         '/onboarding': (_) => const ResponsiveScaffold(child: OnboardingScreen()),
-        '/post/create': (_) => const ResponsiveScaffold(child: CreatePostScreen()),
         '/create-post': (_) => const FlutterAppScaffold(
           title: 'Create Post',
           showBack: true,
@@ -106,7 +105,7 @@ class NeighborHubApp extends StatelessWidget {
             ),
           );
         }
-        if (settings.name == '/explorer/story') {
+        if (settings.name == '/story') {
           final storyId = settings.arguments as String? ?? '';
           return MaterialPageRoute(
             builder: (_) => ResponsiveScaffold(

@@ -150,7 +150,7 @@ class StoriesRow extends StatelessWidget {
         if (id != null) {
           Navigator.pushNamed(
             context,
-            '/explorer/story',
+            '/story',
             arguments: id,
           );
         }
