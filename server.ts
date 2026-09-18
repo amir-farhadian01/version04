@@ -18,6 +18,7 @@ import { ensureMediaSchema } from "./lib/mediaDb.js";
 import { startLocationFlusher, stopLocationFlusher } from "./lib/locationCache.js";
 import { autoReleaseEscrow } from "./scripts/autoReleaseEscrow.js";
 import { expireMatchingWindows } from "./scripts/matchingWindowExpiry.js";
+import { validateJwtSecrets } from "./lib/jwt.js";
 
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
@@ -272,13 +273,8 @@ function createWebApp(opts?: { adminOnly?: boolean }): Express {
 }
 
 async function startServer() {
-  // Security guard: refuse to boot with a missing or default JWT secret.
-  const jwtSecret = process.env.JWT_SECRET;
-  if (!jwtSecret || jwtSecret === 'dev-secret-local' || jwtSecret === 'replace-this-in-production') {
-    throw new Error(
-      'FATAL: JWT_SECRET is not set or is using a default/insecure value. Generate a strong secret with: openssl rand -base64 64'
-    );
-  }
+  // Security guard: access and refresh tokens must use independent, explicit secrets.
+  validateJwtSecrets();
 
   const PORT = parseInt(process.env.PORT || "8080", 10);
   const ADMIN_PORT = parseInt(process.env.ADMIN_PORT || "9090", 10);

@@ -275,11 +275,9 @@ router.post('/users/:id/reset-password-email', async (req: AuthRequest, res: Res
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Generate a real, single-use reset token and log the link. Wire a mail
-    // provider (SendGrid/Resend/SES) here to actually deliver the email.
-    const token = await createPasswordResetToken(user.id);
-    const resetLink = `${req.protocol}://${req.get('host')}/auth/reset-password?token=${token}`;
-    console.log(`[ADMIN] Password reset email for ${user.email}: ${resetLink}`);
+    // Tokens must only be delivered through a dedicated private transport.
+    // Never put the token, reset URL, or user email in application/audit logs.
+    await createPasswordResetToken(user.id);
 
     await prisma.auditLog.create({
       data: {
@@ -287,11 +285,11 @@ router.post('/users/:id/reset-password-email', async (req: AuthRequest, res: Res
         action: 'ADMIN_SEND_RESET_PASSWORD_EMAIL',
         resourceType: 'user',
         resourceId: user.id,
-        metadata: { email: user.email, message: 'Admin triggered password reset email' },
+        metadata: { message: 'Admin triggered password reset request' },
       },
     });
 
-    res.json({ success: true, message: `Password reset email sent to ${user.email}` });
+    res.json({ success: true, message: 'Password reset requested' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
