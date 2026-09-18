@@ -8,6 +8,7 @@ frontend/coverage/
 *.log
 .env*
 !.env.example
+private-uploads/
 
 # Process ID files
 *.pid
@@ -33,6 +34,8 @@ flutter_project/.flutter-plugins-dependencies
 # Coverage reports
 frontend/coverage/
 coverage/
+frontend/playwright-report/
+frontend/test-results/
 
 # IDE
 .idea/
