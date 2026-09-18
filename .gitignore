@@ -8,6 +8,7 @@ frontend/coverage/
 *.log
 .env*
 !.env.example
+!.env.staging.example
 private-uploads/
 
 # Process ID files
