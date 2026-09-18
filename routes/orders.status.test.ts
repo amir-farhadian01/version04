@@ -275,7 +275,7 @@ describe('GET /orders/:id/status', () => {
     // We simulate this by having the mock return null
     (prisma.order.findUnique as any).mockResolvedValueOnce(null);
 
-    const result = await simulateGetOrderStatus('customer-1', 'non-existent-id', {
+    await simulateGetOrderStatus('customer-1', 'non-existent-id', {
       customerId: '__NOT_FOUND__', // This will cause the 404 path
     });
     // Actually, the simulation doesn't use prisma directly, so let's test the 404 differently
@@ -290,7 +290,7 @@ describe('GET /orders/:id/status', () => {
     // this happens when prisma.order.findUnique returns null
     // Our simulation doesn't query prisma, so we test the logic directly
     // by checking that a missing order returns 404
-    const result = await simulateGetOrderStatus('customer-1', 'non-existent-id', {
+    await simulateGetOrderStatus('customer-1', 'non-existent-id', {
       customerId: 'some-other-user', // This will trigger 403, not 404
     });
     // For a proper 404 test, we need to handle the case where findUnique returns null

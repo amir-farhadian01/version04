@@ -88,18 +88,11 @@ vi.mock('../lib/matching/eligibility.js', () => ({
 
 import prisma from '../lib/db.js';
 import { publish } from '../lib/bus.js';
-import { assertWorkspaceMember, WorkspaceAccessError } from '../lib/workspaceAccess.js';
 import { resolveEffectiveBookingMode } from '../lib/matching/eligibility.js';
 
 // ---------------------------------------------------------------------------
 // Helper: get mock function regardless of type
 // ---------------------------------------------------------------------------
-const mockAssertWorkspaceMember = assertWorkspaceMember as unknown as {
-  mockResolvedValue: (...args: unknown[]) => void;
-  mockRejectedValueOnce: (...args: unknown[]) => void;
-  mockImplementation: (...args: unknown[]) => void;
-};
-
 const mockResolveEffectiveBookingMode = resolveEffectiveBookingMode as unknown as {
   mockReturnValue: (...args: unknown[]) => void;
 };

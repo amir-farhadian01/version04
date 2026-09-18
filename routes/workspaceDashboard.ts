@@ -37,7 +37,6 @@ router.get('/:workspaceId/dashboard', authenticate, async (req: AuthRequest, res
       recentOrders,
       staffMembers,
       financeData,
-      revenueThisMonth,
     ] = await Promise.all([
       // Active orders count (contracted, paid, in_progress)
       prisma.order.count({
@@ -139,17 +138,6 @@ router.get('/:workspaceId/dashboard', authenticate, async (req: AuthRequest, res
       // Finance data
       buildProviderWorkspaceFinance(workspaceId),
 
-      // Revenue this month
-      prisma.order.aggregate({
-        where: {
-          matchedWorkspaceId: workspaceId,
-          status: { in: ['completed', 'closed'] },
-          updatedAt: { gte: startOfThisMonth },
-        },
-        _sum: {
-          // We'll use the orderContract amount via the finance builder
-        },
-      }),
     ]);
 
     // Calculate revenue this month from finance data

@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../lib/auth.middleware.js';
 import { prisma } from '../lib/db.js';
 

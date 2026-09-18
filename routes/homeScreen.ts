@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../lib/db.js';
-import { verifyAccessToken, JwtPayload } from '../lib/jwt.js';
+import { verifyAccessToken } from '../lib/jwt.js';
 import { isDataSafe } from '../lib/privacyThreshold.js';
 
 const router = Router();
@@ -68,8 +68,6 @@ router.get('/', optionalAuth, async (req: Request, res: Response) => {
   try {
     const city = (req.query.city as string) || 'Vaughan';
     const neighborhood = req.query.neighborhood as string | undefined;
-    const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
-    const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
 
     // ── 1. News Articles ──────────────────────────────────────────────
     const newsArticles = await prisma.homeNewsArticle.findMany({

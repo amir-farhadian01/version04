@@ -12,7 +12,7 @@
  */
 
 import prisma from './db.js';
-import { getRedis, isRedisAvailable } from './redis.js';
+import { getRedis } from './redis.js';
 
 // ─── Config (from env vars with defaults) ──────────────────────────────
 
