@@ -436,7 +436,9 @@ router.get('/config', async (req: AuthRequest, res: Response) => {
 // PUT /api/admin/config
 router.put('/config', async (req: AuthRequest, res: Response) => {
   try {
-    const { id: _id, key: _key, stripePublishableKey, stripeSecretKey, stripeWebhookSecret, stripeEnabled, ...rest } = req.body;
+    const { stripePublishableKey, stripeSecretKey, stripeWebhookSecret, stripeEnabled, ...rest } = req.body;
+    delete rest.id;
+    delete rest.key;
 
     // Build the integrations JSON with Stripe config
     const existing = await prisma.systemConfig.findUnique({ where: { key: 'global' } });
@@ -518,7 +520,8 @@ router.post('/pages', async (req: AuthRequest, res: Response) => {
 // PUT /api/admin/pages/:id
 router.put('/pages/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const { id: _id, ...data } = req.body;
+    const data = { ...req.body };
+    delete data.id;
     const page = await prisma.page.update({ where: { id: req.params.id }, data: { ...data, lastEdit: new Date() } });
     res.json(page);
   } catch (err: any) {
