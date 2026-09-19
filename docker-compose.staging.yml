@@ -1,0 +1,75 @@
+name: neighborly_staging
+
+services:
+  postgres:
+    container_name: neighborly_staging_db
+    env_file: !override
+      - path: .env.staging
+        required: true
+    ports: !override ["55432:5432"]
+  postgres-media:
+    container_name: neighborly_staging_media_db
+    env_file: !override
+      - path: .env.staging
+        required: true
+    ports: !override ["55433:5432"]
+  redis:
+    container_name: neighborly_staging_redis
+    ports: !override ["56379:6379"]
+  nats:
+    container_name: neighborly_staging_nats
+    ports: !override ["54222:4222"]
+  minio:
+    container_name: neighborly_staging_minio
+    ports: !override ["59002:9000", "59003:9001"]
+  web-app:
+    container_name: neighborly_staging_api
+    env_file: !override
+      - path: .env.staging
+        required: true
+    environment:
+      APP_ENV: staging
+      NODE_ENV: production
+    ports: !override ["18080:8080", "19090:9090"]
+  frontend:
+    container_name: neighborly_staging_frontend
+    environment:
+      VITE_API_URL: http://localhost:18080/api
+    ports: !override ["15173:5173"]
+  traefik:
+    container_name: neighborly_staging_traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=neighborly_staging_network"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+    ports: !override ["18000:80", "19191:8080"]
+  loki:
+    container_name: neighborly_staging_loki
+  grafana:
+    container_name: neighborly_staging_grafana
+    ports: !override ["13000:3000"]
+  dozzle:
+    container_name: neighborly_staging_dozzle
+    ports: !override ["18899:8080"]
+  metabase:
+    container_name: neighborly_staging_metabase
+    ports: !override ["13001:3000"]
+  portainer:
+    container_name: neighborly_staging_portainer
+    ports: !override ["19000:9000"]
+
+networks:
+  neighborly_network:
+    name: neighborly_staging_network
+
+volumes:
+  postgres_data: { name: neighborly_staging_postgres }
+  postgres_media_data: { name: neighborly_staging_media_postgres }
+  portainer_data: { name: neighborly_staging_portainer }
+  minio_data: { name: neighborly_staging_minio }
+  redis_data: { name: neighborly_staging_redis }
+  loki_data: { name: neighborly_staging_loki }
+  grafana_data: { name: neighborly_staging_grafana }

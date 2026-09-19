@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:22.14.0-alpine AS base
 WORKDIR /app
 
 # Install OpenSSL (required by Prisma on Alpine)
@@ -6,7 +6,13 @@ RUN apk add --no-cache openssl
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm ci
+
+# The client and admin dashboard have an independent lockfile. Install their
+# exact dependency graph before copying source so image builds do not depend on
+# a developer's local frontend/node_modules directory.
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm ci --legacy-peer-deps
 
 # Generate Prisma Client
 COPY prisma ./prisma/
@@ -25,28 +31,28 @@ CMD ["npm", "run", "dev"]
 FROM base AS builder
 ENV NODE_ENV=production
 RUN npm run build
+RUN npm run build:admin
 
 # ─── Production stage ────────────────────────────────────────────────────────
-FROM node:20-alpine AS production
+FROM node:22.14.0-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
 
 RUN apk add --no-cache openssl
 
 COPY package*.json ./
-RUN npm ci --omit=dev --legacy-peer-deps
+RUN npm ci --omit=dev
 
 COPY prisma ./prisma/
 # Copy pre-generated client from base (avoids npx downloading latest prisma)
 COPY --from=base /app/node_modules/.prisma ./node_modules/.prisma
 
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/frontend/dist ./dist
+COPY --from=builder /app/frontend/admin/dist /frontend/admin/dist
 COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/routes ./routes
 COPY --from=builder /app/server.ts ./
 COPY --from=builder /app/tsconfig.json ./
-
-RUN npm install tsx --save-dev
 
 EXPOSE 8080
 CMD sh -c "npx prisma migrate deploy && npm run dev"
