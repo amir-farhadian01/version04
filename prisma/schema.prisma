@@ -208,6 +208,69 @@ enum QuoteStatus {
   EXPIRED
 }
 
+enum SchedulePurpose {
+  service
+  delivery
+}
+
+enum DriverEngagementType {
+  hourly
+  long_term
+}
+
+enum BusinessDriverStatus {
+  invited
+  active
+  paused
+  declined
+  ended
+}
+
+enum DriverAvailabilityMode {
+  on_demand
+  scheduled
+}
+
+enum DriverPresence {
+  available
+  offline
+}
+
+enum DriverCompensationTermStatus {
+  proposed
+  accepted
+  rejected
+  superseded
+}
+
+enum FulfillmentProviderKind {
+  internal_driver
+  external_carrier
+}
+
+enum FulfillmentStatus {
+  unassigned
+  assigned
+  accepted
+  picked_up
+  in_transit
+  delivered
+  failed
+  cancelled
+  unable_to_deliver
+}
+
+enum DeliveryAssignmentStatus {
+  offered
+  accepted
+  rejected
+  revoked
+  completed
+  failed
+  cancelled
+  unable_to_deliver
+}
+
 model User {
   id                  String      @id @default(cuid())
   email               String      @unique
@@ -314,6 +377,16 @@ model User {
   staffSlotBlocks       StaffSlotBlock[]
   subStaffAssignments   SubcontractorAssignment[] @relation("SubStaff")
   passwordResetTokens   PasswordResetToken[]
+  kycVerificationChallenges KycVerificationChallenge[]
+  kycDocuments          KycDocument[]
+  businessDriverRelationships BusinessDriver[] @relation("BusinessDriverUser")
+  driverTermsProposed   DriverCompensationTermVersion[] @relation("DriverTermProposer")
+  driverTermsAccepted   DriverCompensationTermVersion[] @relation("DriverTermAcceptor")
+  fulfillmentsCreated   Fulfillment[] @relation("FulfillmentCreator")
+  fulfillmentsArchived  Fulfillment[] @relation("FulfillmentArchiver")
+  assignmentsOffered    DeliveryAssignment[] @relation("AssignmentOfferer")
+  assignmentsResponded  DeliveryAssignment[] @relation("AssignmentResponder")
+  assignmentsOutcome    DeliveryAssignment[] @relation("AssignmentOutcomeActor")
 }
 
 model PasswordResetToken {
@@ -326,6 +399,36 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model KycVerificationChallenge {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel           String
+  tokenHash         String?
+  destinationHash   String
+  providerReference String?
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  attempts          Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  @@index([userId, channel, createdAt])
+  @@index([expiresAt])
+}
+
+model KycDocument {
+  id           String   @id @default(cuid())
+  ownerId      String
+  owner        User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  storagePath  String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime @default(now())
+
+  @@index([ownerId, createdAt])
 }
 
 model UsernameHistory {
@@ -386,6 +489,9 @@ model Company {
   primeAssignments    SubcontractorAssignment[] @relation("PrimeContracts")
   subAssignments      SubcontractorAssignment[] @relation("SubContracts")
   staffSlotBlocks     StaffSlotBlock[]
+  deliveryOperationsEnabled Boolean @default(false) @map("delivery_operations_enabled")
+  businessDrivers     BusinessDriver[]
+  fulfillments        Fulfillment[]
   stripeEnabled       Boolean?    @default(false) @map("stripe_enabled")
   stripeAccountId     String?     @map("stripe_account_id")
   stripeChargesEnabled Boolean?   @default(false) @map("stripe_charges_enabled")
@@ -649,6 +755,7 @@ model Order {
   totalSessions         Int             @default(1) @map("total_sessions")
   completedSessions     Int             @default(0) @map("completed_sessions")
   subcontractorAssignment SubcontractorAssignment? @relation("OrderSubcontract")
+  fulfillment            Fulfillment?
   formTemplateVersion   Int?            @map("form_template_version")
 
   @@index([customerId])
@@ -902,6 +1009,7 @@ model Schedule {
   endTime   DateTime
   status    String   @default("scheduled")
   isActive  Boolean  @default(true) @map("is_active")
+  purpose   SchedulePurpose @default(service)
 }
 
 model B2BConnection {
@@ -1225,6 +1333,7 @@ model BusinessKycSubmission {
   companyId      String?
   company        Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
   schemaVersion  Int
+  schemaSnapshot Json?
   answers        Json
   uploads        Json
   inquiryResults Json?
@@ -1233,6 +1342,10 @@ model BusinessKycSubmission {
   reviewedById   String?
   reviewedAt     DateTime?
   reviewNote     String?
+  registrationReviewStatus String @default("pending")
+  registrationReviewNote   String?
+  insuranceReviewStatus    String @default("pending")
+  insuranceReviewNote      String?
   submittedAt    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -1483,32 +1596,32 @@ model Invoice {
 
 model Quote {
   id              String      @id @default(cuid())
-  orderId         String
+  orderId         String @map("order_id")
   order           Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  workspaceId     String
+  workspaceId     String @map("workspace_id")
   workspace       Company     @relation(fields: [workspaceId], references: [id])
-  createdById     String
+  createdById     String @map("created_by_id")
   createdBy       User        @relation("QuoteCreator", fields: [createdById], references: [id])
-  versionNumber   Int         @default(1)
+  versionNumber   Int         @default(1) @map("version_number")
   status          QuoteStatus @default(DRAFT)
   title           String
   description     String?
-  lineItems       Json        // [{ description, quantity, unitPrice, total }]
+  lineItems       Json @map("line_items")        // [{ description, quantity, unitPrice, total }]
   subtotal        Int         @default(0)    // Amount in cents (e.g., 5000 = $50.00)
   tax             Int         @default(0)    // Amount in cents
   total           Int         @default(0)    // Amount in cents
   currency        String      @default("CAD")
-  validUntil      DateTime?
+  validUntil      DateTime? @map("valid_until")
   notes           String?
-  customerMessage String?
-  sentAt          DateTime?
-  respondedAt     DateTime?
-  rejectionReason String?
+  customerMessage String? @map("customer_message")
+  sentAt          DateTime? @map("sent_at")
+  respondedAt     DateTime? @map("responded_at")
+  rejectionReason String? @map("rejection_reason")
   counterOfferTo  String?     @map("counter_offer_to")
   counterOfferToQuote Quote?  @relation("QuoteCounterOffer", fields: [counterOfferTo], references: [id])
   counterOffers   Quote[]     @relation("QuoteCounterOffer")
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
 
   @@index([orderId])
   @@index([workspaceId, status])
@@ -1517,16 +1630,16 @@ model Quote {
 
 model WorkspaceCustomerNote {
   id          String   @id @default(cuid())
-  workspaceId String
+  workspaceId String @map("workspace_id")
   workspace   Company  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  customerId  String
+  customerId  String @map("customer_id")
   customer    User     @relation("NoteCustomer", fields: [customerId], references: [id], onDelete: Cascade)
-  authorId    String
+  authorId    String @map("author_id")
   author      User     @relation("NoteAuthor", fields: [authorId], references: [id])
   content     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  archivedAt  DateTime?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  archivedAt  DateTime? @map("archived_at")
 
   @@index([workspaceId, customerId])
   @@index([workspaceId])
@@ -1749,11 +1862,143 @@ model StaffSlotBlock {
   reason      String?
   orderId     String?  @map("order_id")
   createdAt   DateTime @default(now()) @map("created_at")
+  deliveryAssignment DeliveryAssignment?
 
   @@index([staffId, startAt, endAt])
   @@index([workspaceId, startAt])
   @@index([orderId])
   @@map("staff_slot_blocks")
+}
+
+// ─── Delivery & Driver Operations (ADR-0083) ────────────────────────────────
+
+model BusinessDriver {
+  id                    String                 @id @default(cuid())
+  companyId             String                 @map("company_id")
+  company               Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userId                String                 @map("user_id")
+  user                  User                   @relation("BusinessDriverUser", fields: [userId], references: [id], onDelete: Restrict)
+  engagementType        DriverEngagementType   @map("engagement_type")
+  status                BusinessDriverStatus   @default(invited)
+  availabilityMode      DriverAvailabilityMode @default(on_demand) @map("availability_mode")
+  presence              DriverPresence         @default(offline)
+  version               Int                    @default(1)
+  currentAcceptedTermId String?                @unique @map("current_accepted_term_id")
+  currentAcceptedTerm   DriverCompensationTermVersion? @relation("CurrentDriverTerm", fields: [currentAcceptedTermId], references: [id], onDelete: SetNull)
+  terms                 DriverCompensationTermVersion[] @relation("DriverTerms")
+  assignments           DeliveryAssignment[]
+  invitedAt             DateTime               @default(now()) @map("invited_at")
+  respondedAt           DateTime?              @map("responded_at")
+  activatedAt           DateTime?              @map("activated_at")
+  pausedAt              DateTime?              @map("paused_at")
+  declinedAt            DateTime?              @map("declined_at")
+  endedAt               DateTime?              @map("ended_at")
+  archivedAt            DateTime?              @map("archived_at")
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  @@unique([companyId, userId])
+  @@index([companyId, status])
+  @@index([userId, status])
+  @@map("business_drivers")
+}
+
+model DriverCompensationTermVersion {
+  id               String                       @id @default(cuid())
+  businessDriverId String                       @map("business_driver_id")
+  businessDriver   BusinessDriver               @relation("DriverTerms", fields: [businessDriverId], references: [id], onDelete: Cascade)
+  currentForDriver BusinessDriver?              @relation("CurrentDriverTerm")
+  versionNumber    Int                          @map("version_number")
+  schemaVersion    Int                          @default(1) @map("schema_version")
+  currency         String                       @db.VarChar(3)
+  components       Json
+  status           DriverCompensationTermStatus @default(proposed)
+  proposedById     String                       @map("proposed_by_id")
+  proposedBy       User                         @relation("DriverTermProposer", fields: [proposedById], references: [id], onDelete: Restrict)
+  acceptedById     String?                      @map("accepted_by_id")
+  acceptedBy       User?                        @relation("DriverTermAcceptor", fields: [acceptedById], references: [id], onDelete: SetNull)
+  proposedAt       DateTime                     @default(now()) @map("proposed_at")
+  acceptedAt       DateTime?                    @map("accepted_at")
+  rejectedAt       DateTime?                    @map("rejected_at")
+  supersededAt     DateTime?                    @map("superseded_at")
+  createdAt        DateTime                     @default(now()) @map("created_at")
+  assignments      DeliveryAssignment[]
+
+  @@unique([businessDriverId, versionNumber])
+  @@index([businessDriverId, status])
+  @@map("driver_compensation_term_versions")
+}
+
+model Fulfillment {
+  id                     String                  @id @default(cuid())
+  orderId                String                  @unique @map("order_id")
+  order                  Order                   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  workspaceId            String                  @map("workspace_id")
+  workspace              Company                 @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  providerKind           FulfillmentProviderKind @default(internal_driver) @map("provider_kind")
+  providerKey            String                  @default("internal") @map("provider_key")
+  status                 FulfillmentStatus       @default(unassigned)
+  version                Int                     @default(1)
+  currentAssignmentId    String?                 @unique @map("current_assignment_id")
+  currentAssignment      DeliveryAssignment?     @relation("CurrentFulfillmentAssignment", fields: [currentAssignmentId], references: [id], onDelete: SetNull)
+  assignments            DeliveryAssignment[]    @relation("FulfillmentAssignments")
+  addressSchemaVersion   Int                     @default(1) @map("address_schema_version")
+  pickupAddressSnapshot  Json                    @map("pickup_address_snapshot")
+  dropoffAddressSnapshot Json                    @map("dropoff_address_snapshot")
+  createdById            String                  @map("created_by_id")
+  createdBy              User                    @relation("FulfillmentCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  assignedAt             DateTime?               @map("assigned_at")
+  acceptedAt             DateTime?               @map("accepted_at")
+  pickedUpAt             DateTime?               @map("picked_up_at")
+  inTransitAt            DateTime?               @map("in_transit_at")
+  deliveredAt            DateTime?               @map("delivered_at")
+  terminalAt             DateTime?               @map("terminal_at")
+  archivedAt             DateTime?               @map("archived_at")
+  archivedById           String?                 @map("archived_by_id")
+  archivedBy             User?                   @relation("FulfillmentArchiver", fields: [archivedById], references: [id], onDelete: SetNull)
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+
+  @@index([workspaceId, status])
+  @@map("fulfillments")
+}
+
+model DeliveryAssignment {
+  id                    String                   @id @default(cuid())
+  fulfillmentId         String                   @map("fulfillment_id")
+  fulfillment           Fulfillment              @relation("FulfillmentAssignments", fields: [fulfillmentId], references: [id], onDelete: Cascade)
+  currentForFulfillment Fulfillment?             @relation("CurrentFulfillmentAssignment")
+  businessDriverId      String                   @map("business_driver_id")
+  businessDriver        BusinessDriver           @relation(fields: [businessDriverId], references: [id], onDelete: Restrict)
+  compensationTermId    String                   @map("compensation_term_id")
+  compensationTerm      DriverCompensationTermVersion @relation(fields: [compensationTermId], references: [id], onDelete: Restrict)
+  status                DeliveryAssignmentStatus @default(offered)
+  version               Int                      @default(1)
+  plannedStartAt        DateTime?                @map("planned_start_at")
+  plannedEndAt          DateTime?                @map("planned_end_at")
+  offeredById           String                   @map("offered_by_id")
+  offeredBy             User                     @relation("AssignmentOfferer", fields: [offeredById], references: [id], onDelete: Restrict)
+  respondedById         String?                  @map("responded_by_id")
+  respondedBy           User?                    @relation("AssignmentResponder", fields: [respondedById], references: [id], onDelete: SetNull)
+  outcomeById           String?                  @map("outcome_by_id")
+  outcomeBy             User?                    @relation("AssignmentOutcomeActor", fields: [outcomeById], references: [id], onDelete: SetNull)
+  staffSlotBlockId      String?                  @unique @map("staff_slot_block_id")
+  staffSlotBlock        StaffSlotBlock?          @relation(fields: [staffSlotBlockId], references: [id], onDelete: SetNull)
+  offeredAt             DateTime                 @default(now()) @map("offered_at")
+  respondedAt           DateTime?                @map("responded_at")
+  completedAt           DateTime?                @map("completed_at")
+  failedAt              DateTime?                @map("failed_at")
+  cancelledAt           DateTime?                @map("cancelled_at")
+  revokedAt             DateTime?                @map("revoked_at")
+  reservationReleasedAt DateTime?                @map("reservation_released_at")
+  reasonCode            String?                  @map("reason_code")
+  notes                 String?
+  createdAt             DateTime                 @default(now()) @map("created_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
+
+  @@index([fulfillmentId, createdAt])
+  @@index([businessDriverId, status])
+  @@map("delivery_assignments")
 }
 
 // ─── AI Dynamic Form Templates (ADR-0071) ──────────────────────────────────────
