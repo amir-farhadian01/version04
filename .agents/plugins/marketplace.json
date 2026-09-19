@@ -1,0 +1,44 @@
+{
+  "name": "neighborly-local",
+  "interface": {
+    "displayName": "Neighborly Local"
+  },
+  "plugins": [
+    {
+      "name": "neighborly-quality",
+      "source": {
+        "source": "local",
+        "path": "./plugins/neighborly-quality"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "DeveloperTools"
+    },
+    {
+      "name": "neighborly-growth",
+      "source": {
+        "source": "local",
+        "path": "./plugins/neighborly-growth"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Business"
+    },
+    {
+      "name": "neighborly-multi-agent",
+      "source": {
+        "source": "local",
+        "path": "./plugins/neighborly-multi-agent"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

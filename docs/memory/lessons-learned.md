@@ -4,6 +4,14 @@ Append after every completed goal or notable failure.
 
 ---
 
+## [2026-08-27] Local plugin packaging — keep one canonical skill source
+- **What happened:** Neighborly already had a complete GTM skill library, so copying every skill into plugin folders would have created two sources of truth.
+- **Rule for next time:** Package repository-specific routing in the plugin, keep canonical instructions in `.agents/skills/`, and fail CI when marketplace, catalog, manifests, role cards, or release versions diverge.
+
+## [2026-08-17] Codex multi-agent setup — plugin fallback for protected `.codex/`
+- **What happened:** The workspace contained a read-only `.codex/` mount, which prevented native custom-agent configuration. A local Codex plugin supplied the reusable multi-agent workflow instead.
+- **Rule for next time:** Use `.codex/agents/*.toml` when the project config directory is writable; otherwise package the coordination workflow as a local Codex plugin and do not attempt to change protected mounts.
+
 ## [2026-08-14] Security fixes — migration chain deeper than reported
 - **What happened:** Fixing the QA-round migration bug revealed the chain was broken in 3 places, and ~20 tables + several enums/columns exist only in a bare `20260525180000_social_layer.sql` snapshot that Prisma ignores.
 - **Root cause:** A full-schema snapshot (`social_layer.sql`) was saved as a bare `.sql` file instead of `migrations/<name>/migration.sql`, so `migrate deploy` never applied it; later migrations were written against that snapshot state.

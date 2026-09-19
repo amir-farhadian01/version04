@@ -4,6 +4,18 @@ Append-only log. Never delete entries; supersede them.
 
 ---
 
+## [2026-08-27] Local Plugin Marketplace for Quality and Growth
+- **Goal:** Make Neighborly's QA/debug and marketing/sales workflows available as safe local Codex plugins.
+- **Decision:** Added the repository-local `neighborly-local` marketplace with `neighborly-multi-agent`, `neighborly-quality`, and `neighborly-growth`; canonical GTM skills remain under `.agents/skills/` and CI validates the catalog rather than maintaining duplicate skill copies.
+- **Alternatives rejected:** Personal home-directory marketplace (not version-controlled with the project); copied skill trees (drift risk); Apollo/Gmail/CRM/security connections (credentials and external data flow not approved for local-safe mode).
+- **Rationale:** The marketplace remains auditable, reversible, credential-free, and aligned with repository approval gates.
+
+## [2026-08-17] Codex Multi-Agent Plugin
+- **Goal:** Add multiple specialist agents for the Codex extension.
+- **Decision:** Added the repository-local `neighborly-multi-agent` Codex plugin, which coordinates backend, Flutter, QA, and release-control specialist work through one guarded workflow.
+- **Alternatives rejected:** Native `.codex/agents/*.toml` definitions (the workspace `.codex/` mount is read-only); a deployed OpenAI Agents SDK service (would add credentials, dependencies, and runtime ownership without improving this local Codex workflow); AGENTS.md-only guidance (no reusable extension entry point).
+- **Rationale:** The plugin preserves existing repository guardrails and approval gates, without changing application behavior or connecting any third-party service.
+
 ## [2026-08-06] Enterprise AI Company OS Integration
 - **Goal:** اضافه کردن پوشه اسکیل‌های AI به روت پروژه — طراحی مجدد ساختار عامل‌های هوش مصنوعی
 - **Decision:** `.clinerules/` در ریشه پروژه (اجباری برای auto-detect توسط Cline)، مستندات در `docs/enterprise-ai/`، حذف `.agents/skills/` قدیمی

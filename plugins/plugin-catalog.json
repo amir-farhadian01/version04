@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "marketplace": "neighborly-local",
+  "plugins": {
+    "neighborly-multi-agent": {
+      "version": "0.1.0",
+      "canonicalSkills": [],
+      "canonicalRoleCards": ["agent-provisioning", "backend-database-security-qa", "code-quality-agent", "devops-release-agent", "flutter-qa", "web-dashboard-e2e-qa"]
+    },
+    "neighborly-quality": {
+      "version": "0.1.0",
+      "canonicalSkills": [],
+      "canonicalRoleCards": ["backend-database-security-qa", "code-quality-agent", "devops-release-agent", "flutter-qa", "web-dashboard-e2e-qa"]
+    },
+    "neighborly-growth": {
+      "version": "0.1.0",
+      "canonicalSkills": [
+        "analytics-scorecard", "casl-compliance", "community-growth", "competitor-analysis", "content-strategy", "crm-lifecycle", "customer-research", "experiment-design", "launch-strategy", "local-seo", "market-research", "marketplace-liquidity", "marketplace-unit-economics", "micro-market-selection", "offer-design", "onboarding-optimization", "outreach-personalization", "positioning", "programmatic-seo", "provider-acquisition", "provider-research", "red-team-review", "referral-program", "retention-analysis", "sales-qualification", "social-content", "trust-safety-verification"
+      ],
+      "canonicalRoleCards": []
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "applications": {
+    "api": "0.0.0",
+    "userWeb": "0.0.1",
+    "businessWeb": "0.0.1",
+    "adminWeb": "0.0.1",
+    "flutter": "1.0.0+1"
+  },
+  "plugins": {
+    "neighborly-multi-agent": "0.1.0",
+    "neighborly-quality": "0.1.0",
+    "neighborly-growth": "0.1.0"
+  },
+  "toolchain": {
+    "node": "22.14.0",
+    "flutter": "3.41.6",
+    "dart": "3.11.4",
+    "prisma": "5.22.0",
+    "vite": "8.2.2",
+    "reactRouter": "7.18.2",
+    "vitestFrontend": "4.1.0",
+    "bcrypt": "6.0.0"
+  },
+  "services": {
+    "postgres": "16.8-alpine",
+    "redis": "7.4.2-alpine",
+    "nats": "2.10.26-alpine",
+    "traefik": "v3.3.4",
+    "minio": "RELEASE.2025-04-22T22-12-26Z",
+    "loki": "3.3.2",
+    "grafana": "11.5.2",
+    "dozzle": "v8.12.13",
+    "metabase": "v0.52.7"
+  },
+  "environments": {
+    "development": { "paymentMode": "disabled" },
+    "staging": { "paymentMode": "stripe_test", "composeProject": "neighborly_staging" },
+    "production": { "paymentMode": "disabled" }
+  }
+}

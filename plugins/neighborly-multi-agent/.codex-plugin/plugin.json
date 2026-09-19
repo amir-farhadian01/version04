@@ -1,0 +1,18 @@
+{
+  "name": "neighborly-multi-agent",
+  "version": "0.1.0",
+  "description": "Coordinate safe, specialist Codex work for the Neighborly repository.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Neighborly Multi Agent",
+    "shortDescription": "Coordinate Neighborly work across Codex specialists.",
+    "longDescription": "A local Codex workflow that routes bounded Neighborly tasks to backend, Flutter, QA, and release-control specialists while preserving approval gates.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use Neighborly Multi Agent to plan and safely execute this task."
+  }
+}
