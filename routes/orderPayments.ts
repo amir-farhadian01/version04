@@ -4,16 +4,15 @@ import prisma from '../lib/db.js';
 import { authenticate, type AuthRequest } from '../lib/auth.middleware.js';
 import {
   notifyPaymentCaptured,
-  notifyPaymentFailed,
 } from '../lib/orderLifecycleNotifications.js';
 import {
   evaluateOrderPaymentGate,
   getOrderPaymentSummary,
-  createEscrowPayment,
-  captureEscrowPayment,
   PAYMENT_GATE_CODE_CONTRACT_APPROVAL_REQUIRED,
 } from '../lib/orderPayments.js';
 import { phaseFromStatus } from '../lib/orderPhase.js';
+import { capturePaymentForOrder, initiatePaymentForOrder } from '../lib/stripeService.js';
+import { paymentProviders } from '../lib/paymentProvider.js';
 import { assertWorkspaceMember, WorkspaceAccessError } from '../lib/workspaceAccess.js';
 import { userHasActiveInboxAttemptForOrder } from '../lib/orderNegotiationAccess.js';
 
@@ -136,8 +135,25 @@ router.post('/session', async (req: AuthRequest, res: Response) => {
         code: PAYMENT_GATE_CODE_CONTRACT_APPROVAL_REQUIRED,
       });
     }
-    const sessionToken = `${orderId}.${Date.now().toString(36)}`;
-    const checkoutUrl = `/payments/mock-checkout?orderId=${encodeURIComponent(orderId)}&session=${sessionToken}`;
+    if (!paymentProviders.stripe.availability().enabled) {
+      return res.status(503).json({
+        error: 'Payment provider is unavailable for this environment',
+        code: 'PAYMENT_PROVIDER_DISABLED',
+      });
+    }
+
+    const providerSession = await initiatePaymentForOrder({
+      orderId,
+      amount: gate.amount,
+      currency: gate.currency,
+    });
+    if (!providerSession.stripeResult.success || !providerSession.stripeResult.paymentIntentId) {
+      return res.status(503).json({
+        error: 'Payment provider session is unavailable',
+        code: 'PAYMENT_SESSION_UNAVAILABLE',
+      });
+    }
+    const providerReference = providerSession.stripeResult.paymentIntentId;
 
     await prisma.$transaction(async (tx) => {
       await tx.transaction.create({
@@ -145,7 +161,7 @@ router.post('/session', async (req: AuthRequest, res: Response) => {
           type: 'income',
           amount: gate.amount,
           category: 'order_payment_session',
-          description: `order:${orderId}|contractVersion:${gate.contractVersionId}|currency:${gate.currency}|session:${sessionToken}`,
+          description: `order:${orderId}|contractVersion:${gate.contractVersionId}|currency:${gate.currency}|providerReference:${providerReference}`,
           customerId: order.customerId,
           companyId: order.matchedWorkspaceId ?? undefined,
         },
@@ -160,28 +176,18 @@ router.post('/session', async (req: AuthRequest, res: Response) => {
             amount: gate.amount,
             currency: gate.currency,
             contractVersionId: gate.contractVersionId,
-            sessionToken,
+            providerReference,
           } as Prisma.InputJsonValue,
         },
       });
     });
 
-    // Create escrow payment record if not exists
-    try {
-      const existingPayment = await prisma.payment.findUnique({ where: { orderId } });
-      if (!existingPayment) {
-        await createEscrowPayment(orderId, gate.amount);
-      }
-    } catch (escrowErr) {
-      console.error('Failed to create escrow payment record:', escrowErr);
-      // non-fatal — escrow record creation is supplementary
-    }
-
     return res.json({
       session: {
-        id: sessionToken,
+        id: providerReference,
         status: 'pending',
-        paymentUrl: checkoutUrl,
+        paymentUrl: null,
+        clientSecret: providerSession.stripeResult.clientSecret,
         amount: gate.amount,
         currency: gate.currency,
         createdAt: new Date().toISOString(),
@@ -215,8 +221,30 @@ router.post('/confirm', async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (!paymentProviders.stripe.availability().enabled) {
+      return res.status(503).json({
+        error: 'Payment provider is unavailable for this environment',
+        code: 'PAYMENT_PROVIDER_DISABLED',
+      });
+    }
+
+    const providerCapture = await capturePaymentForOrder(orderId);
+    if (!providerCapture.success) {
+      return res.status(502).json({
+        error: 'Payment provider did not confirm capture',
+        code: 'PAYMENT_CAPTURE_FAILED',
+      });
+    }
+
     await prisma.$transaction(async (tx) => {
-      await tx.transaction.create({
+      const existingCapture = await tx.transaction.findFirst({
+        where: {
+          category: 'order_payment_capture',
+          description: { startsWith: `order:${orderId}|` },
+        },
+        select: { id: true },
+      });
+      if (!existingCapture) await tx.transaction.create({
         data: {
           type: 'income',
           amount: gate.amount,
@@ -230,7 +258,11 @@ router.post('/confirm', async (req: AuthRequest, res: Response) => {
         where: { id: orderId },
         data: { status: OrderStatus.paid, phase: phaseFromStatus(OrderStatus.paid, order.phase) },
       });
-      await tx.auditLog.create({
+      const existingAudit = await tx.auditLog.findFirst({
+        where: { action: 'PAYMENT_CAPTURED', resourceType: 'order', resourceId: orderId },
+        select: { id: true },
+      });
+      if (!existingAudit) await tx.auditLog.create({
         data: {
           actorId: userId,
           action: 'PAYMENT_CAPTURED',
@@ -243,15 +275,7 @@ router.post('/confirm', async (req: AuthRequest, res: Response) => {
           } as Prisma.InputJsonValue,
         },
       });
-    });
-
-    // Capture escrow payment (non-fatal if it fails)
-    try {
-      await captureEscrowPayment(orderId);
-    } catch (escrowErr) {
-      console.error('Failed to capture escrow payment:', escrowErr);
-      // non-fatal — order is already marked paid
-    }
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
     // Notify customer that payment was captured (non-fatal)
     try {
