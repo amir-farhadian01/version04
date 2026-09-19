@@ -10,8 +10,9 @@ import morgan from "morgan";
 import "dotenv/config";
 
 import prisma from "./lib/db.js";
-import { getRedis } from "./lib/redis.js";
-import { getNats, startNatsNotificationConsumers } from "./lib/bus.js";
+import { getRedis, pingRedis } from "./lib/redis.js";
+import { getNats, isNatsAvailable, startNatsNotificationConsumers } from "./lib/bus.js";
+import { incrementOperationalMetric, installObservability } from "./lib/observability.js";
 import { apiLimiter, adminLimiter } from "./lib/rateLimiter.js";
 import { ensureMediaSchema } from "./lib/mediaDb.js";
 import { startLocationFlusher, stopLocationFlusher } from "./lib/locationCache.js";
@@ -36,6 +37,8 @@ import placesRoutes from "./routes/places.js";
 import transactionRoutes from "./routes/transactions.js";
 import kycRoutes from "./routes/kyc.js";
 import kycUserRoutes from "./routes/kycUser.js";
+import paymentCapabilitiesRoutes from "./routes/paymentCapabilities.js";
+import kycDocumentsRoutes from "./routes/kycDocuments.js";
 import uploadRoutes from "./routes/upload.js";
 import mediaRoutes from "./routes/media.js";
 import serviceCatalogRoutes from "./routes/serviceCatalog.js";
@@ -86,15 +89,15 @@ import { router as serviceSearchRoutes } from "./routes/serviceSearch.js";
 import subcontractorRoutes from "./routes/subcontractor.js";
 import staffScheduleRoutes from "./routes/staffSchedule.js";
 import dynamicFormsRoutes from "./routes/dynamicForms.js";
+import deliveryOperationsRoutes from "./routes/deliveryOperations.js";
+import driverDeliveriesRoutes from "./routes/driverDeliveries.js";
+import adminDeliveryOperationsRoutes from "./routes/adminDeliveryOperations.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function mountApiRoutes(app: Express) {
   // Apply rate limiter to all API routes
   app.use("/api", apiLimiter);
-  app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString(), version: "2.0.0" });
-  });
   app.use("/api/auth", authRoutes);
   app.use("/api/users", userRoutes);
   app.use("/api/services/search", serviceSearchRoutes);
@@ -117,11 +120,15 @@ function mountApiRoutes(app: Express) {
   app.use("/api/orders/:orderId/group-sessions", groupSessionsRoutes);
   app.use("/api/workspaces", workspacesRoutes);
   app.use("/api/workspaces", subcontractorRoutes);
+  app.use("/api/workspaces/:workspaceId/delivery-operations", deliveryOperationsRoutes);
+  app.use("/api/driver", driverDeliveriesRoutes);
   app.use("/api/products", productsRoutes);
   app.use("/api/system", systemRoutes);
   app.use("/api/places", placesRoutes);
   app.use("/api/transactions", transactionRoutes);
+  app.use("/api/kyc/v2/documents", kycDocumentsRoutes);
   app.use("/api/kyc/v2", kycUserRoutes);
+  app.use("/api/payments", paymentCapabilitiesRoutes);
   app.use("/api/kyc", kycRoutes);
   app.use("/api/upload", uploadRoutes);
   app.use("/api/media", mediaRoutes);
@@ -147,9 +154,6 @@ function mountApiRoutes(app: Express) {
   app.use("/api/workspace/social", workspaceSocialRoutes);
   app.use("/api/guest", guestCheckoutRouter);
   app.use("/api/auth", gdprRoutes);
-  // Stripe webhook must use express.raw() for signature verification
-  app.use("/api/stripe", express.raw({ type: 'application/json' }), stripeWebhookRoutes);
-
 }
 
 /**
@@ -160,6 +164,7 @@ function mountAdminApiRoutes(app: Express) {
   // Apply admin rate limiter to all admin API routes
   app.use("/api", adminLimiter);
   app.use("/api/auth", authRoutes);
+  app.use("/api/kyc/v2/documents", kycDocumentsRoutes);
   app.use("/api/admin", adminRoutes);
   app.use("/api/admin/kyc", adminKycRoutes);
   app.use("/api/admin/service-definitions", adminServiceDefinitionsRoutes);
@@ -175,6 +180,7 @@ function mountAdminApiRoutes(app: Express) {
   app.use("/api/admin/home", adminHomeContentRoutes);
   app.use("/api/admin/disputes", adminDisputesRouter);
   app.use("/api/admin/analytics", adminAnalyticsRoutes);
+  app.use("/api/admin", adminDeliveryOperationsRoutes);
   app.use("/api/service-catalog", dynamicFormsRoutes);
 }
 
@@ -182,8 +188,13 @@ function createWebApp(opts?: { adminOnly?: boolean }): Express {
   const app = express();
   const isProd = process.env.NODE_ENV === "production";
 
-  app.use(morgan("dev"));
+  if (!isProd) app.use(morgan("dev"));
   app.use(cookieParser());
+  // Stripe signatures cover the exact request bytes, so this route must be
+  // mounted before the global JSON parser. It belongs only on the main API.
+  if (!opts?.adminOnly) {
+    app.use("/api/stripe", express.raw({ type: 'application/json', limit: '1mb' }), stripeWebhookRoutes);
+  }
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(
@@ -216,6 +227,24 @@ function createWebApp(opts?: { adminOnly?: boolean }): Express {
   app.use(helmet({ contentSecurityPolicy: { directives: cspDirectives } }));
 
   const uploadsDir = path.join(process.cwd(), "uploads");
+  const requiredServices = (process.env.READINESS_REQUIRED_SERVICES || 'database,storage')
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value): value is 'database' | 'redis' | 'nats' | 'storage' =>
+      ['database', 'redis', 'nats', 'storage'].includes(value),
+    );
+  installObservability(app, {
+    prisma,
+    pingRedis,
+    isNatsAvailable,
+    storagePath: uploadsDir,
+    service: opts?.adminOnly ? 'neighborly-admin' : 'neighborly-api',
+    version: process.env.APP_VERSION || '2.0.0',
+    requiredServices,
+    metricsToken: process.env.METRICS_TOKEN,
+    environment: process.env.APP_ENV || process.env.NODE_ENV,
+    gitSha: process.env.GIT_SHA,
+  });
   app.use(
     "/uploads",
     express.static(uploadsDir, {
@@ -413,16 +442,28 @@ async function startServer() {
 
   // Start auto-release escrow cron job (runs every 10 minutes)
   const escrowCronInterval = parseInt(process.env.AUTO_RELEASE_ESCROW_CRON_INTERVAL_MS || "600000", 10);
-  autoReleaseEscrow().catch(err => console.error('[AutoRelease] Startup error:', err));
+  autoReleaseEscrow().catch(err => {
+    incrementOperationalMetric('job_failures_total');
+    console.error('[AutoRelease] Startup error:', err);
+  });
   const escrowInterval = setInterval(() => {
-    autoReleaseEscrow().catch(err => console.error('[AutoRelease] Error:', err));
+    autoReleaseEscrow().catch(err => {
+      incrementOperationalMetric('job_failures_total');
+      console.error('[AutoRelease] Error:', err);
+    });
   }, escrowCronInterval);
 
   // Start matching window expiry cron job (configurable via env, default 5 minutes)
   const matchingCronInterval = parseInt(process.env.MATCHING_EXPIRY_CRON_INTERVAL_MS || "300000", 10);
-  expireMatchingWindows().catch(err => console.error('[MatchingExpiry] Startup error:', err));
+  expireMatchingWindows().catch(err => {
+    incrementOperationalMetric('job_failures_total');
+    console.error('[MatchingExpiry] Startup error:', err);
+  });
   const matchingExpiryInterval = setInterval(() => {
-    expireMatchingWindows().catch(err => console.error('[MatchingExpiry] Error:', err));
+    expireMatchingWindows().catch(err => {
+      incrementOperationalMetric('job_failures_total');
+      console.error('[MatchingExpiry] Error:', err);
+    });
   }, matchingCronInterval);
 
   process.on("SIGTERM", async () => {
