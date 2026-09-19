@@ -1,7 +1,52 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import cookieParser from 'cookie-parser';
+
+vi.mock('../../lib/db.js', () => {
+  const service = {
+    id: 'service-1',
+    name: 'Hair styling',
+    description: 'Professional hair styling',
+    categoryId: 'category-1',
+    category_: { id: 'category-1', name: 'Beauty', parentId: null },
+    lockedBookingMode: 'booking',
+  };
+  const servicePackage = {
+    id: 'package-1',
+    name: 'Basic hair package',
+    description: 'Hair styling package',
+    finalPrice: 75,
+    bookingMode: 'booking',
+    durationMinutes: 60,
+    serviceCatalogId: 'service-1',
+    workspaceId: 'workspace-1',
+    serviceCatalog: { id: 'service-1', name: 'Hair styling' },
+    workspace: {
+      id: 'workspace-1',
+      name: 'Test Salon',
+      owner: { id: 'owner-1', firstName: 'Test', lastName: 'Owner', avatarUrl: null },
+    },
+  };
+  const isNonsense = (args: any) =>
+    args?.where?.OR?.some((condition: any) =>
+      condition?.name?.contains === 'xxxyyyzzz123',
+    );
+
+  return {
+    prisma: {
+      serviceCatalog: {
+        findMany: vi.fn(async (args) => (isNonsense(args) ? [] : [service])),
+        count: vi.fn(async (args) => (isNonsense(args) ? 0 : 1)),
+      },
+      providerServicePackage: {
+        findMany: vi.fn(async (args) => (isNonsense(args) ? [] : [servicePackage])),
+        count: vi.fn(async (args) => (isNonsense(args) ? 0 : 1)),
+      },
+    },
+  };
+});
+
 import { router as serviceSearchRoutes } from '../serviceSearch.js';
 
 const app = express();
