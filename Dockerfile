@@ -55,4 +55,4 @@ COPY --from=builder /app/server.ts ./
 COPY --from=builder /app/tsconfig.json ./
 
 EXPOSE 8080
-CMD sh -c "npx prisma migrate deploy && npm run dev"
+CMD ["npm", "run", "dev"]
