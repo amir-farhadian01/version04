@@ -23,12 +23,12 @@ test.describe('PublicLayout — Phone Mockup Container', () => {
     await expect(phoneContainer).toBeVisible()
     await expect(phoneContainer).toHaveCSS('width', '375px')
     await expect(phoneContainer).toHaveCSS('height', '812px')
-    await expect(phoneContainer).toHaveCSS('background-color', 'rgb(19, 22, 36)') // #131624
+    await expect(phoneContainer).toHaveCSS('background-color', 'rgb(10, 10, 15)') // #0A0A0F
   })
 
   test('has dark theme background on page', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(13, 15, 26)') // #0d0f1a
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(10, 10, 15)') // #0A0A0F
   })
 
   test('renders content inside the phone container', async ({ page }) => {
@@ -42,13 +42,13 @@ test.describe('PublicLayout — Phone Mockup Container', () => {
     await page.goto('/')
     const phoneContainer = page.locator('div.rounded-\\[44px\\]').first()
     await expect(phoneContainer).toHaveCSS('border-radius', '44px')
-    await expect(phoneContainer).toHaveCSS('border-color', 'rgb(54, 59, 94)') // #363b5e
+    await expect(phoneContainer).toHaveCSS('border-color', 'rgba(255, 255, 255, 0.08)')
   })
 })
 
-test.describe('AdminLayout — Full-Screen CRM Sidebar', () => {
+test.describe('Authenticated layout guard', () => {
   test('redirects to login when not authenticated', async ({ page }) => {
-    await page.goto('/admin')
+    await page.goto('/app/home')
     // Should redirect to /auth/login
     await page.waitForURL('**/auth/login')
     expect(page.url()).toContain('/auth/login')
@@ -56,7 +56,7 @@ test.describe('AdminLayout — Full-Screen CRM Sidebar', () => {
 
   test('login page has dark theme', async ({ page }) => {
     await page.goto('/auth/login')
-    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(13, 15, 26)')
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(10, 10, 15)')
   })
 })
 
@@ -77,11 +77,11 @@ test.describe('Dark Theme Color Tokens', () => {
       }
     })
 
-    expect(hasBgVar.bg).toBe('#0d0f1a')
-    expect(hasBgVar.bg2).toBe('#131624')
-    expect(hasBgVar.text).toBe('#f0f2ff')
-    expect(hasBgVar.border).toBe('#2a2f4a')
-    expect(hasBgVar.primary).toBe('#2b6eff')
+    expect(hasBgVar.bg).toBe('#0A0A0F')
+    expect(hasBgVar.bg2).toBe('#12121A')
+    expect(hasBgVar.text).toBe('#FFFFFF')
+    expect(hasBgVar.border).toBe('rgba(255,255,255,0.08)')
+    expect(hasBgVar.primary).toBe('#4F8EF7')
   })
 
   test('body uses DM Sans font family', async ({ page }) => {
