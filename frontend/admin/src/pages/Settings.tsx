@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import api from '../lib/api'
+import api, { getApiError } from '../lib/api'
 import { RefreshCw, Save, CreditCard } from 'lucide-react'
 
 type SystemConfig = {
@@ -43,8 +43,8 @@ export default function AdminSettings() {
       setStripeSecretKey(res.data.stripeSecretKey ?? '')
       setStripeWebhookSecret(res.data.stripeWebhookSecret ?? '')
       setStripeEnabled(res.data.stripeEnabled ?? false)
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to load config')
+    } catch (err: unknown) {
+      setError(getApiError(err, 'Failed to load config'))
     } finally {
       setLoading(false)
     }
@@ -70,8 +70,8 @@ export default function AdminSettings() {
       setConfig(res.data)
       setSuccess('Settings saved successfully')
       setTimeout(() => setSuccess(null), 3000)
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to save config')
+    } catch (err: unknown) {
+      setError(getApiError(err, 'Failed to save config'))
     } finally {
       setSaving(false)
     }

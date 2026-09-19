@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Edit, Trash2, ExternalLink, BarChart3, Archive, RotateCcw } from 'lucide-react';
-import { api } from '../../lib/api';
+import { Plus, Edit, ExternalLink, BarChart3, Archive, RotateCcw } from 'lucide-react';
+import api from '../lib/api';
 
 interface UtilityLink {
   id: string;
@@ -47,12 +47,12 @@ export default function UtilityLinksPage() {
   const { data: linksData, isLoading } = useQuery({
     queryKey: ['admin-utility-links'],
     queryFn: () =>
-      api.get('/api/admin/utility-links').then((r) => r.data),
+      api.get('/admin/utility-links').then((response) => response.data),
   });
 
   const createMutation = useMutation({
     mutationFn: (data: UtilityLinkFormData) =>
-      api.post('/api/admin/utility-links', data),
+      api.post('/admin/utility-links', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-utility-links'] });
       setShowForm(false);
@@ -62,7 +62,7 @@ export default function UtilityLinksPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<UtilityLinkFormData> }) =>
-      api.put(`/api/admin/utility-links/${id}`, data),
+      api.put(`/admin/utility-links/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-utility-links'] });
       setShowForm(false);
@@ -73,7 +73,7 @@ export default function UtilityLinksPage() {
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) =>
-      api.post(`/api/admin/utility-links/${id}/archive`),
+      api.post(`/admin/utility-links/${id}/archive`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-utility-links'] });
     },
@@ -81,7 +81,7 @@ export default function UtilityLinksPage() {
 
   const restoreMutation = useMutation({
     mutationFn: (id: string) =>
-      api.post(`/api/admin/utility-links/${id}/restore`),
+      api.post(`/admin/utility-links/${id}/restore`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-utility-links'] });
     },

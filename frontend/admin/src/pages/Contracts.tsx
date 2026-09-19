@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import api from '../lib/api'
+import api, { getApiError } from '../lib/api'
 import { FileText, Search, RefreshCw } from 'lucide-react'
 
 type AdminContract = {
@@ -38,8 +38,8 @@ export default function AdminContracts() {
     try {
       const res = await api.get<{ items: AdminContract[] }>('/admin/contracts/queue')
       setContracts(res.data.items ?? [])
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to load contracts')
+    } catch (err: unknown) {
+      setError(getApiError(err, 'Failed to load contracts'))
       setContracts([])
     } finally {
       setLoading(false)

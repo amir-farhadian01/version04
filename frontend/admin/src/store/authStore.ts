@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import api from '../lib/api'
+import api, { getApiError } from '../lib/api'
 
 export interface User {
   id: string
@@ -97,10 +97,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           })
         } catch (err: unknown) {
-          const message =
-            err && typeof err === 'object' && 'response' in err
-              ? (err as any).response?.data?.error ?? 'Login failed'
-              : 'Login failed'
+          const message = getApiError(err, 'Login failed')
           set({ isLoading: false, error: message })
           throw err
         }
