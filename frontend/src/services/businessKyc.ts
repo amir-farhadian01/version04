@@ -60,6 +60,18 @@ export async function startUpgrade(input: BusinessKycUpgradeInput) {
   return data
 }
 
+export async function uploadPrivateKycDocument(file: File): Promise<string> {
+  const body = new FormData()
+  body.append('file', file)
+  const { data } = await api.post<{ reference: string }>('/kyc/v2/documents', body, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  if (!data.reference?.startsWith('kyc-document://')) {
+    throw new Error('Document upload returned an invalid private reference')
+  }
+  return data.reference
+}
+
 export async function uploadDocument(input: UploadDocInput) {
   const endpoint = input.documentType === 'license'
     ? '/kyc/business/upload-license'
