@@ -3,7 +3,7 @@ import { test, expect, Page } from '@playwright/test'
 /**
  * Customer Dashboard (F1) — Playwright UI Verification
  *
- * Tests that the customer dashboard at /app/home renders correctly with:
+ * Tests that the customer dashboard at /app/orders renders correctly with:
  * - Live order status polling (10s interval)
  * - Phase display with Persian labels
  * - Progress bar with color coding (green < 50%, yellow 50-80%, red > 80%)
@@ -235,11 +235,11 @@ async function setupMockApi(page: Page) {
  */
 async function navigateToDashboard(page: Page) {
   // First navigate to the base URL to establish a secure context for localStorage
-  await page.goto(CLIENT_URL, { waitUntil: 'domcontentloaded' })
+  await page.goto(`${CLIENT_URL}/auth/login`, { waitUntil: 'domcontentloaded' })
   // Set auth token in localStorage
   await setupAuth(page)
   // Now navigate to the dashboard — the auth store will read the token from localStorage
-  await page.goto(`${CLIENT_URL}/app/home`, { waitUntil: 'networkidle' })
+  await page.goto(`${CLIENT_URL}/app/orders`, { waitUntil: 'networkidle' })
 }
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
@@ -267,7 +267,7 @@ test.describe('Customer Dashboard (F1)', () => {
     })
   })
 
-  test('02 — Active order shows matching phase with Persian label', async ({ page }) => {
+  test('02 — Active order shows matching status and phase labels', async ({ page }) => {
     await navigateToDashboard(page)
 
     // The first order is "Plumbing Repair" in "matching" phase
@@ -278,13 +278,13 @@ test.describe('Customer Dashboard (F1)', () => {
     await expect(plumbingCard.locator('h3')).toContainText('Plumbing Repair')
 
     // Verify status badge shows "Finding Provider"
-    await expect(plumbingCard.getByText('Finding Provider')).toBeVisible()
+    await expect(plumbingCard.getByText('Finding Provider', { exact: true })).toBeVisible()
 
-    // Verify Persian phase label is visible (matching → 'در حال پیدا کردن متخصص')
-    await expect(plumbingCard.getByText('در حال پیدا کردن متخصص')).toBeVisible()
+    // Verify the matching phase label is visible.
+    await expect(plumbingCard.getByText('Finding provider', { exact: true })).toBeVisible()
 
     // Verify progress bar exists (matching phase with urgent urgency = 5 min total)
-    await expect(plumbingCard.locator('.bg-gray-200.rounded-full')).toBeVisible()
+    await expect(plumbingCard.locator('.bg-nh-surface-elevated.rounded-full')).toBeVisible()
 
     // Verify percentage text
     await expect(plumbingCard.getByText(/% completed/)).toBeVisible()
@@ -304,10 +304,10 @@ test.describe('Customer Dashboard (F1)', () => {
     await expect(electricalCard.locator('h3')).toContainText('Electrical Wiring')
 
     // Verify status badge shows "In Progress"
-    await expect(electricalCard.getByText('In Progress')).toBeVisible()
+    await expect(electricalCard.getByText('In Progress', { exact: true })).toBeVisible()
 
-    // Verify Persian phase label (in_progress → 'در حال انجام')
-    await expect(electricalCard.getByText('در حال انجام')).toBeVisible()
+    // Verify the active phase label.
+    await expect(electricalCard.getByText('In progress', { exact: true })).toBeVisible()
 
     // Verify provider name
     await expect(electricalCard.getByText(/John's Electrical Services/)).toBeVisible()
@@ -325,7 +325,7 @@ test.describe('Customer Dashboard (F1)', () => {
     await expect(electricalCard.getByText(/Escrow release:/)).toBeVisible()
 
     // Verify progress bar exists
-    await expect(electricalCard.locator('.bg-gray-200.rounded-full')).toBeVisible()
+    await expect(electricalCard.locator('.bg-nh-surface-elevated.rounded-full')).toBeVisible()
   })
 
   test('04 — Past completed order shows compact card', async ({ page }) => {
@@ -344,11 +344,11 @@ test.describe('Customer Dashboard (F1)', () => {
     // Verify provider name
     await expect(acCard.getByText(/Cool Air HVAC Services/)).toBeVisible()
 
-    // Past orders should NOT have Persian phase label (isActive is false)
-    await expect(acCard.getByText('تکمیل شده')).toHaveCount(0)
+    // Past orders should NOT render an active phase label.
+    await expect(acCard.locator('span.text-nh-text-secondary.font-medium')).toHaveCount(0)
 
     // Past orders should NOT have progress bar
-    await expect(acCard.locator('.bg-gray-200.rounded-full')).toHaveCount(0)
+    await expect(acCard.locator('.bg-nh-surface-elevated.rounded-full')).toHaveCount(0)
   })
 
   test('05 — Progress bar color coding (green < 50%, yellow 50-80%, red > 80%)', async ({ page }) => {
@@ -360,18 +360,18 @@ test.describe('Customer Dashboard (F1)', () => {
     const plumbingCard = page.locator('a[href="/orders/order-001"]')
 
     // The progress bar inner div should have one of the color classes
-    const progressBar = plumbingCard.locator('.bg-gray-200.rounded-full div')
+    const progressBar = plumbingCard.locator('.bg-nh-surface-elevated.rounded-full > div')
     await expect(progressBar).toBeVisible()
 
     // Get the class attribute to check color
     const classAttr = await progressBar.getAttribute('class')
     expect(classAttr).toBeTruthy()
 
-    // The class should contain one of: bg-green-500, bg-yellow-500, or bg-red-500
+    // The class should contain one of the canonical Neighborly status colors.
     const hasValidColor =
-      classAttr?.includes('bg-green-500') ||
-      classAttr?.includes('bg-yellow-500') ||
-      classAttr?.includes('bg-red-500')
+      classAttr?.includes('bg-nh-success') ||
+      classAttr?.includes('bg-nh-warning') ||
+      classAttr?.includes('bg-nh-danger')
     expect(hasValidColor).toBe(true)
   })
 
@@ -382,8 +382,8 @@ test.describe('Customer Dashboard (F1)', () => {
     const plumbingCard = page.locator('a[href="/orders/order-001"]')
     await expect(plumbingCard).toHaveClass(/animate-slide-in/)
 
-    // Hover effect: card should have hover:border-blue-300 class
-    await expect(plumbingCard).toHaveClass(/hover:border-blue-300/)
+    // Hover effect uses the canonical Neighborly primary-border token.
+    await expect(plumbingCard).toHaveClass(/hover:border-nh-primary-hover/)
     await expect(plumbingCard).toHaveClass(/transition-all/)
     await expect(plumbingCard).toHaveClass(/duration-300/)
   })
@@ -477,9 +477,9 @@ test.describe('Customer Dashboard (F1)', () => {
     })
 
     // For loading state test, we navigate to base URL first, set auth, then go to dashboard
-    await page.goto(CLIENT_URL, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${CLIENT_URL}/auth/login`, { waitUntil: 'domcontentloaded' })
     await setupAuth(page)
-    await page.goto(`${CLIENT_URL}/app/home`, { waitUntil: 'commit' })
+    await page.goto(`${CLIENT_URL}/app/orders`, { waitUntil: 'commit' })
 
     // The loading spinner should be visible (role="status")
     await expect(page.locator('[role="status"]')).toBeVisible()
