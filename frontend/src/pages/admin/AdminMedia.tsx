@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../../lib/api'
+import { apiErrorMessage } from '../../lib/apiError'
 import { Image, Search, RefreshCw, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
 
 type MediaItem = {
@@ -47,7 +48,7 @@ export default function AdminMedia() {
   const [total, setTotal] = useState(0)
   const pageSize = 20
 
-  const fetchMedia = async (p = page) => {
+  const fetchMedia = useCallback(async (p: number) => {
     setLoading(true)
     setError(null)
     try {
@@ -55,22 +56,22 @@ export default function AdminMedia() {
       setMedia(res.data.data ?? [])
       setTotal(res.data.total ?? 0)
       setPage(res.data.page ?? p)
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to load media')
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to load media'))
       setMedia([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { fetchMedia(1) }, [])
+  useEffect(() => { fetchMedia(1) }, [fetchMedia])
 
   const handleModerate = async (id: string, action: 'APPROVED' | 'REMOVED' | 'WARNED') => {
     try {
       await api.post(`/admin/media/${id}/moderate`, { action })
       fetchMedia(page)
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to moderate')
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to moderate'))
     }
   }
 
