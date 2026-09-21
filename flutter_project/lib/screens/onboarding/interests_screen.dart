@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
-import 'dart:convert';
 
 /// Onboarding Screen 1: Interest selection (≥3 categories required).
 /// Fetches category tree from GET /api/categories/tree.
@@ -37,7 +36,9 @@ class _InterestsScreenState extends State<InterestsScreen> {
       final response = await _api.get('/categories/tree');
       final List<dynamic> data = response['data'] as List<dynamic>? ?? [];
       setState(() {
-        _categories = data.map((c) => CategoryNode.fromJson(c as Map<String, dynamic>)).toList();
+        _categories = data
+            .map((c) => CategoryNode.fromJson(c as Map<String, dynamic>))
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -86,7 +87,9 @@ class _InterestsScreenState extends State<InterestsScreen> {
             '${widget.selectedInterests.length} selected',
             style: TextStyle(
               fontSize: 13,
-              color: widget.selectedInterests.length >= 3 ? AppColors.secondary : AppColors.warn,
+              color: widget.selectedInterests.length >= 3
+                  ? AppColors.secondary
+                  : AppColors.warn,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -99,8 +102,8 @@ class _InterestsScreenState extends State<InterestsScreen> {
                     child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 : _error != null
-                    ? _buildErrorState()
-                    : _buildCategoryList(),
+                ? _buildErrorState()
+                : _buildCategoryList(),
           ),
         ],
       ),
@@ -130,7 +133,9 @@ class _InterestsScreenState extends State<InterestsScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Retry', style: TextStyle(color: Colors.white)),
           ),
@@ -157,9 +162,14 @@ class _InterestsScreenState extends State<InterestsScreen> {
                 borderRadius: BorderRadius.circular(12),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
-                    color: isSelected ? AppColors.primary.withOpacity(0.15) : AppColors.card,
+                    color: isSelected
+                        ? AppColors.primary.withValues(alpha: 0.15)
+                        : AppColors.card,
                     border: Border.all(
                       color: isSelected ? AppColors.primary : AppColors.border2,
                       width: isSelected ? 1.5 : 1.0,
@@ -169,10 +179,7 @@ class _InterestsScreenState extends State<InterestsScreen> {
                   child: Row(
                     children: [
                       // Emoji/icon
-                      Text(
-                        cat.emoji,
-                        style: const TextStyle(fontSize: 24),
-                      ),
+                      Text(cat.emoji, style: const TextStyle(fontSize: 24)),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -180,7 +187,9 @@ class _InterestsScreenState extends State<InterestsScreen> {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: isSelected ? AppColors.primary : AppColors.text,
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.text,
                           ),
                         ),
                       ),
@@ -191,13 +200,21 @@ class _InterestsScreenState extends State<InterestsScreen> {
                         height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isSelected ? AppColors.primary : AppColors.border2,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.border2,
                           border: Border.all(
-                            color: isSelected ? AppColors.primary : AppColors.border2,
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.border2,
                           ),
                         ),
                         child: isSelected
-                            ? const Icon(Icons.check, color: Colors.white, size: 16)
+                            ? const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 16,
+                              )
                             : null,
                       ),
                     ],
@@ -214,23 +231,31 @@ class _InterestsScreenState extends State<InterestsScreen> {
                   spacing: 8,
                   runSpacing: 8,
                   children: cat.children.map((sub) {
-                    final subSelected = widget.selectedInterests.contains(sub.id);
+                    final subSelected = widget.selectedInterests.contains(
+                      sub.id,
+                    );
                     return FilterChip(
                       selected: subSelected,
                       label: Text(sub.name),
                       onSelected: (_) => _toggleInterest(sub.id),
                       backgroundColor: AppColors.card,
-                      selectedColor: AppColors.primary.withOpacity(0.25),
+                      selectedColor: AppColors.primary.withValues(alpha: 0.25),
                       checkmarkColor: AppColors.primary,
                       labelStyle: TextStyle(
                         fontSize: 13,
-                        color: subSelected ? AppColors.primary : AppColors.text2,
-                        fontWeight: subSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: subSelected
+                            ? AppColors.primary
+                            : AppColors.text2,
+                        fontWeight: subSelected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                         side: BorderSide(
-                          color: subSelected ? AppColors.primary : AppColors.border2,
+                          color: subSelected
+                              ? AppColors.primary
+                              : AppColors.border2,
                         ),
                       ),
                     );

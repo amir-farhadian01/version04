@@ -17,7 +17,8 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
+class _AuthScreenState extends State<AuthScreen>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
   // ── Login fields ──
@@ -93,7 +94,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Google Sign-In requires native project configuration.\nPlease use email login for now.'),
+          content: Text(
+            'Google Sign-In requires native project configuration.\nPlease use email login for now.',
+          ),
           duration: Duration(seconds: 4),
         ),
       );
@@ -131,7 +134,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Apple Sign-In requires native project configuration.\nPlease use email login for now.'),
+          content: Text(
+            'Apple Sign-In requires native project configuration.\nPlease use email login for now.',
+          ),
           duration: Duration(seconds: 4),
         ),
       );
@@ -208,7 +213,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       return;
     }
     if (displayName.isEmpty || displayName.length < 2) {
-      setState(() => _errorMessage = 'Display name must be at least 2 characters');
+      setState(
+        () => _errorMessage = 'Display name must be at least 2 characters',
+      );
       return;
     }
     if (email.isNotEmpty && !_isValidEmail(email)) {
@@ -244,7 +251,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(email);
+    return RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    ).hasMatch(email);
   }
 
   @override
@@ -266,7 +275,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                     color: AppColors.primaryDim,
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Icon(Icons.public, color: AppColors.primary, size: 32),
+                  child: const Icon(
+                    Icons.public,
+                    color: AppColors.primary,
+                    size: 32,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 const Text(
@@ -281,7 +294,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 const SizedBox(height: 8),
                 const Text(
                   'Discover local businesses, events, and connect with your neighborhood community.',
-                  style: TextStyle(fontSize: 14, color: AppColors.text2, height: 1.6),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.text2,
+                    height: 1.6,
+                  ),
                 ),
                 const SizedBox(height: 28),
 
@@ -304,22 +321,18 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         ? const SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primary,
+                            ),
                           )
                         : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               // Google 'G' logo
-                              Container(
+                              SizedBox(
                                 width: 20,
                                 height: 20,
-                                decoration: const BoxDecoration(
-                                  image: DecorationImage(
-                                    image: AssetImage('assets/icons/google_g.png'),
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                                // Fallback: colored 'G' text
                                 child: const Center(
                                   child: Text(
                                     'G',
@@ -366,12 +379,19 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                           ? const SizedBox(
                               width: 22,
                               height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.apple, size: 22, color: Colors.white),
+                                const Icon(
+                                  Icons.apple,
+                                  size: 22,
+                                  color: Colors.white,
+                                ),
                                 const SizedBox(width: 10),
                                 const Text(
                                   'Continue with Apple',
@@ -392,7 +412,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 const SizedBox(height: 24),
                 Row(
                   children: [
-                    const Expanded(child: Divider(color: AppColors.border2, thickness: 1)),
+                    const Expanded(
+                      child: Divider(color: AppColors.border2, thickness: 1),
+                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
@@ -404,7 +426,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         ),
                       ),
                     ),
-                    const Expanded(child: Divider(color: AppColors.border2, thickness: 1)),
+                    const Expanded(
+                      child: Divider(color: AppColors.border2, thickness: 1),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -446,10 +470,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   height: 420,
                   child: TabBarView(
                     controller: _tabController,
-                    children: [
-                      _buildLoginForm(),
-                      _buildSignUpForm(),
-                    ],
+                    children: [_buildLoginForm(), _buildSignUpForm()],
                   ),
                 ),
 
@@ -459,7 +480,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       _errorMessage!,
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 13,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -468,7 +492,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 const Center(
                   child: Text(
                     'By continuing, you agree to our Terms of Service and Privacy Policy.',
-                    style: TextStyle(fontSize: 12, color: AppColors.text3, height: 1.6),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.text3,
+                      height: 1.6,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -490,7 +518,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       children: [
         const Text(
           'USERNAME, EMAIL, OR PHONE',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text2),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text2,
+          ),
         ),
         const SizedBox(height: 6),
         _buildTextField(
@@ -502,7 +534,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         const SizedBox(height: 16),
         const Text(
           'PASSWORD',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text2),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text2,
+          ),
         ),
         const SizedBox(height: 6),
         _buildTextField(
@@ -512,11 +548,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           obscureText: _obscureLoginPassword,
           suffixIcon: IconButton(
             icon: Icon(
-              _obscureLoginPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              _obscureLoginPassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
               color: AppColors.text3,
               size: 20,
             ),
-            onPressed: () => setState(() => _obscureLoginPassword = !_obscureLoginPassword),
+            onPressed: () =>
+                setState(() => _obscureLoginPassword = !_obscureLoginPassword),
           ),
           onChanged: (_) => setState(() {}),
           onSubmitted: canSubmit ? (_) => _handleLogin() : null,
@@ -527,10 +566,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           child: ElevatedButton(
             onPressed: canSubmit ? _handleLogin : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: canSubmit ? AppColors.primary : AppColors.border2,
+              backgroundColor: canSubmit
+                  ? AppColors.primary
+                  : AppColors.border2,
               disabledBackgroundColor: AppColors.border2,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isLoading
                 ? const SizedBox(
@@ -541,8 +584,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                       color: Colors.white,
                     ),
                   )
-                : const Text('Log In',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                : const Text(
+                    'Log In',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
         ),
       ],
@@ -550,20 +599,26 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildSignUpForm() {
-    final hasEmailOrPhone = _signupEmailController.text.trim().isNotEmpty ||
+    final hasEmailOrPhone =
+        _signupEmailController.text.trim().isNotEmpty ||
         _signupPhoneController.text.trim().isNotEmpty;
-    final hasPassword = _signupPasswordController.text.isNotEmpty &&
+    final hasPassword =
+        _signupPasswordController.text.isNotEmpty &&
         _signupPasswordController.text.length >= 6;
-    final hasDisplayName =
-        _signupDisplayNameController.text.trim().length >= 2;
-    final canSubmit = hasEmailOrPhone && hasPassword && hasDisplayName && !_isLoading;
+    final hasDisplayName = _signupDisplayNameController.text.trim().length >= 2;
+    final canSubmit =
+        hasEmailOrPhone && hasPassword && hasDisplayName && !_isLoading;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'EMAIL',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text2),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text2,
+          ),
         ),
         const SizedBox(height: 6),
         _buildTextField(
@@ -576,7 +631,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         const SizedBox(height: 12),
         const Text(
           'PHONE (OPTIONAL — MUST BE UNIQUE)',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text2),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text2,
+          ),
         ),
         const SizedBox(height: 6),
         _buildTextField(
@@ -589,7 +648,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         const SizedBox(height: 12),
         const Text(
           'DISPLAY NAME',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text2),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text2,
+          ),
         ),
         const SizedBox(height: 6),
         _buildTextField(
@@ -601,7 +664,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         const SizedBox(height: 12),
         const Text(
           'PASSWORD',
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text2),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text2,
+          ),
         ),
         const SizedBox(height: 6),
         _buildTextField(
@@ -611,11 +678,15 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           obscureText: _obscureSignupPassword,
           suffixIcon: IconButton(
             icon: Icon(
-              _obscureSignupPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+              _obscureSignupPassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
               color: AppColors.text3,
               size: 20,
             ),
-            onPressed: () => setState(() => _obscureSignupPassword = !_obscureSignupPassword),
+            onPressed: () => setState(
+              () => _obscureSignupPassword = !_obscureSignupPassword,
+            ),
           ),
           onChanged: (_) => setState(() {}),
           onSubmitted: canSubmit ? (_) => _handleSignUp() : null,
@@ -626,10 +697,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           child: ElevatedButton(
             onPressed: canSubmit ? _handleSignUp : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: canSubmit ? AppColors.primary : AppColors.border2,
+              backgroundColor: canSubmit
+                  ? AppColors.primary
+                  : AppColors.border2,
               disabledBackgroundColor: AppColors.border2,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isLoading
                 ? const SizedBox(
@@ -640,8 +715,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                       color: Colors.white,
                     ),
                   )
-                : const Text('Create Account',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                : const Text(
+                    'Create Account',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
         ),
       ],
@@ -685,7 +766,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               onSubmitted: onSubmitted,
             ),
           ),
-          if (suffixIcon != null) suffixIcon,
+          ?suffixIcon,
         ],
       ),
     );

@@ -26,9 +26,7 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
   bool _loading = true;
 
   // Data from API
-  Map<String, dynamic>? _homeBanner;
   List<Map<String, dynamic>> _news = [];
-  List<Map<String, dynamic>> _utilities = [];
   Map<String, dynamic>? _weather;
   List<Map<String, dynamic>> _alerts = [];
 
@@ -52,29 +50,28 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
   Future<void> _loadHomeData() async {
     setState(() => _loading = true);
     final results = await Future.wait([
-      _api.getHomeBanner().then((r) => r).catchError((_) => <String, dynamic>{}),
-      _api.getHomeNews().then((r) => r).catchError((_) => <Map<String, dynamic>>[]),
-      _api.getUtilityLinks('general').then((r) => r).catchError((_) => <Map<String, dynamic>>[]),
+      _api
+          .getHomeNews()
+          .then((r) => r)
+          .catchError((_) => <Map<String, dynamic>>[]),
       _api.getWeather().then((r) => r).catchError((_) => <String, dynamic>{}),
-      _api.getActiveAlerts().then((r) => r).catchError((_) => <Map<String, dynamic>>[]),
+      _api
+          .getActiveAlerts()
+          .then((r) => r)
+          .catchError((_) => <Map<String, dynamic>>[]),
     ]);
 
-    // getHomeBanner returns { data: {...} }
-    final bannerResult = results[0] as Map<String, dynamic>;
-    _homeBanner = (bannerResult['data'] as Map<String, dynamic>?) ?? bannerResult;
-
     // getHomeNews returns list of maps from the array response
-    _news = (results[1] as List<dynamic>).cast<Map<String, dynamic>>();
-
-    // getUtilityLinks returns array from { data: [...] }
-    _utilities = (results[2] as List<dynamic>).cast<Map<String, dynamic>>();
+    _news = (results[0] as List<dynamic>).cast<Map<String, dynamic>>();
 
     // getWeather returns { data: {...} }
-    final weatherResult = results[3] as Map<String, dynamic>;
-    _weather = (weatherResult['data'] as Map<String, dynamic>?) ?? weatherResult;
+    final weatherResult = results[1] as Map<String, dynamic>;
+    _weather =
+        (weatherResult['data'] as Map<String, dynamic>?) ?? weatherResult;
 
     // getActiveAlerts returns { data: [...] }
-    _alerts = (results[4] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+    _alerts =
+        (results[2] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
         <Map<String, dynamic>>[];
 
     if (mounted) setState(() => _loading = false);
@@ -185,10 +182,7 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                         const SizedBox(height: 2),
                         Text(
                           'Your neighbourhood, your community',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: text2,
-                          ),
+                          style: TextStyle(fontSize: 11, color: text2),
                         ),
                       ],
                     ),
@@ -281,10 +275,7 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                 const SizedBox(width: 8),
                 Text(
                   '· swipe to explore',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: text2,
-                  ),
+                  style: TextStyle(fontSize: 10, color: text2),
                 ),
               ],
             ),
@@ -312,9 +303,15 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
     final temp = w?['temp'];
     final condition = w?['condition'] as String? ?? 'Unavailable';
     final emoji = _getWeatherEmoji(condition);
-    final activeAlerts = _alerts.where((a) => (a['isActive'] as bool?) == true).toList();
-    final criticalAlerts = activeAlerts.where((a) => a['severity'] == 'critical').toList();
-    final warningAlerts = activeAlerts.where((a) => a['severity'] != 'critical').toList();
+    final activeAlerts = _alerts
+        .where((a) => (a['isActive'] as bool?) == true)
+        .toList();
+    final criticalAlerts = activeAlerts
+        .where((a) => a['severity'] == 'critical')
+        .toList();
+    final warningAlerts = activeAlerts
+        .where((a) => a['severity'] != 'critical')
+        .toList();
 
     return ValueListenableBuilder<bool>(
       valueListenable: _bannerExpandedNotifier,
@@ -396,25 +393,32 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 6),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 2),
+                                  horizontal: 10,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.red.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                      color: Colors.red.withValues(alpha: 0.3)),
+                                    color: Colors.red.withValues(alpha: 0.3),
+                                  ),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Text('!',
-                                        style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.red)),
+                                    const Text(
+                                      '!',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.red,
+                                      ),
+                                    ),
                                     const SizedBox(width: 4),
                                     ConstrainedBox(
-                                      constraints:
-                                          const BoxConstraints(maxWidth: 100),
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 100,
+                                      ),
                                       child: Text(
                                         a['title'] as String? ?? '',
                                         overflow: TextOverflow.ellipsis,
@@ -442,13 +446,16 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                             children: warningAlerts.take(4).map((a) {
                               return Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 2),
+                                  horizontal: 10,
+                                  vertical: 2,
+                                ),
                                 margin: const EdgeInsets.only(right: 6),
                                 decoration: BoxDecoration(
                                   color: Colors.amber.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                      color: Colors.amber.withValues(alpha: 0.3)),
+                                    color: Colors.amber.withValues(alpha: 0.3),
+                                  ),
                                 ),
                                 child: Text(
                                   (a['location'] ?? a['title'] ?? '') as String,
@@ -483,10 +490,7 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                 ),
                 // Expanded detail view
                 if (expanded) ...[
-                  Container(
-                    height: 1,
-                    color: const Color(0x1AFFFFFF),
-                  ),
+                  Container(height: 1, color: const Color(0x1AFFFFFF)),
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -505,14 +509,27 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                         // Weather detail grid
                         Row(
                           children: [
-                            _weatherDetailCard(emoji,
-                                temp != null ? '$temp°' : '--°', condition),
+                            _weatherDetailCard(
+                              emoji,
+                              temp != null ? '$temp°' : '--°',
+                              condition,
+                            ),
                             const SizedBox(width: 12),
-                            _weatherDetailCard('💧',
-                                w?['humidity'] != null ? '${w!['humidity']}%' : '--%', 'Humidity'),
+                            _weatherDetailCard(
+                              '💧',
+                              w?['humidity'] != null
+                                  ? '${w!['humidity']}%'
+                                  : '--%',
+                              'Humidity',
+                            ),
                             const SizedBox(width: 12),
-                            _weatherDetailCard('💨',
-                                w?['windSpeed'] != null ? '${w!['windSpeed']} km/h' : '--', 'Wind'),
+                            _weatherDetailCard(
+                              '💨',
+                              w?['windSpeed'] != null
+                                  ? '${w!['windSpeed']} km/h'
+                                  : '--',
+                              'Wind',
+                            ),
                           ],
                         ),
                         // All alerts
@@ -542,7 +559,9 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
   }
 
   Widget _forecastStrip(dynamic currentTemp) {
-    final t = currentTemp is int ? currentTemp : (currentTemp is double ? currentTemp.toInt() : 25);
+    final t = currentTemp is int
+        ? currentTemp
+        : (currentTemp is double ? currentTemp.toInt() : 25);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
@@ -557,12 +576,21 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
   Widget _forecastItem(String time, String icon, String temp) {
     return Column(
       children: [
-        Text(time, style: const TextStyle(fontSize: 10, color: Color(0x80FFFFFF))),
+        Text(
+          time,
+          style: const TextStyle(fontSize: 10, color: Color(0x80FFFFFF)),
+        ),
         const SizedBox(height: 2),
         Text(icon, style: const TextStyle(fontSize: 14)),
         const SizedBox(height: 2),
-        Text(temp,
-            style: const TextStyle(fontSize: 10, color: Color(0xB3FFFFFF), fontWeight: FontWeight.w500)),
+        Text(
+          temp,
+          style: const TextStyle(
+            fontSize: 10,
+            color: Color(0xB3FFFFFF),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
@@ -579,15 +607,20 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
           children: [
             Text(icon, style: const TextStyle(fontSize: 22)),
             const SizedBox(height: 4),
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    fontFamily: 'Space Grotesk')),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                fontFamily: 'Space Grotesk',
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(fontSize: 10, color: Color(0x99FFFFFF))),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: Color(0x99FFFFFF)),
+            ),
           ],
         ),
       ),
@@ -599,8 +632,8 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
     final Color sevColor = sev == 'critical'
         ? Colors.red
         : sev == 'warning'
-            ? Colors.amber
-            : AppColors.primary;
+        ? Colors.amber
+        : AppColors.primary;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -617,15 +650,19 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
               Text(
                 sev.toUpperCase(),
                 style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: sevColor),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: sevColor,
+                ),
               ),
               if (alert['location'] != null) ...[
                 const SizedBox(width: 8),
                 Text(
                   '· ${alert['location']}',
-                  style: TextStyle(fontSize: 10, color: sevColor.withValues(alpha: 0.6)),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: sevColor.withValues(alpha: 0.6),
+                  ),
                 ),
               ],
             ],
@@ -634,9 +671,10 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
           Text(
             alert['title'] as String? ?? '',
             style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.white),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
           if (alert['description'] != null) ...[
             const SizedBox(height: 4),
@@ -654,7 +692,12 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
   // UTILITY ICONS ROW (matching React UtilityIconsRow.tsx)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildUtilityIcons(Color text, Color text2, Color border, bool isDark) {
+  Widget _buildUtilityIcons(
+    Color text,
+    Color text2,
+    Color border,
+    bool isDark,
+  ) {
     return Column(
       children: [
         SingleChildScrollView(
@@ -688,9 +731,7 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                               : (isDark ? AppColors.card : AppColorsLight.card),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isActive
-                                ? AppColors.primary
-                                : border,
+                            color: isActive ? AppColors.primary : border,
                           ),
                         ),
                         child: Center(
@@ -766,8 +807,9 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                     ),
                   )
                 else
-                  ..._filteredUtilityLinks.map((link) => _utilityLinkTile(
-                      link, isDark, border)),
+                  ..._filteredUtilityLinks.map(
+                    (link) => _utilityLinkTile(link, isDark, border),
+                  ),
               ],
             ),
           ),
@@ -777,7 +819,10 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
   }
 
   Widget _utilityLinkTile(
-      Map<String, dynamic> link, bool isDark, Color border) {
+    Map<String, dynamic> link,
+    bool isDark,
+    Color border,
+  ) {
     return GestureDetector(
       onTap: () {
         _api.trackUtilityClick(link['id'] as String? ?? '');
@@ -785,9 +830,7 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
         child: Row(
           children: [
             Container(
@@ -801,8 +844,8 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                 child: Text(
                   _activeUtilityCategory != null
                       ? (_utilityCategories
-                              .firstWhere((c) => c.key == _activeUtilityCategory)
-                              .icon)
+                            .firstWhere((c) => c.key == _activeUtilityCategory)
+                            .icon)
                       : '🔗',
                   style: const TextStyle(fontSize: 12),
                 ),
@@ -825,18 +868,20 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                     Text(
                       link['description'] as String,
                       style: TextStyle(
-                          fontSize: 10,
-                          color: isDark
-                              ? AppColors.text2
-                              : AppColorsLight.text2),
+                        fontSize: 10,
+                        color: isDark ? AppColors.text2 : AppColorsLight.text2,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                 ],
               ),
             ),
-            Icon(Icons.arrow_outward,
-                size: 14, color: isDark ? AppColors.text3 : AppColorsLight.text3),
+            Icon(
+              Icons.arrow_outward,
+              size: 14,
+              color: isDark ? AppColors.text3 : AppColorsLight.text3,
+            ),
           ],
         ),
       ),
@@ -850,20 +895,21 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
   Widget _buildSearchBox() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth =
-            constraints.maxWidth > 480 ? 480.0 : constraints.maxWidth;
+        final maxWidth = constraints.maxWidth > 480
+            ? 480.0
+            : constraints.maxWidth;
         return Center(
           child: SizedBox(
             width: maxWidth,
             child: GestureDetector(
               onTap: () {
-                showSearch(
-                  context: context,
-                  delegate: ServiceSearchDelegate(),
-                );
+                showSearch(context: context, delegate: ServiceSearchDelegate());
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark
                       ? AppColors.card
@@ -877,11 +923,13 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.search,
-                        size: 16,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.text3
-                            : AppColorsLight.text3),
+                    Icon(
+                      Icons.search,
+                      size: 16,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.text3
+                          : AppColorsLight.text3,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -924,13 +972,9 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isActive
-                    ? AppColors.primary
-                    : card,
+                color: isActive ? AppColors.primary : card,
                 borderRadius: BorderRadius.circular(20),
-                border: isActive
-                    ? null
-                    : Border.all(color: border),
+                border: isActive ? null : Border.all(color: border),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -957,7 +1001,11 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
   }
 
   Widget _buildNewsList(
-      List<Map<String, dynamic>> articles, Color text, Color text2, bool isDark) {
+    List<Map<String, dynamic>> articles,
+    Color text,
+    Color text2,
+    bool isDark,
+  ) {
     final card = isDark ? AppColors.card : AppColorsLight.card;
     final border = isDark ? AppColors.border : AppColorsLight.border;
 
@@ -981,10 +1029,11 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
             Text(
               'Check back later for local updates',
               style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.text3
-                      : AppColorsLight.text3),
+                fontSize: 11,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.text3
+                    : AppColorsLight.text3,
+              ),
             ),
           ],
         ),
@@ -994,12 +1043,12 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
     return Column(
       children: articles.map((article) {
         final catInfo = _newsCategories.firstWhere(
-            (c) => c.key == (article['category'] ?? ''),
-            orElse: () => _newsCategories[0]);
+          (c) => c.key == (article['category'] ?? ''),
+          orElse: () => _newsCategories[0],
+        );
         final hasImage = article['imageUrl'] != null;
         return GestureDetector(
           onTap: () {
-            final id = article['id'] as String? ?? '';
             // Navigate to news detail could be added here
           },
           child: Container(
@@ -1020,8 +1069,7 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                     child: Image.network(
                       article['imageUrl'] as String,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
-                          const SizedBox(height: 128),
+                      errorBuilder: (_, _, _) => const SizedBox(height: 128),
                     ),
                   ),
                 Padding(
@@ -1033,9 +1081,12 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: catInfo.catColor ??
+                              color:
+                                  catInfo.catColor ??
                                   (isDark ? AppColors.bg3 : AppColorsLight.bg3),
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -1043,8 +1094,10 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (catInfo.icon != null) ...[
-                                  Text(catInfo.icon!,
-                                      style: const TextStyle(fontSize: 10)),
+                                  Text(
+                                    catInfo.icon!,
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
                                   const SizedBox(width: 4),
                                 ],
                                 Text(
@@ -1062,9 +1115,13 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.15),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.15,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Text(
@@ -1079,8 +1136,7 @@ class _FlutterHomeScreenState extends State<FlutterHomeScreen>
                           ],
                           const Spacer(),
                           Text(
-                            _formatTimeAgo(
-                                article['publishedAt'] as String?),
+                            _formatTimeAgo(article['publishedAt'] as String?),
                             style: TextStyle(
                               fontSize: 10,
                               color: isDark
@@ -1213,11 +1269,7 @@ class _MyPostsTabState extends State<MyPostsTab>
   }
 
   Future<void> _loadAllData() async {
-    await Future.wait([
-      _loadMyPosts(),
-      _loadStories(),
-      _loadSavedPosts(),
-    ]);
+    await Future.wait([_loadMyPosts(), _loadStories(), _loadSavedPosts()]);
   }
 
   Future<void> _loadMyPosts() async {
@@ -1338,8 +1390,8 @@ class _MyPostsTabState extends State<MyPostsTab>
               _loadingPosts
                   ? const Center(child: CircularProgressIndicator())
                   : _gridView
-                      ? _buildPostGrid(_myPosts)
-                      : _buildPostList(_myPosts),
+                  ? _buildPostGrid(_myPosts)
+                  : _buildPostList(_myPosts),
               _loadingStories
                   ? const Center(child: CircularProgressIndicator())
                   : _buildStoryList(),
@@ -1500,7 +1552,8 @@ class _MyPostsTabState extends State<MyPostsTab>
                 color: AppColors.border2.withValues(alpha: 0.2),
                 image: DecorationImage(
                   image: NetworkImage(
-                    (media.first as Map<String, dynamic>)['url'] as String? ?? '',
+                    (media.first as Map<String, dynamic>)['url'] as String? ??
+                        '',
                   ),
                   fit: BoxFit.cover,
                   onError: (error, stackTrace) {},
@@ -1530,14 +1583,24 @@ class _MyPostsTabState extends State<MyPostsTab>
             padding: EdgeInsets.all(compact ? 8 : 10),
             child: Row(
               children: [
-                _actionItem(Icons.favorite_border, likeCount.toString(),
-                    compact: compact),
+                _actionItem(
+                  Icons.favorite_border,
+                  likeCount.toString(),
+                  compact: compact,
+                ),
                 const SizedBox(width: 12),
-                _actionItem(Icons.chat_bubble_outline, commentCount.toString(),
-                    compact: compact),
+                _actionItem(
+                  Icons.chat_bubble_outline,
+                  commentCount.toString(),
+                  compact: compact,
+                ),
                 const Spacer(),
-                _actionItem(Icons.bookmark_border, '',
-                    compact: compact, color: AppColors.text3),
+                _actionItem(
+                  Icons.bookmark_border,
+                  '',
+                  compact: compact,
+                  color: AppColors.text3,
+                ),
               ],
             ),
           ),
@@ -1565,7 +1628,6 @@ class _MyPostsTabState extends State<MyPostsTab>
     final mediaUrl = story['mediaUrl'] as String? ?? '';
     final createdAt = story['createdAt'] as String? ?? '';
     final timeAgo = _formatTimeAgo(createdAt);
-    final viewCount = (story['viewCount'] ?? 0) as int;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
@@ -1579,7 +1641,9 @@ class _MyPostsTabState extends State<MyPostsTab>
         children: [
           if (mediaUrl.isNotEmpty)
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
               child: Image.network(
                 mediaUrl,
                 height: 160,
@@ -1635,16 +1699,16 @@ class _MyPostsTabState extends State<MyPostsTab>
     );
   }
 
-  Widget _actionItem(IconData icon, String count,
-      {bool compact = false, Color? color}) {
+  Widget _actionItem(
+    IconData icon,
+    String count, {
+    bool compact = false,
+    Color? color,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          size: compact ? 14 : 16,
-          color: color ?? AppColors.text2,
-        ),
+        Icon(icon, size: compact ? 14 : 16, color: color ?? AppColors.text2),
         if (count.isNotEmpty) ...[
           const SizedBox(width: 4),
           Text(
