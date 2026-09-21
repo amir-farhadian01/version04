@@ -4,7 +4,7 @@
 
 **YELLOW — engineering-ready, not launch-ready.** No push, deployment, production migration, or release is authorized without user approval.
 
-Evidence basis: 2026-09-20 full gate run on Node 22.14.0 (see QA Evidence Ledger). All static, unit, integration, build, and clean-database migration gates are green. Remaining blockers are live-environment and operational, not code quality.
+Evidence basis: 2026-09-21 fresh full gate run on Node 22.14.0 on the verified 36-commit range `origin/chore/issue-4-visual-sync...HEAD` (0 behind, linear; see QA Evidence Ledger — includes the corrected Slice A delta classification). All static, unit, integration, build, and clean-database migration gates are green. Remaining blockers are live-environment and operational, not code quality.
 
 ## Green gates (2026-09-20)
 
