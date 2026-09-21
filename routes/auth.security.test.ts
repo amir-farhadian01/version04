@@ -106,6 +106,18 @@ describe('authentication security boundaries', () => {
     expect(response.body.user.role).toBe('customer');
   });
 
+  it('never authenticates a client-supplied email as a Google identity', async () => {
+    const response = await request(app()).post('/api/auth/google').send({
+      email: 'victim@example.test', name: 'Victim User',
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Google idToken or accessToken is required');
+    expect(mocks.userFindUnique).not.toHaveBeenCalled();
+    expect(mocks.userCreate).not.toHaveBeenCalled();
+    expect(mocks.userUpdate).not.toHaveBeenCalled();
+  });
+
   it('requires authentication before issuing WebAuthn registration options', async () => {
     const response = await request(app()).post('/api/auth/register-options').send({
       userId: 'victim-user', email: 'victim@example.test',

@@ -523,7 +523,7 @@ router.post('/onboarding', authenticate, async (req: AuthRequest, res: Response)
 // ─── Google OAuth ─────────────────────────────────────────────────────────────
 // Accepts either an id_token (from Google One Tap) or an access_token (from OAuth flow)
 router.post('/google', authLimiter, async (req: Request, res: Response) => {
-  const { idToken, accessToken, email: directEmail, name: directName, picture } = req.body;
+  const { idToken, accessToken, name: directName, picture } = req.body;
 
   let googleEmail: string | undefined;
   let googleName: string | undefined;
@@ -548,15 +548,11 @@ router.post('/google', authLimiter, async (req: Request, res: Response) => {
       });
       if (!userInfoRes.ok) return res.status(401).json({ error: 'Invalid Google access token' });
       const userInfo = await userInfoRes.json() as any;
-      googleEmail = userInfo.email || directEmail;
+      googleEmail = userInfo.email;
       googleName = userInfo.name || directName;
       googlePicture = userInfo.picture || picture;
-    } else if (directEmail) {
-      googleEmail = directEmail;
-      googleName = directName;
-      googlePicture = picture;
     } else {
-      return res.status(400).json({ error: 'Missing token or email' });
+      return res.status(400).json({ error: 'Google idToken or accessToken is required' });
     }
 
     if (!googleEmail) return res.status(400).json({ error: 'Could not retrieve email' });
