@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../theme/app_theme.dart';
+import '../providers/cache_provider.dart';
 import '../widgets/bottom_nav.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
@@ -57,8 +57,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    _pulseAnimation =
-        Tween<double>(begin: 10, end: 28).animate(_pulseController);
+    _pulseAnimation = Tween<double>(
+      begin: 10,
+      end: 28,
+    ).animate(_pulseController);
     _loadProfile();
     _checkRole();
   }
@@ -93,18 +95,19 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
     try {
       final fresh = await api.get('/auth/me');
+      if (!mounted) return;
       setState(() {
         _userData = fresh;
         _loading = false;
       });
       await prefs.setString('auth_user_data', jsonEncode(fresh));
     } catch (_) {
+      final cached = await AuthService().getUserData();
+      if (!mounted) return;
       setState(() {
-        final cached = AuthService().getUserData as Map<String, dynamic>?;
         _userData = cached;
         _loading = false;
       });
-      setState(() => _loading = false);
     }
   }
 
@@ -121,8 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   String _getEmail() => _userData?['email'] as String? ?? '';
   String? _getAvatarUrl() => _userData?['avatarUrl'] as String?;
   String _getUserId() => _userData?['id'] as String? ?? '';
-  String _getUsername() =>
-      _userData?['username'] as String? ?? _getUserId();
+  String _getUsername() => _userData?['username'] as String? ?? _getUserId();
 
   String _getInitial() {
     final name = _getDisplayName();
@@ -168,13 +170,17 @@ class _ProfileScreenState extends State<ProfileScreen>
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: AppColors.card,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Edit Profile',
-              style: TextStyle(
-                  fontFamily: 'Space Grotesk',
-                  color: AppColors.text,
-                  fontWeight: FontWeight.w600)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Edit Profile',
+            style: TextStyle(
+              fontFamily: 'Space Grotesk',
+              color: AppColors.text,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -195,9 +201,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Username',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.text3)),
+                    const Text(
+                      'Username',
+                      style: TextStyle(fontSize: 12, color: AppColors.text3),
+                    ),
                     const SizedBox(height: 4),
                     _dialogField(
                       controller: _usernameController,
@@ -214,52 +221,70 @@ class _ProfileScreenState extends State<ProfileScreen>
                         }
                         setDialogState(() => _usernameChecking = true);
                         _usernameDebounce = Timer(
-                            const Duration(milliseconds: 500), () async {
-                          try {
-                            final check =
-                                await ApiService().validateUsername(val);
-                            if (ctx.mounted) {
-                              setDialogState(() {
-                                _usernameChecking = false;
-                                _usernameAvailable =
-                                    check['available'] as bool? ?? false;
-                                _usernameSuggestion =
-                                    check['suggestion'] as String?;
-                              });
+                          const Duration(milliseconds: 500),
+                          () async {
+                            try {
+                              final check = await ApiService().validateUsername(
+                                val,
+                              );
+                              if (ctx.mounted) {
+                                setDialogState(() {
+                                  _usernameChecking = false;
+                                  _usernameAvailable =
+                                      check['available'] as bool? ?? false;
+                                  _usernameSuggestion =
+                                      check['suggestion'] as String?;
+                                });
+                              }
+                            } catch (_) {
+                              if (ctx.mounted) {
+                                setDialogState(() {
+                                  _usernameChecking = false;
+                                  _usernameAvailable = null;
+                                });
+                              }
                             }
-                          } catch (_) {
-                            if (ctx.mounted) {
-                              setDialogState(() {
-                                _usernameChecking = false;
-                                _usernameAvailable = null;
-                              });
-                            }
-                          }
-                        });
+                          },
+                        );
                       },
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         if (_usernameChecking)
-                          const Text('Checking...',
-                              style: TextStyle(
-                                  fontSize: 11, color: AppColors.text3))
+                          const Text(
+                            'Checking...',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.text3,
+                            ),
+                          )
                         else if (_usernameAvailable == true)
-                          const Text('✓ Available',
-                              style: TextStyle(
-                                  fontSize: 11, color: AppColors.secondary))
+                          const Text(
+                            '✓ Available',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.secondary,
+                            ),
+                          )
                         else if (_usernameAvailable == false) ...[
-                          const Text('✗ Taken',
-                              style: TextStyle(
-                                  fontSize: 11, color: AppColors.red)),
+                          const Text(
+                            '✗ Taken',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.red,
+                            ),
+                          ),
                           if (_usernameSuggestion != null) ...[
                             const SizedBox(width: 8),
-                            Text('Try: $_usernameSuggestion',
-                                style: const TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.warn,
-                                    fontFamily: 'monospace')),
+                            Text(
+                              'Try: $_usernameSuggestion',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.warn,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
                           ],
                         ],
                       ],
@@ -272,8 +297,10 @@ class _ProfileScreenState extends State<ProfileScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel',
-                  style: TextStyle(color: AppColors.text3)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppColors.text3),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -286,10 +313,10 @@ class _ProfileScreenState extends State<ProfileScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Save',
-                  style: TextStyle(color: Colors.white)),
+              child: const Text('Save', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -314,13 +341,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (email.isNotEmpty && email.contains('@')) {
       try {
         final api = ApiService();
-        final resp =
-            await api.put('/auth/me/email', body: {'email': email});
+        final resp = await api.put('/auth/me/email', body: {'email': email});
         setState(() => _userData!['email'] = resp['email']);
         _showSnack('Email updated');
       } catch (e) {
-        _showSnack(
-            e is ApiException ? e.message : 'Failed to update email');
+        _showSnack(e is ApiException ? e.message : 'Failed to update email');
       }
     }
     if (newUsername.isNotEmpty &&
@@ -329,12 +354,10 @@ class _ProfileScreenState extends State<ProfileScreen>
       try {
         final api = ApiService();
         final resp = await api.updateUsername(newUsername);
-        setState(
-            () => _userData!['username'] = resp['newUsername']);
+        setState(() => _userData!['username'] = resp['newUsername']);
         _showSnack('Username updated');
       } catch (e) {
-        _showSnack(
-            e is ApiException ? e.message : 'Failed to update username');
+        _showSnack(e is ApiException ? e.message : 'Failed to update username');
       }
     }
   }
@@ -345,50 +368,54 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Clear Cache',
-            style: TextStyle(
-                fontFamily: 'Space Grotesk',
-                color: AppColors.text,
-                fontWeight: FontWeight.w600)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Clear Cache',
+          style: TextStyle(
+            fontFamily: 'Space Grotesk',
+            color: AppColors.text,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         content: const Text(
-            'Are you sure you want to clear the app cache?',
-            style: TextStyle(color: AppColors.text2)),
+          'Are you sure you want to clear the app cache?',
+          style: TextStyle(color: AppColors.text2),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel',
-                style: TextStyle(color: AppColors.text3)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.text3),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.red,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            child: const Text('Clear',
-                style: TextStyle(color: Colors.white)),
+            child: const Text('Clear', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
     try {
+      await context.read<CacheProvider>().clearAll();
       imageCache.clear();
       imageCache.clearLiveImages();
       final prefs = await SharedPreferences.getInstance();
-      final keysToKeep = {'auth_token', 'auth_user_data', 'dark_mode'};
+      final keysToKeep = {'auth_access_token', 'auth_user_data', 'theme_mode'};
       final allKeys = prefs.getKeys().toList();
       for (final key in allKeys) {
         if (!keysToKeep.contains(key)) {
           await prefs.remove(key);
         }
       }
-      // File system cache clearing only works on native platforms
-      // On web, SharedPreferences clear above is sufficient
       _showSnack('Cache cleared successfully');
     } catch (e) {
       _showSnack('Failed to clear cache');
@@ -399,15 +426,13 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _logout() async {
     await AuthService().logout();
     if (mounted) {
-      Navigator.pushNamedAndRemoveUntil(
-          context, '/auth', (route) => false);
+      Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
     }
   }
 
   // ─── Share Profile ──────────────────────────────────────────────────
   void _showShareDialog() {
-    final profileDeepLink =
-        'neighborly://user/${_getUsername()}';
+    final profileDeepLink = 'neighborly://user/${_getUsername()}';
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.card,
@@ -429,12 +454,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content:
-            Text(message, style: const TextStyle(color: Colors.white)),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
         backgroundColor: AppColors.card,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -484,7 +507,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: _loading
                   ? const Center(
                       child: CircularProgressIndicator(
-                          color: AppColors.primary))
+                        color: AppColors.primary,
+                      ),
+                    )
                   : SingleChildScrollView(
                       padding: const EdgeInsets.only(bottom: 100),
                       child: Column(
@@ -520,26 +545,23 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Navigator.pushReplacementNamed(context, '/activity');
               }
               if (id == 'biz') {
-                Navigator.pushReplacementNamed(
-                    context, '/dashboard');
+                Navigator.pushReplacementNamed(context, '/dashboard');
               }
             },
             items: const [
+              BottomNavItem(id: 'home', label: 'Home', icon: Icons.home),
+              BottomNavItem(id: 'social', label: 'Social', icon: Icons.people),
               BottomNavItem(
-                  id: 'home', label: 'Home', icon: Icons.home),
+                id: 'activity',
+                label: 'Activity',
+                icon: Icons.auto_awesome_motion,
+              ),
               BottomNavItem(
-                  id: 'social',
-                  label: 'Social',
-                  icon: Icons.people),
-              BottomNavItem(
-                  id: 'activity',
-                  label: 'Activity',
-                  icon: Icons.auto_awesome_motion),
-              BottomNavItem(
-                  id: 'biz',
-                  label: 'Business',
-                  icon: Icons.business,
-                  isBiz: true),
+                id: 'biz',
+                label: 'Business',
+                icon: Icons.business,
+                isBiz: true,
+              ),
             ],
           ),
         ),
@@ -568,16 +590,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.primaryDim,
-                        border: Border.all(
-                            color: AppColors.primary, width: 2),
+                        border: Border.all(color: AppColors.primary, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.25),
+                            color: AppColors.primary.withValues(alpha: 0.25),
                             blurRadius: _pulseAnimation.value,
                             spreadRadius: 2,
                           ),
                         ],
-                        image: _getAvatarUrl() != null &&
+                        image:
+                            _getAvatarUrl() != null &&
                                 _getAvatarUrl()!.isNotEmpty
                             ? DecorationImage(
                                 image: NetworkImage(_getAvatarUrl()!),
@@ -585,8 +607,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                               )
                             : null,
                       ),
-                      child: _getAvatarUrl() == null ||
-                              _getAvatarUrl()!.isEmpty
+                      child: _getAvatarUrl() == null || _getAvatarUrl()!.isEmpty
                           ? Center(
                               child: Text(
                                 _getInitial(),
@@ -611,11 +632,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         shape: BoxShape.circle,
-                        border: Border.all(
-                            color: AppColors.bg, width: 2),
+                        border: Border.all(color: AppColors.bg, width: 2),
                       ),
-                      child: const Icon(Icons.camera_alt,
-                          size: 14, color: Colors.white),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        size: 14,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   // Share button badge on avatar
@@ -630,11 +653,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                         decoration: BoxDecoration(
                           color: AppColors.card,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                              color: AppColors.border, width: 1),
+                          border: Border.all(color: AppColors.border, width: 1),
                         ),
-                        child: const Icon(Icons.share,
-                            size: 15, color: AppColors.text),
+                        child: const Icon(
+                          Icons.share,
+                          size: 15,
+                          color: AppColors.text,
+                        ),
                       ),
                     ),
                   ),
@@ -656,10 +681,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               // Email
               Text(
                 _getEmail(),
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.text3,
-                ),
+                style: const TextStyle(fontSize: 13, color: AppColors.text3),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
@@ -672,7 +694,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     onTap: _editProfile,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12),
@@ -680,8 +704,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: const [
-                          Icon(Icons.edit,
-                              size: 16, color: Colors.white),
+                          Icon(Icons.edit, size: 16, color: Colors.white),
                           SizedBox(width: 6),
                           Text(
                             'Edit',
@@ -701,7 +724,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     onTap: _showShareDialog,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12),
@@ -709,8 +734,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: const [
-                          Icon(Icons.share,
-                              size: 16, color: Colors.white),
+                          Icon(Icons.share, size: 16, color: Colors.white),
                           SizedBox(width: 6),
                           Text(
                             'Share',
@@ -742,6 +766,12 @@ class _ProfileScreenState extends State<ProfileScreen>
           // ═══ Section 1: MY SERVICES ═══
           _buildSectionHeader('My Services'),
           _buildSectionCard([
+            _menuItem(
+              icon: Icons.verified_user_outlined,
+              title: 'Identity Verification',
+              color: AppColors.primary,
+              onTap: () => Navigator.pushNamed(context, '/profile/kyc'),
+            ),
             _menuItem(
               icon: Icons.calendar_month_outlined,
               title: 'My Appointments',
@@ -776,24 +806,27 @@ class _ProfileScreenState extends State<ProfileScreen>
               children: [
                 // Accordion header
                 GestureDetector(
-                  onTap: () => setState(
-                      () => _personalInfoOpen = !_personalInfoOpen),
+                  onTap: () =>
+                      setState(() => _personalInfoOpen = !_personalInfoOpen),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     child: Row(
                       children: [
                         Container(
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color:
-                                AppColors.purple.withOpacity(0.15),
-                            borderRadius:
-                                BorderRadius.circular(12),
+                            color: AppColors.purple.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.people_outline,
-                              size: 22, color: AppColors.purple),
+                          child: const Icon(
+                            Icons.people_outline,
+                            size: 22,
+                            color: AppColors.purple,
+                          ),
                         ),
                         const SizedBox(width: 14),
                         const Expanded(
@@ -808,12 +841,12 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                         AnimatedRotation(
                           turns: _personalInfoOpen ? 0.5 : 0,
-                          duration:
-                              const Duration(milliseconds: 300),
+                          duration: const Duration(milliseconds: 300),
                           child: const Icon(
-                              Icons.keyboard_arrow_down,
-                              size: 20,
-                              color: AppColors.text3),
+                            Icons.keyboard_arrow_down,
+                            size: 20,
+                            color: AppColors.text3,
+                          ),
                         ),
                       ],
                     ),
@@ -821,16 +854,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
                 // Accordion content
                 AnimatedCrossFade(
-                  firstChild:
-                      const SizedBox(width: double.infinity),
+                  firstChild: const SizedBox(width: double.infinity),
                   secondChild: Column(
                     children: [
                       _divider(),
                       AnimatedOpacity(
-                        opacity:
-                            _personalInfoOpen ? 1.0 : 0.0,
-                        duration:
-                            const Duration(milliseconds: 200),
+                        opacity: _personalInfoOpen ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
                         child: _menuItem(
                           icon: Icons.location_on_outlined,
                           title: 'My Addresses',
@@ -838,17 +868,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) =>
-                                    const AddressesScreen()),
+                              builder: (_) => const AddressesScreen(),
+                            ),
                           ),
                         ),
                       ),
                       _divider(),
                       AnimatedOpacity(
-                        opacity:
-                            _personalInfoOpen ? 1.0 : 0.0,
-                        duration:
-                            const Duration(milliseconds: 200),
+                        opacity: _personalInfoOpen ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 200),
                         child: _menuItem(
                           icon: Icons.directions_car_outlined,
                           title: 'My Cars',
@@ -856,8 +884,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) =>
-                                    const CarsScreen()),
+                              builder: (_) => const CarsScreen(),
+                            ),
                           ),
                         ),
                       ),
@@ -922,7 +950,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           Divider(
             height: 1,
             thickness: 1,
-            color: AppColors.border.withOpacity(0.4),
+            color: AppColors.border.withValues(alpha: 0.4),
           ),
         ],
       ),
@@ -937,9 +965,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        children: _intersperse(items, _divider()),
-      ),
+      child: Column(children: _intersperse(items, _divider())),
     );
   }
 
@@ -957,15 +983,14 @@ class _ProfileScreenState extends State<ProfileScreen>
         onTap();
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
             Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, size: 22, color: color),
@@ -983,8 +1008,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
             if (badge != null)
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.red,
                   borderRadius: BorderRadius.circular(10),
@@ -999,8 +1023,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
               ),
             if (badge != null) const SizedBox(width: 8),
-            const Icon(Icons.chevron_right,
-                size: 20, color: AppColors.text3),
+            const Icon(Icons.chevron_right, size: 20, color: AppColors.text3),
           ],
         ),
       ),
@@ -1012,7 +1035,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Divider(
       height: 1,
       thickness: 0.5,
-      color: AppColors.border.withOpacity(0.5),
+      color: AppColors.border.withValues(alpha: 0.5),
       indent: 16 + 44 + 14,
       endIndent: 16,
     );
@@ -1051,18 +1074,16 @@ class _ProfileScreenState extends State<ProfileScreen>
             onTap: _logout,
             child: Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: AppColors.red.withOpacity(0.05),
+                color: AppColors.red.withValues(alpha: 0.05),
                 border: Border.all(color: AppColors.red),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: const [
-                  Icon(Icons.logout,
-                      size: 18, color: AppColors.red),
+                  Icon(Icons.logout, size: 18, color: AppColors.red),
                   SizedBox(width: 8),
                   Text(
                     'Logout',
@@ -1136,12 +1157,15 @@ class _ShareProfileSheetState extends State<_ShareProfileSheet> {
           const SizedBox(height: 20),
 
           // Title
-          const Text('Share Profile',
-              style: TextStyle(
-                  fontFamily: 'Space Grotesk',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.text)),
+          const Text(
+            'Share Profile',
+            style: TextStyle(
+              fontFamily: 'Space Grotesk',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.text,
+            ),
+          ),
           const SizedBox(height: 20),
 
           // A — QR Code
@@ -1158,16 +1182,14 @@ class _ShareProfileSheetState extends State<_ShareProfileSheet> {
                   version: QrVersions.auto,
                   size: 180,
                   backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
+                  eyeStyle: const QrEyeStyle(color: Colors.black),
+                  dataModuleStyle: const QrDataModuleStyle(color: Colors.black),
                   padding: const EdgeInsets.all(8),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   _profileDeepLink,
-                  style: const TextStyle(
-                    color: Colors.black54,
-                    fontSize: 11,
-                  ),
+                  style: const TextStyle(color: Colors.black54, fontSize: 11),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -1180,8 +1202,7 @@ class _ShareProfileSheetState extends State<_ShareProfileSheet> {
             onTap: _copyProfileId,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: AppColors.bg,
                 border: Border.all(color: AppColors.border),
@@ -1189,8 +1210,7 @@ class _ShareProfileSheetState extends State<_ShareProfileSheet> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.copy,
-                      size: 20, color: AppColors.text2),
+                  Icon(Icons.copy, size: 20, color: AppColors.text2),
                   const SizedBox(width: 12),
                   Text(
                     _copied ? 'Copied!' : 'Copy Profile ID',
@@ -1203,10 +1223,13 @@ class _ShareProfileSheetState extends State<_ShareProfileSheet> {
                   if (_copied)
                     const Padding(
                       padding: EdgeInsets.only(left: 8),
-                      child: Text('✓',
-                          style: TextStyle(
-                              color: AppColors.secondary,
-                              fontSize: 12)),
+                      child: Text(
+                        '✓',
+                        style: TextStyle(
+                          color: AppColors.secondary,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                 ],
               ),

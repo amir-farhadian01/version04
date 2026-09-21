@@ -18,6 +18,7 @@ import 'screens/customer/contract_chat_screen.dart';
 import 'screens/customer/new_order_screen.dart';
 import 'screens/business/business_page_screen.dart';
 import 'screens/profile/upgrade_to_business_screen.dart';
+import 'screens/profile/kyc_verification_screen.dart';
 import 'features/story/story_screen.dart';
 import 'features/story/create_story_screen.dart';
 import 'features/comments/comments_screen.dart';
@@ -62,15 +63,33 @@ class NeighborHubApp extends StatelessWidget {
         ),
         '/activity': (_) => const ResponsiveScaffold(child: ActivityScreen()),
         '/profile': (_) => const ResponsiveScaffold(child: ProfileScreen()),
-        '/biz-profile': (_) => const ResponsiveScaffold(child: BusinessProfileScreen()),
-        '/dashboard': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: DashboardScreen()),
-        '/new-home': (_) => const ResponsiveScaffold(child: home_new.FlutterHomeScreen()),
-        '/services': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerDashboardScreen()),
-        '/customer/orders': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerOrdersScreen()),
-        '/customer/messages': (_) => const ResponsiveScaffold(expandOnDesktop: true, child: CustomerMessagesScreen()),
-        '/profile/upgrade': (_) => const ResponsiveScaffold(child: UpgradeToBusinessScreen()),
-              '/order/new': (_) => const ResponsiveScaffold(child: NewOrderScreen()),
-        '/onboarding': (_) => const ResponsiveScaffold(child: OnboardingScreen()),
+        '/biz-profile': (_) =>
+            const ResponsiveScaffold(child: BusinessProfileScreen()),
+        '/dashboard': (_) => const ResponsiveScaffold(
+          expandOnDesktop: true,
+          child: DashboardScreen(),
+        ),
+        '/new-home': (_) =>
+            const ResponsiveScaffold(child: home_new.FlutterHomeScreen()),
+        '/services': (_) => const ResponsiveScaffold(
+          expandOnDesktop: true,
+          child: CustomerDashboardScreen(),
+        ),
+        '/customer/orders': (_) => const ResponsiveScaffold(
+          expandOnDesktop: true,
+          child: CustomerOrdersScreen(),
+        ),
+        '/customer/messages': (_) => const ResponsiveScaffold(
+          expandOnDesktop: true,
+          child: CustomerMessagesScreen(),
+        ),
+        '/profile/upgrade': (_) =>
+            const ResponsiveScaffold(child: UpgradeToBusinessScreen()),
+        '/profile/kyc': (_) =>
+            const ResponsiveScaffold(child: KycVerificationScreen()),
+        '/order/new': (_) => const ResponsiveScaffold(child: NewOrderScreen()),
+        '/onboarding': (_) =>
+            const ResponsiveScaffold(child: OnboardingScreen()),
         '/create-post': (_) => const FlutterAppScaffold(
           title: 'Create Post',
           showBack: true,
@@ -108,25 +127,22 @@ class NeighborHubApp extends StatelessWidget {
         if (settings.name == '/story') {
           final storyId = settings.arguments as String? ?? '';
           return MaterialPageRoute(
-            builder: (_) => ResponsiveScaffold(
-              child: StoryScreen(storyId: storyId),
-            ),
+            builder: (_) =>
+                ResponsiveScaffold(child: StoryScreen(storyId: storyId)),
           );
         }
         if (settings.name == '/comments') {
           final postId = settings.arguments as String? ?? '';
           return MaterialPageRoute(
-            builder: (_) => ResponsiveScaffold(
-              child: CommentsScreen(postId: postId),
-            ),
+            builder: (_) =>
+                ResponsiveScaffold(child: CommentsScreen(postId: postId)),
           );
         }
         if (settings.name == '/post-detail') {
           final postId = settings.arguments as String? ?? '';
           return MaterialPageRoute(
-            builder: (_) => ResponsiveScaffold(
-              child: PostDetailScreen(postId: postId),
-            ),
+            builder: (_) =>
+                ResponsiveScaffold(child: PostDetailScreen(postId: postId)),
           );
         }
         if (settings.name == '/order/new') {

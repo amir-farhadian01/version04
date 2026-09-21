@@ -28,36 +28,21 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   Future<void> _loadData() async {
     setState(() => _loading = true);
     try {
-      final statsResult = await _api.getCustomerStats();
+      final dashboard = await _api.getCustomerDashboard();
+      if (!mounted) return;
       setState(() {
-        _stats = statsResult['data'] as Map<String, dynamic>? ?? statsResult;
+        _stats = dashboard.stats;
+        _activeOrders = dashboard.activeItems;
+        _loading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() {
-        _stats = {
-          'activeOrders': 2,
-          'completedOrders': 12,
-          'totalSpent': 14850,
-          'avgRating': 4.8,
-        };
+        _stats = <String, dynamic>{};
+        _activeOrders = <Map<String, dynamic>>[];
+        _loading = false;
       });
     }
-
-    try {
-      final ordersResult = await _api.getActiveOrders();
-      final items = (ordersResult['data'] as List<dynamic>?)
-              ?.cast<Map<String, dynamic>>() ??
-          (ordersResult['items'] as List<dynamic>?)
-                  ?.cast<Map<String, dynamic>>() ??
-              [];
-      setState(() => _activeOrders = items);
-    } catch (_) {
-      setState(() {
-        _activeOrders = [];
-      });
-    }
-
-    setState(() => _loading = false);
   }
 
   @override
@@ -83,8 +68,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.dashboard,
-                    size: 20, color: AppColors.primary),
+                const Icon(Icons.dashboard, size: 20, color: AppColors.primary),
                 const SizedBox(width: 10),
                 Text(
                   'My Services',
@@ -106,19 +90,22 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           Expanded(
             child: _loading
                 ? const Center(
-                    child: CircularProgressIndicator(
-                        color: AppColors.primary))
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
                 : LayoutBuilder(
                     builder: (context, constraints) {
                       final isWide = constraints.maxWidth >= 600;
                       return SingleChildScrollView(
-                        padding: EdgeInsets.only(
-                            bottom: isWide ? 32 : 80),
+                        padding: EdgeInsets.only(bottom: isWide ? 32 : 80),
                         child: isWide
-                            ? _buildWideLayout(
-                                text, text2, text3, card, border)
+                            ? _buildWideLayout(text, text2, text3, card, border)
                             : _buildMobileLayout(
-                                text, text2, text3, card, border),
+                                text,
+                                text2,
+                                text3,
+                                card,
+                                border,
+                              ),
                       );
                     },
                   ),
@@ -129,7 +116,12 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   }
 
   Widget _buildWideLayout(
-      Color text, Color text2, Color text3, Color card, Color border) {
+    Color text,
+    Color text2,
+    Color text3,
+    Color card,
+    Color border,
+  ) {
     return Column(
       children: [
         // Stats Grid — 4 columns on wide
@@ -183,26 +175,30 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                       Navigator.pushNamed(context, '/customer/orders'),
                   children: _activeOrders.isEmpty
                       ? [
-                          _emptyState('No active orders',
-                              'Your ongoing orders will appear here')
+                          _emptyState(
+                            'No active orders',
+                            'Your ongoing orders will appear here',
+                          ),
                         ]
                       : _activeOrders.map((order) {
                           final id = order['id'] as String? ?? '';
-                          final service = order['service'] as String? ??
+                          final service =
+                              order['service'] as String? ??
                               order['serviceName'] as String? ??
                               'Service';
                           final status =
                               order['status'] as String? ?? 'pending';
-                          final price =
-                              order['price'] ?? order['total'];
+                          final price = order['price'] ?? order['total'];
                           return _orderTile(
                             id: id,
                             title: service,
                             status: status,
                             price: price.toString(),
                             onTap: () => Navigator.pushNamed(
-                                context, '/customer/order-detail',
-                                arguments: id),
+                              context,
+                              '/customer/order-detail',
+                              arguments: id,
+                            ),
                           );
                         }).toList(),
                   text: text,
@@ -216,15 +212,15 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               Expanded(
                 child: _buildSection(
                   title: 'Messages',
-                  onTapSeeAll: () => Navigator.pushNamed(
-                      context, '/customer/messages'),
+                  onTapSeeAll: () =>
+                      Navigator.pushNamed(context, '/customer/messages'),
                   children: [
                     _inboxTile(
                       icon: Icons.inbox,
                       title: 'Inbox',
                       subtitle: 'Active conversations',
-                      onTap: () => Navigator.pushNamed(
-                          context, '/customer/messages'),
+                      onTap: () =>
+                          Navigator.pushNamed(context, '/customer/messages'),
                     ),
                   ],
                   text: text,
@@ -242,7 +238,12 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   }
 
   Widget _buildMobileLayout(
-      Color text, Color text2, Color text3, Color card, Color border) {
+    Color text,
+    Color text2,
+    Color text3,
+    Color card,
+    Color border,
+  ) {
     return Column(
       children: [
         // Stats Grid
@@ -286,20 +287,21 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         // Active Orders Section
         _buildSection(
           title: 'Active Orders',
-          onTapSeeAll: () =>
-              Navigator.pushNamed(context, '/customer/orders'),
+          onTapSeeAll: () => Navigator.pushNamed(context, '/customer/orders'),
           children: _activeOrders.isEmpty
               ? [
-                  _emptyState('No active orders',
-                      'Your ongoing orders will appear here')
+                  _emptyState(
+                    'No active orders',
+                    'Your ongoing orders will appear here',
+                  ),
                 ]
               : _activeOrders.map((order) {
                   final id = order['id'] as String? ?? '';
-                  final service = order['service'] as String? ??
+                  final service =
+                      order['service'] as String? ??
                       order['serviceName'] as String? ??
                       'Service';
-                  final status =
-                      order['status'] as String? ?? 'pending';
+                  final status = order['status'] as String? ?? 'pending';
                   final price = order['price'] ?? order['total'];
                   return _orderTile(
                     id: id,
@@ -307,8 +309,10 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
                     status: status,
                     price: price.toString(),
                     onTap: () => Navigator.pushNamed(
-                        context, '/customer/order-detail',
-                        arguments: id),
+                      context,
+                      '/customer/order-detail',
+                      arguments: id,
+                    ),
                   );
                 }).toList(),
           text: text,
@@ -320,15 +324,13 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         // Messages / Inbox
         _buildSection(
           title: 'Messages',
-          onTapSeeAll: () =>
-              Navigator.pushNamed(context, '/customer/messages'),
+          onTapSeeAll: () => Navigator.pushNamed(context, '/customer/messages'),
           children: [
             _inboxTile(
               icon: Icons.inbox,
               title: 'Inbox',
               subtitle: 'Active conversations',
-              onTap: () =>
-                  Navigator.pushNamed(context, '/customer/messages'),
+              onTap: () => Navigator.pushNamed(context, '/customer/messages'),
             ),
           ],
           text: text,
@@ -343,6 +345,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
 
   List<_StatItem> _buildStatsList() {
     if (_stats == null) return [];
+    final totalSpent = _stats!['totalSpent'];
+    final averageRating = _stats!['avgRating'];
     return [
       _StatItem(
         value: (_stats!['activeOrders'] ?? 0).toString(),
@@ -355,13 +359,12 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         color: AppColors.secondary,
       ),
       _StatItem(
-        value:
-            '\$${((_stats!['totalSpent'] ?? 0) as num).toStringAsFixed(0)}',
+        value: totalSpent is num ? '\$${totalSpent.toStringAsFixed(0)}' : '—',
         label: 'Total Spent',
         color: AppColors.accent,
       ),
       _StatItem(
-        value: '${_stats!['avgRating'] ?? '—'} ⭐',
+        value: averageRating is num ? '${averageRating.toString()} ⭐' : '—',
         label: 'Avg Rating',
         color: AppColors.purple,
       ),
@@ -387,17 +390,21 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: text2)),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: text2,
+                  ),
+                ),
                 if (onTapSeeAll != null)
                   GestureDetector(
                     onTap: onTapSeeAll,
-                    child: const Text('See all →',
-                        style: TextStyle(
-                            fontSize: 11, color: AppColors.primary)),
+                    child: const Text(
+                      'See all →',
+                      style: TextStyle(fontSize: 11, color: AppColors.primary),
+                    ),
                   ),
               ],
             ),
@@ -425,10 +432,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
           color: AppColors.card,
           borderRadius: BorderRadius.circular(12),
           border: Border(
-            left: BorderSide(
-              color: _statusColor(status),
-              width: 3,
-            ),
+            left: BorderSide(color: _statusColor(status), width: 3),
           ),
         ),
         child: Row(
@@ -438,26 +442,35 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.text)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(status.toUpperCase(),
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _statusColor(status))),
+                  Text(
+                    status.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _statusColor(status),
+                    ),
+                  ),
                 ],
               ),
             ),
-            Text(price,
-                style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                    fontFamily: 'Space Grotesk')),
+            Text(
+              price,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+                fontFamily: 'Space Grotesk',
+              ),
+            ),
           ],
         ),
       ),
@@ -496,20 +509,26 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.text)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.text3)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.text3,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right,
-                size: 18, color: AppColors.text3),
+            const Icon(Icons.chevron_right, size: 18, color: AppColors.text3),
           ],
         ),
       ),
@@ -528,16 +547,20 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
         children: [
           Icon(Icons.inbox, size: 32, color: AppColors.text3),
           const SizedBox(height: 8),
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.text)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.text,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(subtitle,
-              style:
-                  const TextStyle(fontSize: 11, color: AppColors.text3),
-              textAlign: TextAlign.center),
+          Text(
+            subtitle,
+            style: const TextStyle(fontSize: 11, color: AppColors.text3),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -569,9 +592,5 @@ class _StatItem {
   final String label;
   final Color color;
 
-  _StatItem({
-    required this.value,
-    required this.label,
-    required this.color,
-  });
+  _StatItem({required this.value, required this.label, required this.color});
 }
