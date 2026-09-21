@@ -5,6 +5,7 @@ import http from "http";
 import { createServer as createViteServer } from "vite";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import { createCorsOriginHandler, isProductionEnvironment, resolveCorsOriginConfig } from "./lib/corsOrigin.js";
 import helmet from "helmet";
 import morgan from "morgan";
 import "dotenv/config";
@@ -198,9 +199,23 @@ function createWebApp(opts?: { adminOnly?: boolean }): Express {
   }
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
+  const corsConfig = resolveCorsOriginConfig(
+    process.env.ALLOWED_ORIGIN,
+    isProductionEnvironment(process.env.NODE_ENV, process.env.APP_ENV),
+  );
+  if (corsConfig.invalidEntries.length > 0) {
+    console.error(
+      `CORS: ALLOWED_ORIGIN contains invalid entries and is ignored: ${corsConfig.invalidEntries.join(", ")}`,
+    );
+  }
+  if (corsConfig.mode === "deny-all") {
+    console.error(
+      "CORS: failing closed — production requires an explicit ALLOWED_ORIGIN list (e.g. https://app.example.com,https://admin.example.com). No origins are allowed until it is configured.",
+    );
+  }
   app.use(
     cors({
-      origin: process.env.ALLOWED_ORIGIN || true,
+      origin: createCorsOriginHandler(corsConfig),
       credentials: true,
     }),
   );

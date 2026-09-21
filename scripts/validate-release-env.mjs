@@ -25,6 +25,28 @@ if (process.env.JWT_SECRET?.trim() && process.env.JWT_SECRET?.trim() === process
   problems.push('JWT_SECRET and JWT_REFRESH_SECRET must be different');
 }
 
+// ALLOWED_ORIGIN — required in production, must be explicit absolute origins.
+// Credentials (cookies) are always enabled, so wildcards and origin reflection
+// are forbidden. Keep this aligned with lib/corsOrigin.ts.
+const isProduction = process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'production';
+const originEntryPattern = /^https?:\/\/[a-zA-Z0-9._-]+(?::\d{1,5})?$/;
+if (isProduction) {
+  const raw = process.env.ALLOWED_ORIGIN?.trim();
+  if (!raw) {
+    problems.push('ALLOWED_ORIGIN is required when NODE_ENV or APP_ENV is production');
+  } else {
+    const entries = raw.split(',').map((entry) => entry.trim()).filter(Boolean);
+    if (entries.length === 0) problems.push('ALLOWED_ORIGIN contains no origins');
+    for (const entry of entries) {
+      if (entry === 'true' || entry === '*' || !originEntryPattern.test(entry)) {
+        problems.push(
+          `ALLOWED_ORIGIN entry "${entry}" is not an explicit absolute origin (wildcards and 'true' are forbidden)`,
+        );
+      }
+    }
+  }
+}
+
 if (problems.length) {
   console.error('Release environment validation failed:');
   for (const problem of problems) console.error(`- ${problem}`);
