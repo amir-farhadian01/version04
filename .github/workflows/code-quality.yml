@@ -56,8 +56,12 @@ jobs:
 
       - name: Check for temp files accidentally committed
         run: |
-          TEMP_PATTERNS=$(find . -name '*.tmp' -o -name '*.bak' -o -name '*.pid' 2>/dev/null | \
-            grep -v node_modules | grep -v .git)
+          TEMP_PATTERNS="$(
+            find . \( -name '*.tmp' -o -name '*.bak' -o -name '*.pid' \) \
+              -not -path '*/node_modules/*' \
+              -not -path './.git/*' \
+              -print 2>/dev/null
+          )"
           if [ -n "$TEMP_PATTERNS" ]; then
             echo "❌ ERROR: Temp files found in repo:"
             echo "$TEMP_PATTERNS"
