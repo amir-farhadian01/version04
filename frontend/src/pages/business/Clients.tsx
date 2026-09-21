@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import { StatusBar } from '../../components/ui/phone/StatusBar'
@@ -28,7 +28,7 @@ export default function Clients() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  const fetchCustomers = () => {
+  const fetchCustomers = useCallback(() => {
     if (!workspaceId) return
     setLoading(true)
     const params: Record<string, string | number> = { page, limit: 20 }
@@ -40,9 +40,9 @@ export default function Clients() {
       })
       .catch((err) => setError(err?.response?.data?.error ?? 'Failed to load customers'))
       .finally(() => setLoading(false))
-  }
+  }, [page, search, workspaceId])
 
-  useEffect(() => { fetchCustomers() }, [workspaceId, page])
+  useEffect(() => { fetchCustomers() }, [fetchCustomers])
 
   const handleSearch = () => {
     setPage(1)

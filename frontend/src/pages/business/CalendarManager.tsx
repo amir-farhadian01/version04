@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import api from '../../lib/api'
 
@@ -91,15 +91,17 @@ export default function CalendarManager() {
   const weekDates = getWeekDates(currentDate)
   const weekStart = weekDates[0]
   const weekEnd = weekDates[6]
+  const weekStartKey = formatDate(weekStart)
+  const weekEndKey = formatDate(weekEnd)
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     if (!workspaceId) return
     setLoading(true)
     Promise.all([
       api.get(`/schedules/${workspaceId}`, {
         params: {
-          startDate: formatDate(weekStart),
-          endDate: formatDate(weekEnd),
+          startDate: weekStartKey,
+          endDate: weekEndKey,
         },
       }),
       api.get(`/staff/${workspaceId}`),
@@ -110,9 +112,9 @@ export default function CalendarManager() {
       })
       .catch((err) => setError(err?.response?.data?.error ?? 'Failed to load calendar'))
       .finally(() => setLoading(false))
-  }
+  }, [weekEndKey, weekStartKey, workspaceId])
 
-  useEffect(() => { fetchData() }, [workspaceId, weekStart, weekEnd])
+  useEffect(() => { fetchData() }, [fetchData])
 
   // Fetch packages for slot preview
   useEffect(() => {

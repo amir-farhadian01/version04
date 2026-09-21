@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import { StatusBar } from '../../components/ui/phone/StatusBar'
@@ -66,16 +66,16 @@ export default function ClientDetail() {
   const [savingNote, setSavingNote] = useState(false)
   const [activeTab, setActiveTab] = useState<'orders' | 'notes' | 'reviews'>('orders')
 
-  const fetchDetail = () => {
+  const fetchDetail = useCallback(() => {
     if (!workspaceId || !customerId) return
     setLoading(true)
     api.get(`/workspace/${workspaceId}/crm/customers/${customerId}`)
       .then((res) => setData(res.data))
       .catch((err) => setError(err?.response?.data?.error ?? 'Failed to load customer details'))
       .finally(() => setLoading(false))
-  }
+  }, [customerId, workspaceId])
 
-  useEffect(() => { fetchDetail() }, [workspaceId, customerId])
+  useEffect(() => { fetchDetail() }, [fetchDetail])
 
   const handleAddNote = async () => {
     if (!workspaceId || !customerId || !noteText.trim()) return
