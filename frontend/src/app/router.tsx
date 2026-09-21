@@ -1,41 +1,41 @@
-import { createBrowserRouter, Navigate, useRouteError, isRouteErrorResponse } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore'
-import type { ReactNode } from 'react'
+import { createBrowserRouter, useRouteError, isRouteErrorResponse } from 'react-router-dom'
+import { RequireAuth } from './RequireAuth.js'
+import { lazy } from 'react'
 
 import { PublicLayout } from '../components/layout/PublicLayout'
 import { CustomerLayout } from '../components/layout/CustomerLayout'
 import { BusinessLayout } from '../components/layout/BusinessLayout'
 import { SimpleLayout } from '../components/layout/SimpleLayout'
 
-import HomePage from '../pages/home/HomePage'
-import Explore from '../pages/public/Explore'
-import ServiceDetail from '../pages/public/ServiceDetail'
-import BusinessPage from '../pages/public/BusinessPage'
-import Login from '../pages/auth/Login'
-import Activity from '../pages/customer/Activity'
-import Profile from '../pages/customer/Profile'
-import CustomerDashboard from '../pages/customer/Dashboard'
-import OrderWizard from '../pages/order/OrderWizard'
-import OrderDetail from '../pages/order/OrderDetail'
-import ServicesPage from '../pages/services/ServicesPage'
-
-import BusinessDashboard from '../pages/business/BusinessDashboard'
-import BusinessMessages from '../pages/business/BusinessMessages'
-import StaffManagement from '../pages/business/StaffManagement'
-import CalendarManager from '../pages/business/CalendarManager'
-import Clients from '../pages/business/Clients'
-import ClientDetail from '../pages/business/ClientDetail'
-import Finance from '../pages/business/Finance'
-import Invoices from '../pages/business/Invoices'
-import SocialMediaManager from '../pages/business/SocialMediaManager'
-import MyPostsPage from '../pages/profile/MyPostsPage'
-import UpgradeToBusiness from '../pages/profile/UpgradeToBusiness'
-import NewsArticlePage from '../pages/home/NewsArticlePage'
-import PostDetailPage from '../pages/social/PostDetailPage'
-import MyServicesPage from '../pages/business/MyServicesPage'
-import MyPackagesPage from '../pages/business/MyPackagesPage'
-import InventoryPage from '../pages/business/InventoryPage'
-import OnboardingWizard from '../pages/business/OnboardingWizard'
+const HomePage = lazy(() => import('../pages/home/HomePage'))
+const Explore = lazy(() => import('../pages/public/Explore'))
+const ServiceDetail = lazy(() => import('../pages/public/ServiceDetail'))
+const BusinessPage = lazy(() => import('../pages/public/BusinessPage'))
+const Login = lazy(() => import('../pages/auth/Login'))
+const Activity = lazy(() => import('../pages/customer/Activity'))
+const Profile = lazy(() => import('../pages/customer/Profile'))
+const CustomerDashboard = lazy(() => import('../pages/customer/Dashboard'))
+const OrderWizard = lazy(() => import('../pages/order/OrderWizard'))
+const OrderDetail = lazy(() => import('../pages/order/OrderDetail'))
+const ServicesPage = lazy(() => import('../pages/services/ServicesPage'))
+const BusinessDashboard = lazy(() => import('../pages/business/BusinessDashboard'))
+const BusinessMessages = lazy(() => import('../pages/business/BusinessMessages'))
+const StaffManagement = lazy(() => import('../pages/business/StaffManagement'))
+const CalendarManager = lazy(() => import('../pages/business/CalendarManager'))
+const Clients = lazy(() => import('../pages/business/Clients'))
+const ClientDetail = lazy(() => import('../pages/business/ClientDetail'))
+const Finance = lazy(() => import('../pages/business/Finance'))
+const Invoices = lazy(() => import('../pages/business/Invoices'))
+const SocialMediaManager = lazy(() => import('../pages/business/SocialMediaManager'))
+const MyPostsPage = lazy(() => import('../pages/profile/MyPostsPage'))
+const UpgradeToBusiness = lazy(() => import('../pages/profile/UpgradeToBusiness'))
+const KycVerification = lazy(() => import('../pages/profile/KycVerification'))
+const NewsArticlePage = lazy(() => import('../pages/home/NewsArticlePage'))
+const PostDetailPage = lazy(() => import('../pages/social/PostDetailPage'))
+const MyServicesPage = lazy(() => import('../pages/business/MyServicesPage'))
+const MyPackagesPage = lazy(() => import('../pages/business/MyPackagesPage'))
+const InventoryPage = lazy(() => import('../pages/business/InventoryPage'))
+const OnboardingWizard = lazy(() => import('../pages/business/OnboardingWizard'))
 
 function ErrorBoundary() {
   const error = useRouteError()
@@ -60,19 +60,6 @@ function ErrorBoundary() {
       </div>
     </div>
   )
-}
-
-function RequireAuth({ children, roles }: { children: ReactNode; roles?: string[] }) {
-  const { token, user } = useAuthStore()
-  if (!token) return <Navigate to="/auth/login" replace />
-  if (roles && user?.roles?.length) {
-    const userRolesLower = user.roles.map((ur: string) => ur.toLowerCase())
-    const hasRequiredRole = roles.some((r) => userRolesLower.includes(r.toLowerCase()))
-    if (!hasRequiredRole) {
-      return <Navigate to="/" replace />
-    }
-  }
-  return <>{children}</>
 }
 
 export const router = createBrowserRouter([
@@ -122,6 +109,7 @@ export const router = createBrowserRouter([
       { path: '/profile', element: <Profile /> },
       { path: '/profile/posts', element: <MyPostsPage /> },
       { path: '/profile/upgrade', element: <UpgradeToBusiness /> },
+      { path: '/profile/kyc', element: <KycVerification /> },
     ],
   },
   // Business routes (auth required)
