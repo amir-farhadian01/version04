@@ -41,3 +41,14 @@
 | 2026-08-27 | Flutter release regression | analyze 0 issues; 7/7 tests; configured release web build | PARTIAL | API URL, draft submit route, and draft payload fixed; dashboard stats/active/completed contract remains unresolved |
 | 2026-08-27 | Dependency audit | Root production and frontend audits | PASS | Online npm audit reported 0 vulnerabilities for both trees |
 | 2026-08-27 | CI workflow injection | YAML parse, output-interpolation scan, `git diff --check` | PASS | PR-controlled output moved from executable `github-script` source to environment variables; actionlint unavailable |
+| 2026-09-20 | Slice A integration proof | `git diff f92bcaf HEAD` on Slice A files byte-identical (only `auth.security.test.ts` +12 later lines); patch-id differs solely by prescribed `.env.example` overlap resolution; focused security tests 14/14 | PASS | Slice A present as `c2a6738`; no re-cherry-pick needed |
+| 2026-09-20 | Worktree conversion to commits | 9 atomic commits `d53a750..42692d3` (apiError, KYC flow, RequireAuth, lazy routes, admin, business, public typing, e2e tokens, governance docs) | PASS | Every commit: explicit staging, `git diff --cached --check`, secret scan clean |
+| 2026-09-20 | Backend lint + typecheck | `npm run lint` (0 errors, 1 pre-existing protected chat warning), `npm run typecheck` on Node 22.14.0 | PASS | — |
+| 2026-09-20 | Backend tests | `npm test`: 47 files, 482/482 tests on Node 22.14.0 | PASS | — |
+| 2026-09-20 | Prisma schema + migration deploy | `prisma validate` PASS; `prisma migrate deploy` on disposable PostgreSQL 16 (port 55433, data under /tmp): all 66 migrations applied, 81 public tables | PASS | Disposable cluster only — no staging/production data touched |
+| 2026-09-20 | Frontend unit + lint + build | vitest 12 files 92/92; eslint 0 errors; `tsc && vite build` PASS with code-split chunks | PASS | — |
+| 2026-09-20 | Admin build | `npm run build:admin` (tsc + vite) | PASS | — |
+| 2026-09-20 | Flutter analyze + tests | `flutter analyze` 0 issues; `flutter test` 14/14 incl. native disk-cache test after user-space `LD_LIBRARY_PATH` sqlite 3.53.4 (temp under /tmp) | PASS | Environment gap (absent system libsqlite3) resolved without sudo |
+| 2026-09-20 | Playwright customer-dashboard (mocked) | 11/11 chromium | PASS | Spec now aligned to canonical `nh-*` tokens and `/app/orders` route |
+| 2026-09-20 | Playwright full suite | Partial run: 32 PASS / 21 FAIL at cutoff; failures are backend/API-dependent specs timing out (~16s) with no staging API | FAIL (environment) | Consistent with documented staging-API absence; not a frontend regression |
+| 2026-09-20 | Dependency audits + manifest | `npm audit --omit=dev` root and frontend: 0 vulnerabilities; `npm run release:manifest-check` PASS | PASS | — |

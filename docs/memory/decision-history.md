@@ -82,3 +82,21 @@ Append-only log. Never delete entries; supersede them.
 - **Decision:** (1) Moved `screens/explorer/story_screen.dart` → `features/story/story_screen.dart` via `git mv`. (2) Fetched the story from `GET /api/stories/:id` (not `/api/social/stories/:id`, which does not exist) and rendered media with `CachedNetworkImage` (`ImageCacheConfig.manager`). (3) Read the fields the backend actually returns — `mediaUrl`/`thumbnailUrl` strings + `author.displayName`/`caption`, not a `media[]` array. (4) Wired FeedScreen's `StoriesRow` with `onAddStory: () => Navigator.pushNamed(context, '/create-story')` and added a `/create-story` placeholder route in `main.dart`.
 - **Alternatives rejected:** The task's literal spec (`GET /social/stories/${storyId}` → `result['data']` → `_story['media'][0]['url']`) — rejected because the real single-story endpoint lives in `routes/stories.ts` (mounted at `/api/stories`), returns the story directly with no `data` wrapper, and the Story model has `mediaUrl`/`thumbnailUrl` strings; the literal spec would always render the "no image" fallback.
 - **Rationale:** Verification passed — `flutter analyze` reports 0 errors in the touched files (only pre-existing warnings/infos elsewhere), and `grep -r "screens/explorer/story" flutter_project/lib/` returns no matches.
+
+## [2026-09-20] Security Slice A — verified as already integrated; no re-cherry-pick
+- **Goal:** CEO-ordered integration of Slice A (`f92bcaf` fix(auth): close critical authentication vulnerabilities).
+- **Decision:** Verified Slice A is already present on `chore/issue-4-visual-sync` as commit `c2a6738` with the `.env.example` overlap resolved exactly per the CEO matrix (placeholders preserved; `JWT_REFRESH_SECRET=` and `APPLE_CLIENT_ID=` added). Evidence: Slice A files byte-identical between `f92bcaf` and HEAD (only `routes/auth.security.test.ts` carries +12 lines of later legitimate work); patch-ids differ solely by the prescribed `.env.example` hunk; focused security tests 14/14 PASS on Node 22. Re-cherry-picking would only conflict on the already-resolved `.env.example` hunk.
+- **Alternatives rejected:** Blind cherry-pick of `f92bcaf` (rejected — redundant, guarantees an `.env.example` conflict, and risks duplicating `validateJwtSecrets()` wiring); manual reimplementation (rejected — forbidden by CEO instruction).
+- **Rationale:** Patch-equivalence plus targeted test evidence is the cheapest, safest proof of integration.
+
+## [2026-09-20] Mixed worktree converted to 9 atomic commits, not one bulk commit
+- **Goal:** Convert legitimate worktree changes into reviewable history before release gates.
+- **Decision:** Committed `d53a750..42692d3` in dependency order (apiError helper → KYC flow → RequireAuth extraction → lazy routes/router → admin pages → business recovery → public typing → e2e tokens → governance docs), each with explicit file staging, `git diff --cached --check`, and a secret scan. Unrelated generated artifacts were excluded; `git add -A`/`.` never used.
+- **Alternatives rejected:** One bulk commit (rejected — unreviewable and mixes concerns); splitting page typing cleanups from the pages that import them (rejected — would create commits that don't typecheck).
+- **Rationale:** Atomic, dependency-ordered commits keep every intermediate state buildable and map 1:1 to review units.
+
+## [2026-09-20] Release gates standardized on Node 22.14.0; disposable local PostgreSQL 16 for migration proof
+- **Goal:** Run all release gates without touching staging/production.
+- **Decision:** All gates run under nvm Node 22.14.0 (matches release manifest). Migration gate executed via `prisma migrate deploy` against a disposable PostgreSQL 16 cluster (data + socket under `/tmp`, port 55433, destroyed after run) — 66 migrations, 81 tables. Flutter native SQLite test satisfied with a user-space `LD_LIBRARY_PATH` pointing at sqlite 3.53.4 extracted from the distro `.deb` into `/tmp` (no sudo, no system change).
+- **Alternatives rejected:** Docker staging stack (rejected — daemon historically flaky and staging migration needs user approval); global apt install of libsqlite3-dev (rejected — requires root, mutates the system).
+- **Rationale:** Temp, user-space infrastructure satisfies the evidence requirement without any irreversible action.
