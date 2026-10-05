@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "stagingBuilds": [
+    {
+      "id": "candidate-2026-10-05-g006-g007",
+      "status": "candidate",
+      "createdAt": "2026-10-05",
+      "testedShaBaseline": "f16eef174ed733ec2589de8a7e864953bc401b34",
+      "gitSha": null,
+      "gitShaReason": "Assigned by CI from the pushed commit at image-build time; a commit cannot contain its own SHA.",
+      "migrations": {
+        "latest": "20261004120000_align_schema_with_models",
+        "count": 67
+      },
+      "tests": {
+        "status": "pass",
+        "evidencePath": "docs/launch/evidence/2026-10-05-g006-g007-verification.md"
+      },
+      "migrationRehearsal": {
+        "freshInstall": "pass",
+        "upgradeRehearsal": "pass",
+        "driftCheck": "pass",
+        "note": "Data-preserving revision (2026-10-05): fresh deploy x2 = pass with empty drift; upgrade rehearsal from the 66-migration legacy state with legacy-shaped data (4 posts covering all moderation statuses, 3 comments with legacy userId, 3 media rows image/video, 4 reactions, 3 services incl. fractional 49.5/89.99) asserted value+relation preservation: authorId backfilled from userId before NOT NULL, moderationStatus/media type converted in place, reactions archived verbatim in _legacy_PostReaction, exact fractional prices archived in _legacy_Service_prices under the whole-dollar contract; idempotent re-run x2 = pass; drift after upgrade = the two documented tombstone tables only; an unknown moderationStatus value hard-stops the migration with data intact and is recoverable via migrate resolve --rolled-back."
+      },
+      "targetEnvironment": "staging",
+      "deployedAt": null,
+      "imageDigest": null,
+      "imageDigestReason": "No Docker image has been built or published for this candidate yet; deployment requires explicit user approval.",
+      "rollbackRehearsal": null,
+      "observed": {
+        "node": "20.20.2",
+        "npm": "10.8.2",
+        "postgresql": "16.14",
+        "prisma": "5.22.0",
+        "note": "Local WSL test environment. Required toolchain (manifest/CI/Docker) pins Node 22.14.0 and postgres:16.8-alpine; observed minor versions differ but satisfy the required major versions."
+      }
+    }
+  ]
+}
+

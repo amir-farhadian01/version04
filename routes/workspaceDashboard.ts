@@ -37,7 +37,6 @@ router.get('/:workspaceId/dashboard', authenticate, async (req: AuthRequest, res
       recentOrders,
       staffMembers,
       financeData,
-      revenueThisMonth,
     ] = await Promise.all([
       // Active orders count (contracted, paid, in_progress)
       prisma.order.count({
@@ -139,17 +138,6 @@ router.get('/:workspaceId/dashboard', authenticate, async (req: AuthRequest, res
       // Finance data
       buildProviderWorkspaceFinance(workspaceId),
 
-      // Revenue this month
-      prisma.order.aggregate({
-        where: {
-          matchedWorkspaceId: workspaceId,
-          status: { in: ['completed', 'closed'] },
-          updatedAt: { gte: startOfThisMonth },
-        },
-        _sum: {
-          // We'll use the orderContract amount via the finance builder
-        },
-      }),
     ]);
 
     // Calculate revenue this month from finance data
@@ -329,7 +317,11 @@ router.get('/:workspaceId/finance', authenticate, async (req: AuthRequest, res: 
 
     res.json({
       ...financeData,
-      pipeline,
+      pipeline: pipelineStatuses.map((s) => ({
+        status: s,
+        count: pipeline[s].count,
+        total: pipeline[s].amount,
+      })),
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';

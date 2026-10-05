@@ -17,7 +17,7 @@ export default defineConfig({
     environment: 'jsdom',
     testTimeout: 15_000,
     hookTimeout: 15_000,
-    include: ['src/**/*.test.{ts,tsx}', 'routes/**/*.test.{ts,tsx}', 'lib/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'routes/**/*.test.{ts,tsx}', 'lib/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,tsx,mjs}'],
     pool: 'forks',
   },
 });

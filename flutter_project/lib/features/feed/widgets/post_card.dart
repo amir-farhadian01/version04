@@ -150,7 +150,8 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
     final saveCount = (widget.post['saveCount'] ?? 0) as int;
     final media = (widget.post['media'] as List<dynamic>?) ?? [];
     final hasImage = media.isNotEmpty;
-    final createdAt = widget.post['publishedAt'] ?? widget.post['createdAt'] ?? '';
+    final createdAt =
+        widget.post['publishedAt'] ?? widget.post['createdAt'] ?? '';
     final postId = widget.post['id'] as String? ?? '';
     final timeAgo = _formatTimeAgo(createdAt is String ? createdAt : '');
     final isBusiness = (widget.post['isBusinessPost'] as bool?) ?? false;
@@ -171,8 +172,15 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
             children: [
               // Header
               _buildHeader(
-                context, authorName, authorInitial, avatarUrl,
-                authorId, categoryName, timeAgo, isBusiness, isOwnPost,
+                context,
+                authorName,
+                authorInitial,
+                avatarUrl,
+                authorId,
+                categoryName,
+                timeAgo,
+                isBusiness,
+                isOwnPost,
               ),
 
               // Media with double-tap
@@ -251,7 +259,14 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                 ),
 
               // Action bar
-              _buildActionBar(context, postId, authorId, likeCount, commentCount, saveCount),
+              _buildActionBar(
+                context,
+                postId,
+                authorId,
+                likeCount,
+                commentCount,
+                saveCount,
+              ),
             ],
           ),
         ),
@@ -262,9 +277,11 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
             child: IgnorePointer(
               child: Center(
                 child: AnimatedBuilder(
-                  animation: Listenable.merge([_heartScaleController, _heartFadeController]),
+                  animation: Listenable.merge([
+                    _heartScaleController,
+                    _heartFadeController,
+                  ]),
                   builder: (context, child) {
-                    final scale = 0.5 + (_heartScaleController.value * 0.7);
                     final opacity = 1.0 - _heartFadeController.value;
                     // Pulse: grow then shrink
                     final pulseScale = _heartScaleController.value < 0.5
@@ -273,7 +290,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                     return Opacity(
                       opacity: opacity.clamp(0.0, 1.0),
                       child: Transform.scale(
-                        scale: _heartScaleController.value < 0.5 ? pulseScale : 1.0,
+                        scale: _heartScaleController.value < 0.5
+                            ? pulseScale
+                            : 1.0,
                         child: const Icon(
                           Icons.favorite,
                           color: Colors.white,
@@ -364,7 +383,11 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                     ),
                     if (isBusiness) ...[
                       const SizedBox(width: 4),
-                      const Icon(Icons.verified, size: 12, color: AppColors.primary),
+                      const Icon(
+                        Icons.verified,
+                        size: 12,
+                        color: AppColors.primary,
+                      ),
                     ],
                     const SizedBox(width: 6),
                     Text(
@@ -382,7 +405,11 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
           // Three-dot menu
           GestureDetector(
             onTap: _showPostMenu,
-            child: const Icon(Icons.more_horiz, color: AppColors.text2, size: 20),
+            child: const Icon(
+              Icons.more_horiz,
+              color: AppColors.text2,
+              size: 20,
+            ),
           ),
         ],
       ),
@@ -390,7 +417,6 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
   }
 
   Widget _buildMedia(Map<String, dynamic> mediaItem) {
-    final type = mediaItem['type'] as String? ?? 'image';
     final url = mediaItem['url'] as String? ?? '';
     if (url.isEmpty) return const SizedBox.shrink();
 
@@ -402,7 +428,7 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
         width: double.infinity,
         height: double.infinity,
         memCacheWidth: ImageCacheConfig.postMediaCacheWidth,
-        placeholder: (_, __) => Container(
+        placeholder: (_, _) => Container(
           color: AppColors.border2.withValues(alpha: 0.1),
           child: const Center(
             child: CircularProgressIndicator(
@@ -411,10 +437,14 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
             ),
           ),
         ),
-        errorWidget: (_, __, ___) => Container(
+        errorWidget: (_, _, _) => Container(
           color: AppColors.border2.withValues(alpha: 0.1),
           child: const Center(
-            child: Icon(Icons.broken_image_outlined, color: AppColors.text3, size: 32),
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: AppColors.text3,
+              size: 32,
+            ),
           ),
         ),
       ),
@@ -435,7 +465,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
         children: [
           // Like
           _buildActionButton(
-            icon: widget.state.isLiked ? Icons.favorite : Icons.favorite_outline,
+            icon: widget.state.isLiked
+                ? Icons.favorite
+                : Icons.favorite_outline,
             color: widget.state.isLiked ? AppColors.red : AppColors.text2,
             count: likeCount,
             isLoading: widget.state.isTogglingLike,
@@ -453,7 +485,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
           const SizedBox(width: 16),
           // Save / Bookmark
           _buildActionButton(
-            icon: widget.state.isSaved ? Icons.bookmark : Icons.bookmark_outline,
+            icon: widget.state.isSaved
+                ? Icons.bookmark
+                : Icons.bookmark_outline,
             color: widget.state.isSaved ? AppColors.accent : AppColors.text2,
             count: saveCount,
             isLoading: widget.state.isTogglingSave,
@@ -466,7 +500,10 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
             GestureDetector(
               onTap: widget.callbacks.onBookNow,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFFFF7A2B), Color(0xFFFF5722)],
@@ -562,88 +599,95 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
             Expanded(
               child: widget.isLoadingComments
                   ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     )
                   : widget.comments.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No comments yet.\nBe the first to comment!',
-                            style: TextStyle(color: AppColors.text3, fontSize: 13),
-                            textAlign: TextAlign.center,
-                          ),
-                        )
-                      : ListView.builder(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: widget.comments.length,
-                          itemBuilder: (ctx, i) {
-                            final comment = widget.comments[i];
-                            final commentAuthor = comment['author'] as Map<String, dynamic>? ?? {};
-                            final commentAuthorName = (commentAuthor['displayName'] ?? 'User') as String;
-                            final commentText = comment['text'] as String? ?? '';
-                            final commentAvatar = commentAuthor['avatarUrl'] as String?;
-                            final commentTime = comment['createdAt'] as String? ?? '';
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CircleAvatar(
-                                    radius: 14,
-                                    backgroundColor: AppColors.border2,
-                                    backgroundImage: commentAvatar != null
-                                        ? CachedNetworkImageProvider(commentAvatar)
-                                        : null,
-                                    child: commentAvatar == null
-                                        ? Text(
-                                            commentAuthorName.characters.first.toUpperCase(),
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppColors.accent,
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        RichText(
-                                          text: TextSpan(
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: AppColors.text,
-                                            ),
-                                            children: [
-                                              TextSpan(
-                                                text: commentAuthorName,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              const TextSpan(text: ' '),
-                                              TextSpan(text: commentText),
-                                            ],
-                                          ),
+                  ? const Center(
+                      child: Text(
+                        'No comments yet.\nBe the first to comment!',
+                        style: TextStyle(color: AppColors.text3, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: widget.comments.length,
+                      itemBuilder: (ctx, i) {
+                        final comment = widget.comments[i];
+                        final commentAuthor =
+                            comment['author'] as Map<String, dynamic>? ?? {};
+                        final commentAuthorName =
+                            (commentAuthor['displayName'] ?? 'User') as String;
+                        final commentText = comment['text'] as String? ?? '';
+                        final commentAvatar =
+                            commentAuthor['avatarUrl'] as String?;
+                        final commentTime =
+                            comment['createdAt'] as String? ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: AppColors.border2,
+                                backgroundImage: commentAvatar != null
+                                    ? CachedNetworkImageProvider(commentAvatar)
+                                    : null,
+                                child: commentAvatar == null
+                                    ? Text(
+                                        commentAuthorName.characters.first
+                                            .toUpperCase(),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.accent,
                                         ),
-                                        if (commentTime.isNotEmpty)
-                                          Text(
-                                            _formatTimeAgo(commentTime),
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    RichText(
+                                      text: TextSpan(
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.text,
+                                        ),
+                                        children: [
+                                          TextSpan(
+                                            text: commentAuthorName,
                                             style: const TextStyle(
-                                              fontSize: 11,
-                                              color: AppColors.text3,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
-                                      ],
+                                          const TextSpan(text: ' '),
+                                          TextSpan(text: commentText),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                    if (commentTime.isNotEmpty)
+                                      Text(
+                                        _formatTimeAgo(commentTime),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: AppColors.text3,
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            );
-                          },
-                        ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
             ),
             const Divider(color: AppColors.border, height: 1),
             // Comment input
@@ -654,13 +698,22 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
                   Expanded(
                     child: TextField(
                       controller: _commentController,
-                      style: const TextStyle(color: AppColors.text, fontSize: 14),
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 14,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Add a comment...',
-                        hintStyle: const TextStyle(color: AppColors.text3, fontSize: 14),
+                        hintStyle: const TextStyle(
+                          color: AppColors.text3,
+                          fontSize: 14,
+                        ),
                         filled: true,
                         fillColor: AppColors.card,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide.none,
@@ -703,7 +756,9 @@ class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
 
   // ── Post Menu (Report, Block, Edit, Delete) ──
   Widget _buildPostMenu(BuildContext context) {
-    final isOwnPost = (widget.post['author'] as Map<String, dynamic>?)?['id'] == _currentUserId();
+    final isOwnPost =
+        (widget.post['author'] as Map<String, dynamic>?)?['id'] ==
+        _currentUserId();
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,

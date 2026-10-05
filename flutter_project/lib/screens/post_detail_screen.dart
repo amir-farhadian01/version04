@@ -102,7 +102,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.bg : AppColorsLight.bg;
     final textColor = isDark ? AppColors.text : AppColorsLight.text;
-    final text2 = isDark ? AppColors.text2 : AppColorsLight.text2;
 
     if (_loading) {
       return Scaffold(
@@ -193,7 +192,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     if (media.isNotEmpty)
                       ClipRRect(
                         child: CachedNetworkImage(
-                          imageUrl: (media.first as Map<String, dynamic>)['url'] as String? ?? '',
+                          imageUrl:
+                              (media.first as Map<String, dynamic>)['url']
+                                  as String? ??
+                              '',
                           width: double.infinity,
                           fit: BoxFit.cover,
                           cacheManager: ImageCacheConfig.manager,
@@ -202,8 +204,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             color: AppColors.border2.withValues(alpha: 0.2),
                             child: const Center(
                               child: SizedBox(
-                                width: 24, height: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primary,
+                                ),
                               ),
                             ),
                           ),
@@ -211,7 +217,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             height: 280,
                             color: AppColors.border2.withValues(alpha: 0.2),
                             child: const Center(
-                              child: Icon(Icons.broken_image, size: 48, color: AppColors.text3),
+                              child: Icon(
+                                Icons.broken_image,
+                                size: 48,
+                                color: AppColors.text3,
+                              ),
                             ),
                           ),
                         ),
@@ -221,7 +231,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         height: 280,
                         color: AppColors.border2.withValues(alpha: 0.2),
                         child: const Center(
-                          child: Icon(Icons.image, size: 64, color: AppColors.text3),
+                          child: Icon(
+                            Icons.image,
+                            size: 64,
+                            color: AppColors.text3,
+                          ),
                         ),
                       ),
 
@@ -299,20 +313,27 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           GestureDetector(
                             onTap: _toggleLike,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
-                color: isLiked
-                    ? AppColors.red.withValues(alpha: 0.1)
-                    : Colors.transparent,
+                                color: isLiked
+                                    ? AppColors.red.withValues(alpha: 0.1)
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    isLiked ? Icons.favorite : Icons.favorite_border,
+                                    isLiked
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
                                     size: 18,
-                                    color: isLiked ? AppColors.red : AppColors.text3,
+                                    color: isLiked
+                                        ? AppColors.red
+                                        : AppColors.text3,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
@@ -320,7 +341,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: isLiked ? AppColors.red : AppColors.text2,
+                                      color: isLiked
+                                          ? AppColors.red
+                                          : AppColors.text2,
                                     ),
                                   ),
                                 ],
@@ -336,14 +359,21 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                               arguments: widget.postId,
                             ),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.chat_bubble_outline, size: 18, color: AppColors.text3),
+                                  const Icon(
+                                    Icons.chat_bubble_outline,
+                                    size: 18,
+                                    color: AppColors.text3,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     commentCount.toString(),
@@ -362,7 +392,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           GestureDetector(
                             onTap: _toggleSave,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: isSaved
                                     ? AppColors.warn.withValues(alpha: 0.1)
@@ -373,9 +406,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    isSaved ? Icons.bookmark : Icons.bookmark_border,
+                                    isSaved
+                                        ? Icons.bookmark
+                                        : Icons.bookmark_border,
                                     size: 18,
-                                    color: isSaved ? AppColors.warn : AppColors.text3,
+                                    color: isSaved
+                                        ? AppColors.warn
+                                        : AppColors.text3,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
@@ -383,7 +420,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: isSaved ? AppColors.warn : AppColors.text2,
+                                      color: isSaved
+                                          ? AppColors.warn
+                                          : AppColors.text2,
                                     ),
                                   ),
                                 ],

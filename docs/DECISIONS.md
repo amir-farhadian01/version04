@@ -820,3 +820,12 @@ STRIPE_CONNECT_CLIENT_ID=ca_...     # Stripe Connect client ID (for onboarding)
 3. **Backend API:** Verified `GET /api/social/posts/feed` already supports `page`, `pageSize`, `city`, `lat`, `lng`, `radiusKm`, `categoryId`, `sort`, `businessOnly`, `followingOnly` parameters — no backend changes needed.
 
 **Consequences:** ✅ Infinite scroll works via IntersectionObserver (React) and ScrollController (Flutter); ✅ Pull-to-refresh on both surfaces; ✅ Skeleton cards match real card layout; ✅ Lazy images via native `loading="lazy"` (React) and `Image.network` loadingBuilder (Flutter); ✅ Empty/error/loading states on both surfaces; ✅ TypeScript strict mode passes; ✅ Flutter analyze passes (0 issues); ✅ Backend pagination API confirmed correct; ✅ Location filter (city) and interest filter (categoryId) already supported by existing FeedFilters component; ✅ All screenshots taken on both surfaces at desktop and mobile (375px); ✅ Zero console errors on both surfaces; ❌ No Playwright interaction tests for scroll/pull-refresh (requires authenticated session with data).
+
+---
+
+## ADR-0081 — Retain Explore.tsx in React Router
+**Date:** 2026-08-16 **Status:** Accepted
+**Context:** `plans/react-flutter-visual-sync-plan.md` Phase 4 proposed restructuring Explore.tsx to match Flutter's SocialScreen. During the 2026-08-16 review, `frontend/src/app/router.tsx` was found to reference `Explore` at 6 active routes: `/explore`, `/social`, `/explorer`, `/explorer/general`, `/explorer/business`, `/app/social`. Deleting or renaming the file would break routing.
+**Decision:** Retain `Explore.tsx` at its current path. The plan target for the Social/Explore screen is `BusinessPage.tsx` (not `BusinessProfileScreen`). No file rename or delete is performed.
+**Consequences:** ✅ No routing breakage ✅ BusinessPage.tsx name accepted as canonical ❌ Full visual parity with Flutter SocialScreen deferred to a future implementation sprint.
+

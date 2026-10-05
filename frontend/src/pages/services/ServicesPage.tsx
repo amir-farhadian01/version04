@@ -109,7 +109,7 @@ export default function ServicesPage() {
             orders={orders}
             facets={facets}
             onNavigate={(orderId) => navigate(`/orders/${orderId}`)}
-            onCreateOrder={() => navigate('/order/new')}
+            onCreateOrder={() => navigate('/explore')}
           />
         )}
         {activeTab === 'orders' && (

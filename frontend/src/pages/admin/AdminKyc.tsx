@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../../lib/api'
+import { apiErrorMessage } from '../../lib/apiError'
 import { Shield, Search, CheckCircle2, XCircle, Clock, RefreshCw, Building2, UserCheck, User } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -12,18 +13,20 @@ type KycResponse<T> = {
   total: number
   rows: T[]
 }
+type KycUser = { id?: string; email?: string; displayName?: string; declaredLegalName?: string }
+type KycRow = { id: string; status: string; submittedAt?: string; createdAt?: string; updatedAt: string; declaredLegalName?: string; user?: KycUser; company?: { name?: string } } & KycUser
 
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function AdminKyc() {
   const [tab, setTab] = useState<KycTab>('personal')
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<KycRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
 
-  const fetchKyc = async () => {
+  const fetchKyc = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -36,17 +39,17 @@ export default function AdminKyc() {
       else if (tab === 'business') endpoint = '/admin/kyc/business'
       else endpoint = '/admin/kyc/level0'
 
-      const res = await api.get<KycResponse<any>>(endpoint, { params })
+      const res = await api.get<KycResponse<KycRow>>(endpoint, { params })
       setItems(res.data.rows ?? [])
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to load KYC submissions')
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to load KYC submissions'))
       setItems([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [search, statusFilter, tab])
 
-  useEffect(() => { fetchKyc() }, [tab, statusFilter])
+  useEffect(() => { fetchKyc() }, [fetchKyc])
 
   const filtered = search
     ? items.filter((k) => {
@@ -79,9 +82,9 @@ export default function AdminKyc() {
   }
 
   const tabs: { key: KycTab; label: string; icon: React.ReactNode }[] = [
-    { key: 'personal', label: 'Personal', icon: <User className="h-4 w-4" /> },
-    { key: 'business', label: 'Business', icon: <Building2 className="h-4 w-4" /> },
-    { key: 'level0', label: 'Level 0', icon: <UserCheck className="h-4 w-4" /> },
+    { key: 'level0', label: 'Level 1', icon: <UserCheck className="h-4 w-4" /> },
+    { key: 'personal', label: 'Level 2', icon: <User className="h-4 w-4" /> },
+    { key: 'business', label: 'Level 3', icon: <Building2 className="h-4 w-4" /> },
   ]
 
   return (
@@ -136,9 +139,8 @@ export default function AdminKyc() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-xl border border-[#2a2f4a] bg-[#1e2235] px-4 py-2.5 text-sm text-[#f0f2ff] outline-none transition-all focus:border-[#2b6eff]"
         >
-          <option value="">All Status</option>
+          <option value="all">All Status</option>
           <option value="pending">Pending</option>
-          <option value="submitted">Submitted</option>
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
         </select>
@@ -176,7 +178,7 @@ export default function AdminKyc() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#2a2f4a]">
-                {filtered.map((item: any) => {
+                {filtered.map((item) => {
                   const user = item.user ?? item
                   const displayName = user.displayName ?? user.declaredLegalName ?? user.email ?? '—'
                   const email = user.email ?? ''
@@ -207,7 +209,7 @@ export default function AdminKyc() {
                       )}
                       <td className="px-4 py-3">{statusBadge(item.status)}</td>
                       <td className="px-4 py-3 text-sm text-[#6a6e88]">
-                        {new Date(item.submittedAt ?? item.createdAt).toLocaleDateString()}
+                        {new Date(item.submittedAt ?? item.createdAt ?? item.updatedAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3 text-sm text-[#6a6e88]">
                         {new Date(item.updatedAt).toLocaleDateString()}

@@ -2,9 +2,40 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import prisma from '../lib/db.js';
-import { OrderPhase } from '@prisma/client';
 
 const router = Router();
+const GUEST_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const ephemeralGuestTokenSecret = crypto.randomBytes(32).toString('base64url');
+
+function guestTokenSecret(): string {
+  return process.env.JWT_SECRET || ephemeralGuestTokenSecret;
+}
+
+export function createGuestTrackingToken(userId: string, now = Date.now()): string {
+  const payload = Buffer.from(`${userId}:${now + GUEST_TOKEN_TTL_MS}`).toString('base64url');
+  const signature = crypto.createHmac('sha256', guestTokenSecret()).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+export function verifyGuestTrackingToken(token: string, now = Date.now()): string | null {
+  const [payload, suppliedSignature, extra] = token.split('.');
+  if (!payload || !suppliedSignature || extra) return null;
+  const expectedSignature = crypto
+    .createHmac('sha256', guestTokenSecret())
+    .update(payload)
+    .digest('base64url');
+  const supplied = Buffer.from(suppliedSignature);
+  const expected = Buffer.from(expectedSignature);
+  if (supplied.length !== expected.length || !crypto.timingSafeEqual(supplied, expected)) return null;
+
+  const decoded = Buffer.from(payload, 'base64url').toString('utf8');
+  const separator = decoded.lastIndexOf(':');
+  if (separator < 1) return null;
+  const userId = decoded.slice(0, separator);
+  const expiresAt = Number(decoded.slice(separator + 1));
+  if (!Number.isSafeInteger(expiresAt) || expiresAt <= now) return null;
+  return userId;
+}
 
 // In-memory store for guest wizard prefill (TTL-based, not for production)
 // In production, use Redis with TTL
@@ -129,10 +160,7 @@ router.post('/checkout', async (req: Request, res: Response, next: NextFunction)
       },
     });
 
-    // ── Generate a simple guest token ──────────────────────────────────────
-    // In production, this should be a signed JWT. For now, a base64-encoded
-    // userId:timestamp is sufficient for basic order tracking.
-    const guestToken = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+    const guestToken = createGuestTrackingToken(user.id);
 
     res.status(201).json({
       data: {
@@ -155,27 +183,13 @@ router.post('/checkout', async (req: Request, res: Response, next: NextFunction)
  * GET /api/guest/orders/:token
  * Track a guest order using the guest token.
  *
- * The token is a base64-encoded string containing `userId:timestamp`.
+ * The token is signed and expires after seven days.
  */
 router.get('/orders/:token', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { token } = req.params;
 
-    let decoded: string;
-    try {
-      decoded = Buffer.from(token, 'base64').toString('utf-8');
-    } catch {
-      res.status(400).json({ error: 'Invalid token format' });
-      return;
-    }
-
-    const colonIdx = decoded.indexOf(':');
-    if (colonIdx === -1) {
-      res.status(400).json({ error: 'Invalid token' });
-      return;
-    }
-
-    const userId = decoded.slice(0, colonIdx);
+    const userId = verifyGuestTrackingToken(token);
     if (!userId) {
       res.status(400).json({ error: 'Invalid token' });
       return;

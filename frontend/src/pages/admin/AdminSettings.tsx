@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../lib/api'
+import { apiErrorMessage } from '../../lib/apiError'
 import { RefreshCw, Save } from 'lucide-react'
 
 type SystemConfig = {
@@ -31,8 +32,8 @@ export default function AdminSettings() {
       setTaxRate(res.data.taxRate ?? 0)
       setCommissionRate(res.data.commissionRate ?? 0)
       setPaymentMethods((res.data.paymentMethods ?? []).join(', '))
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to load config')
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to load config'))
     } finally {
       setLoading(false)
     }
@@ -54,8 +55,8 @@ export default function AdminSettings() {
       setConfig(res.data)
       setSuccess('Settings saved successfully')
       setTimeout(() => setSuccess(null), 3000)
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to save config')
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to save config'))
     } finally {
       setSaving(false)
     }

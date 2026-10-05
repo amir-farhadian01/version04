@@ -36,26 +36,6 @@ const paymentSettingsSchema = z.object({
 // Helpers
 // ---------------------------------------------------------------------------
 
-function serializeTransaction(t: Record<string, unknown>) {
-  return {
-    id: t.id,
-    date: (t.createdAt as Date).toISOString(),
-    orderId: t.orderId,
-    serviceName: (t.serviceCatalog as Record<string, unknown>)?.name ?? (t.matchedPackage as Record<string, unknown>)?.name ?? null,
-    packageName: (t.matchedPackage as Record<string, unknown>)?.name ?? null,
-    clientName: (t.customer as Record<string, unknown>)?.displayName ?? null,
-    clientId: t.customerId,
-    staffName: (t.matchedProvider as Record<string, unknown>)?.displayName ?? null,
-    staffId: t.matchedProviderId,
-    amount: t.amount ?? 0,
-    commission: t.commission ?? 0,
-    net: (Number(t.amount ?? 0)) - (Number(t.commission ?? 0)),
-    paymentRef: (t.payment as Record<string, unknown>)?.stripePaymentIntentId ?? null,
-    status: (t.payment as Record<string, unknown>)?.status ?? null,
-    paymentMethod: (t.payment as Record<string, unknown>)?.method ?? null,
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------

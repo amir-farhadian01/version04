@@ -59,10 +59,12 @@ class MultiWorkspaceScheduleWidget extends StatefulWidget {
   });
 
   @override
-  State<MultiWorkspaceScheduleWidget> createState() => _MultiWorkspaceScheduleWidgetState();
+  State<MultiWorkspaceScheduleWidget> createState() =>
+      _MultiWorkspaceScheduleWidgetState();
 }
 
-class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWidget> {
+class _MultiWorkspaceScheduleWidgetState
+    extends State<MultiWorkspaceScheduleWidget> {
   List<ScheduleBlock> _blocks = [];
   List<StaffWorkspace> _workspaces = [];
   bool _loading = true;
@@ -87,17 +89,28 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _rangeStart = widget.initialFrom ?? DateTime(now.year, now.month, now.day).subtract(const Duration(days: 1));
+    _rangeStart =
+        widget.initialFrom ??
+        DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(const Duration(days: 1));
     _rangeEnd = widget.initialTo ?? _rangeStart.add(const Duration(days: 7));
     _loadSchedule();
   }
 
   Future<void> _loadSchedule() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final from = _rangeStart.toUtc().toIso8601String();
       final to = _rangeEnd.toUtc().toIso8601String();
-      final response = await ApiService().get('/staff/${widget.staffId}/availability?from=$from&to=$to');
+      final response = await ApiService().get(
+        '/staff/${widget.staffId}/availability?from=$from&to=$to',
+      );
       final data = response['data'] as Map<String, dynamic>?;
 
       if (mounted) {
@@ -106,7 +119,10 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
 
         setState(() {
           _blocks = rawBlocks.map((b) {
-            final ws = (b as Map<String, dynamic>)['workspace'] as Map<String, dynamic>? ?? {};
+            final ws =
+                (b as Map<String, dynamic>)['workspace']
+                    as Map<String, dynamic>? ??
+                {};
             return ScheduleBlock(
               id: b['id']?.toString() ?? '',
               startAt: DateTime.parse(b['startAt'].toString()),
@@ -120,7 +136,10 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
           }).toList();
 
           _workspaces = rawWorkspaces.map((w) {
-            final c = (w as Map<String, dynamic>)['company'] as Map<String, dynamic>? ?? {};
+            final c =
+                (w as Map<String, dynamic>)['company']
+                    as Map<String, dynamic>? ??
+                {};
             return StaffWorkspace(
               id: w['id']?.toString() ?? c['id']?.toString() ?? '',
               name: c['name']?.toString() ?? w['name']?.toString() ?? 'Unknown',
@@ -172,10 +191,12 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
 
         // Schedule content
         if (_loading)
-          const Center(child: Padding(
-            padding: EdgeInsets.all(40),
-            child: CircularProgressIndicator(),
-          ))
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: CircularProgressIndicator(),
+            ),
+          )
         else if (_error != null)
           _buildErrorState()
         else if (_blocks.isEmpty)
@@ -217,8 +238,14 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
         // View mode toggle
         SegmentedButton<int>(
           segments: const [
-            ButtonSegment(value: 0, label: Text('Week', style: TextStyle(fontSize: 12))),
-            ButtonSegment(value: 1, label: Text('Day', style: TextStyle(fontSize: 12))),
+            ButtonSegment(
+              value: 0,
+              label: Text('Week', style: TextStyle(fontSize: 12)),
+            ),
+            ButtonSegment(
+              value: 1,
+              label: Text('Day', style: TextStyle(fontSize: 12)),
+            ),
           ],
           selected: {_viewMode},
           onSelectionChanged: (v) => setState(() => _viewMode = v.first),
@@ -240,9 +267,9 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -253,7 +280,14 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
               const SizedBox(width: 6),
-              Text(w.name, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+              Text(
+                w.name,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         );
@@ -263,26 +297,49 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
 
   Widget _buildWeekView() {
     // Build 7-day columns
-    final days = List.generate(7, (i) => _rangeStart.add(Duration(days: i + 1)));
+    final days = List.generate(
+      7,
+      (i) => _rangeStart.add(Duration(days: i + 1)),
+    );
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
-        width: MediaQuery.of(context).size.width * 2.5, // wide enough for 7 days
+        width:
+            MediaQuery.of(context).size.width * 2.5, // wide enough for 7 days
         child: Column(
           children: [
             // Day headers
             Row(
               children: days.map((d) {
-                final weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                final weekdays = [
+                  'Sun',
+                  'Mon',
+                  'Tue',
+                  'Wed',
+                  'Thu',
+                  'Fri',
+                  'Sat',
+                ];
                 return SizedBox(
                   width: (MediaQuery.of(context).size.width * 2.5) / 7,
                   child: Column(
                     children: [
-                      Text(weekdays[d.weekday % 7],
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey.shade600)),
-                      Text('${d.day}',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                      Text(
+                        weekdays[d.weekday % 7],
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      Text(
+                        '${d.day}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -295,14 +352,21 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
               child: Stack(
                 children: _blocks.map((block) {
                   final dayIndex = block.startAt.difference(days.first).inDays;
-                  if (dayIndex < 0 || dayIndex > 6) return const SizedBox.shrink();
+                  if (dayIndex < 0 || dayIndex > 6) {
+                    return const SizedBox.shrink();
+                  }
 
-                  final startHour = block.startAt.hour + block.startAt.minute / 60.0;
+                  final startHour =
+                      block.startAt.hour + block.startAt.minute / 60.0;
                   final endHour = block.endAt.hour + block.endAt.minute / 60.0;
                   final top = (startHour / 24) * 300;
-                  final height = ((endHour - startHour) / 24 * 300).clamp(20.0, 300.0);
+                  final height = ((endHour - startHour) / 24 * 300).clamp(
+                    20.0,
+                    300.0,
+                  );
                   final color = _colorForWorkspace(block.workspaceId);
-                  final cellWidth = (MediaQuery.of(context).size.width * 2.5) / 7;
+                  final cellWidth =
+                      (MediaQuery.of(context).size.width * 2.5) / 7;
 
                   return Positioned(
                     left: dayIndex * cellWidth + 4,
@@ -310,11 +374,16 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
                     width: cellWidth - 8,
                     height: height,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.15),
+                        color: color.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border(left: BorderSide(color: color, width: 3)),
+                        border: Border(
+                          left: BorderSide(color: color, width: 3),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,18 +391,28 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
                         children: [
                           Text(
                             block.workspaceName,
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: color,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             '${_formatTime(block.startAt)} - ${_formatTime(block.endAt)}',
-                            style: TextStyle(fontSize: 9, color: Colors.grey.shade700),
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
                           if (block.reason != null && block.reason!.isNotEmpty)
                             Text(
                               block.reason!,
-                              style: TextStyle(fontSize: 8, color: Colors.grey.shade500),
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: Colors.grey.shade500,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -353,13 +432,16 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
   Widget _buildDayView() {
     // Show today's or selected day blocks as a vertical timeline
     final today = DateTime.now();
-    final todayBlocks = _blocks
-        .where((b) =>
-            b.startAt.year == today.year &&
-            b.startAt.month == today.month &&
-            b.startAt.day == today.day)
-        .toList()
-      ..sort((a, b) => a.startAt.compareTo(b.startAt));
+    final todayBlocks =
+        _blocks
+            .where(
+              (b) =>
+                  b.startAt.year == today.year &&
+                  b.startAt.month == today.month &&
+                  b.startAt.day == today.day,
+            )
+            .toList()
+          ..sort((a, b) => a.startAt.compareTo(b.startAt));
 
     if (todayBlocks.isEmpty) {
       return _buildEmptyState();
@@ -370,7 +452,7 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: todayBlocks.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final block = todayBlocks[index];
         final color = _colorForWorkspace(block.workspaceId);
@@ -379,7 +461,7 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
             border: Border(left: BorderSide(color: color, width: 4)),
           ),
@@ -393,16 +475,25 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
                   children: [
                     Text(
                       _formatTime(block.startAt),
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     Text(
                       _formatTime(block.endAt),
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade500,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       _formatDuration(duration),
-                      style: TextStyle(fontSize: 10, color: Colors.grey.shade400),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey.shade400,
+                      ),
                     ),
                   ],
                 ),
@@ -415,17 +506,27 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
                   children: [
                     Text(
                       block.workspaceName,
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
                     ),
                     if (block.reason != null && block.reason!.isNotEmpty)
                       Text(
                         block.reason!,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                     if (block.orderId != null)
                       Text(
                         'Order: ${block.orderId!.substring(0, 8)}...',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
                       ),
                   ],
                 ),
@@ -447,7 +548,11 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
           const SizedBox(height: 16),
           Text(
             'No scheduled blocks',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade500),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade500,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -466,7 +571,11 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
         children: [
           const Icon(Icons.error_outline, size: 48, color: Colors.red),
           const SizedBox(height: 12),
-          Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+          Text(
+            _error!,
+            style: const TextStyle(color: Colors.red),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 12),
           ElevatedButton(onPressed: _loadSchedule, child: const Text('Retry')),
         ],
@@ -480,7 +589,20 @@ class _MultiWorkspaceScheduleWidgetState extends State<MultiWorkspaceScheduleWid
   }
 
   String _formatShortDate(DateTime dt) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${months[dt.month - 1]} ${dt.day}';
   }
 

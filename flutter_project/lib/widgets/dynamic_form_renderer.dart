@@ -13,7 +13,8 @@ import '../services/api_service.dart';
 class DynamicFieldSpec {
   final String key;
   final String label;
-  final String type; // text|textarea|number|currency|date|datetime|time|select|multiselect|boolean|photo|range|rating|location|file
+  final String
+  type; // text|textarea|number|currency|date|datetime|time|select|multiselect|boolean|photo|range|rating|location|file
   final bool required;
   final String? placeholder;
   final String? helpText;
@@ -53,17 +54,33 @@ class DynamicFieldSpec {
       required: json['required'] == true,
       placeholder: json['placeholder']?.toString(),
       helpText: json['helpText']?.toString() ?? json['help_text']?.toString(),
-      validation: json['validation'] is Map ? Map<String, dynamic>.from(json['validation']) : null,
-      options: json['options'] is List ? List<String>.from(json['options'].map((o) => o.toString())) : null,
-      rangeMin: json['rangeMin'] is num ? (json['rangeMin'] as num).toInt() : null,
-      rangeMax: json['rangeMax'] is num ? (json['rangeMax'] as num).toInt() : null,
-      rangeStep: json['rangeStep'] is num ? (json['rangeStep'] as num).toInt() : null,
-      rangeUnit: json['rangeUnit']?.toString(),
-      maxPhotos: json['maxPhotos'] is num ? (json['maxPhotos'] as num).toInt() : null,
-      conditionalOn: json['conditionalOn'] is Map
-          ? ConditionalRule.fromJson(Map<String, dynamic>.from(json['conditionalOn']))
+      validation: json['validation'] is Map
+          ? Map<String, dynamic>.from(json['validation'])
           : null,
-      sortOrder: json['sortOrder'] is num ? (json['sortOrder'] as num).toInt() : null,
+      options: json['options'] is List
+          ? List<String>.from(json['options'].map((o) => o.toString()))
+          : null,
+      rangeMin: json['rangeMin'] is num
+          ? (json['rangeMin'] as num).toInt()
+          : null,
+      rangeMax: json['rangeMax'] is num
+          ? (json['rangeMax'] as num).toInt()
+          : null,
+      rangeStep: json['rangeStep'] is num
+          ? (json['rangeStep'] as num).toInt()
+          : null,
+      rangeUnit: json['rangeUnit']?.toString(),
+      maxPhotos: json['maxPhotos'] is num
+          ? (json['maxPhotos'] as num).toInt()
+          : null,
+      conditionalOn: json['conditionalOn'] is Map
+          ? ConditionalRule.fromJson(
+              Map<String, dynamic>.from(json['conditionalOn']),
+            )
+          : null,
+      sortOrder: json['sortOrder'] is num
+          ? (json['sortOrder'] as num).toInt()
+          : null,
     );
   }
 }
@@ -123,7 +140,9 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
 
   Future<void> _loadSchema() async {
     try {
-      final response = await ApiService().get('/service-catalog/${widget.catalogId}/form-template');
+      final response = await ApiService().get(
+        '/service-catalog/${widget.catalogId}/form-template',
+      );
       final data = response['data'] as Map<String, dynamic>?;
       final schemaRaw = data?['schema'];
 
@@ -141,7 +160,9 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
           _fields = fieldList
               .map((f) => DynamicFieldSpec.fromJson(f as Map<String, dynamic>))
               .toList();
-          _fields!.sort((a, b) => (a.sortOrder ?? 0).compareTo(b.sortOrder ?? 0));
+          _fields!.sort(
+            (a, b) => (a.sortOrder ?? 0).compareTo(b.sortOrder ?? 0),
+          );
           _loading = false;
           _error = null;
         });
@@ -171,9 +192,11 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
       case 'neq':
         return currentValue?.toString() != condition.value?.toString();
       case 'gt':
-        return (currentValue is num) && currentValue > (num.tryParse(condition.value.toString()) ?? 0);
+        return (currentValue is num) &&
+            currentValue > (num.tryParse(condition.value.toString()) ?? 0);
       case 'lt':
-        return (currentValue is num) && currentValue < (num.tryParse(condition.value.toString()) ?? 0);
+        return (currentValue is num) &&
+            currentValue < (num.tryParse(condition.value.toString()) ?? 0);
       case 'in':
         if (condition.value == null) return false;
         final values = condition.value.toString().split(',');
@@ -200,7 +223,12 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
               children: [
                 const Icon(Icons.error_outline, color: Colors.red),
                 const SizedBox(width: 12),
-                Expanded(child: Text(_error!, style: const TextStyle(color: Colors.red))),
+                Expanded(
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
                 TextButton(
                   onPressed: () {
                     setState(() {
@@ -221,7 +249,9 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
     if (_fields == null || _fields!.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(32),
-        child: Center(child: Text('No form fields configured for this service.')),
+        child: Center(
+          child: Text('No form fields configured for this service.'),
+        ),
       );
     }
 
@@ -260,7 +290,13 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
                     ),
                   ),
                   if (field.required)
-                    Text(' *', style: TextStyle(color: Colors.red.shade600, fontSize: 14)),
+                    Text(
+                      ' *',
+                      style: TextStyle(
+                        color: Colors.red.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -315,11 +351,18 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
       decoration: InputDecoration(
         hintText: field.placeholder,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         isDense: true,
       ),
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      validator: field.required ? (v) => (v == null || v.trim().isEmpty) ? '${field.label} is required' : null : null,
+      validator: field.required
+          ? (v) => (v == null || v.trim().isEmpty)
+                ? '${field.label} is required'
+                : null
+          : null,
       onChanged: (v) {
         _answers[field.key] = v;
         _notifyChange();
@@ -335,11 +378,18 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
       decoration: InputDecoration(
         hintText: field.placeholder,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         isDense: true,
       ),
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      validator: field.required ? (v) => (v == null || v.trim().isEmpty) ? '${field.label} is required' : null : null,
+      validator: field.required
+          ? (v) => (v == null || v.trim().isEmpty)
+                ? '${field.label} is required'
+                : null
+          : null,
       onChanged: (v) {
         _answers[field.key] = v;
         _notifyChange();
@@ -358,11 +408,18 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
         hintText: field.placeholder,
         prefixText: field.type == 'currency' ? '\$' : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         isDense: true,
       ),
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      validator: field.required ? (v) => (v == null || v.trim().isEmpty) ? '${field.label} is required' : null : null,
+      validator: field.required
+          ? (v) => (v == null || v.trim().isEmpty)
+                ? '${field.label} is required'
+                : null
+          : null,
       onChanged: (v) {
         final parsed = double.tryParse(v.replaceAll(',', ''));
         _answers[field.key] = parsed ?? v;
@@ -375,7 +432,8 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
 
   Future<void> _pickDate(DynamicFieldSpec field) async {
     final now = DateTime.now();
-    final initialDate = DateTime.tryParse(_answers[field.key]?.toString() ?? '') ?? now;
+    final initialDate =
+        DateTime.tryParse(_answers[field.key]?.toString() ?? '') ?? now;
 
     if (field.type == 'time') {
       final time = await showTimePicker(
@@ -420,7 +478,9 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
 
   Widget _buildDateField(DynamicFieldSpec field) {
     final value = _answers[field.key]?.toString();
-    final displayText = value != null ? _formatDateDisplay(field.type, value) : null;
+    final displayText = value != null
+        ? _formatDateDisplay(field.type, value)
+        : null;
 
     return InkWell(
       onTap: widget.enabled ? () => _pickDate(field) : null,
@@ -429,7 +489,10 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
         decoration: InputDecoration(
           hintText: field.placeholder ?? 'Select ${field.label}',
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
           isDense: true,
           suffixIcon: const Icon(Icons.calendar_today, size: 20),
         ),
@@ -449,7 +512,8 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
     if (type == 'time') {
       return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
-    final dateStr = '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+    final dateStr =
+        '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
     if (type == 'datetime') {
       return '$dateStr ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     }
@@ -463,7 +527,9 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
     final currentValue = _answers[field.key];
 
     if (multi) {
-      final selected = (currentValue is List) ? List<String>.from(currentValue.map((e) => e.toString())) : <String>[];
+      final selected = (currentValue is List)
+          ? List<String>.from(currentValue.map((e) => e.toString()))
+          : <String>[];
       return Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -484,7 +550,9 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
                     setState(() {});
                   }
                 : null,
-            selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+            selectedColor: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.15),
             checkmarkColor: Theme.of(context).colorScheme.primary,
           );
         }).toList(),
@@ -493,18 +561,28 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
 
     // Single select
     return DropdownButtonFormField<String>(
-      value: currentValue?.toString().isNotEmpty == true && options.contains(currentValue?.toString())
+      initialValue:
+          currentValue?.toString().isNotEmpty == true &&
+              options.contains(currentValue?.toString())
           ? currentValue?.toString()
           : null,
       isExpanded: true,
       hint: Text(field.placeholder ?? 'Select ${field.label}'),
       decoration: InputDecoration(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         isDense: true,
       ),
       items: options
-          .map((o) => DropdownMenuItem(value: o, child: Text(o, style: const TextStyle(fontSize: 14))))
+          .map(
+            (o) => DropdownMenuItem(
+              value: o,
+              child: Text(o, style: const TextStyle(fontSize: 14)),
+            ),
+          )
           .toList(),
       onChanged: widget.enabled
           ? (v) {
@@ -516,12 +594,15 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
       validator: field.required && multi
           ? (v) {
               final sel = _answers[field.key];
-              if (sel is! List || sel.isEmpty) return '${field.label} is required';
+              if (sel is! List || sel.isEmpty) {
+                return '${field.label} is required';
+              }
               return null;
             }
           : field.required
-              ? (v) => (v == null || v.isEmpty) ? '${field.label} is required' : null
-              : null,
+          ? (v) =>
+                (v == null || v.isEmpty) ? '${field.label} is required' : null
+          : null,
     );
   }
 
@@ -550,15 +631,18 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
     final current = _photoUrls[field.key] ?? <String>[];
     if (current.length >= max) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Maximum $max photos allowed')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Maximum $max photos allowed')));
       }
       return;
     }
 
     try {
-      final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      final picked = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
       if (picked != null) {
         final url = await ApiService().uploadFile(picked.path);
         if (url.isNotEmpty) {
@@ -571,9 +655,9 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to upload photo: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to upload photo: $e')));
       }
     }
   }
@@ -586,49 +670,57 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        ...photos.map((url) => Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                url.startsWith('http') ? url : '${ApiService.baseUrl.replaceFirst('/api', '')}$url',
-                width: 80,
-                height: 80,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+        ...photos.map(
+          (url) => Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  url.startsWith('http')
+                      ? url
+                      : '${ApiService.baseUrl.replaceFirst('/api', '')}$url',
                   width: 80,
                   height: 80,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(10),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.broken_image, color: Colors.grey),
                   ),
-                  child: const Icon(Icons.broken_image, color: Colors.grey),
                 ),
               ),
-            ),
-            Positioned(
-              top: 2,
-              right: 2,
-              child: GestureDetector(
-                onTap: () {
-                  photos.remove(url);
-                  _photoUrls[field.key] = photos;
-                  _answers[field.key] = photos;
-                  _notifyChange();
-                  setState(() {});
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(12),
+              Positioned(
+                top: 2,
+                right: 2,
+                child: GestureDetector(
+                  onTap: () {
+                    photos.remove(url);
+                    _photoUrls[field.key] = photos;
+                    _answers[field.key] = photos;
+                    _notifyChange();
+                    setState(() {});
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
-                  child: const Icon(Icons.close, size: 16, color: Colors.white),
                 ),
               ),
-            ),
-          ],
-        )),
+            ],
+          ),
+        ),
         if (photos.length < max && widget.enabled)
           GestureDetector(
             onTap: () => _pickPhoto(field),
@@ -636,17 +728,26 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+                border: Border.all(
+                  color: Colors.grey.shade300,
+                  style: BorderStyle.solid,
+                ),
                 borderRadius: BorderRadius.circular(10),
                 color: Colors.grey.shade50,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_a_photo, size: 24, color: Colors.grey.shade500),
+                  Icon(
+                    Icons.add_a_photo,
+                    size: 24,
+                    color: Colors.grey.shade500,
+                  ),
                   const SizedBox(height: 2),
-                  Text('${photos.length}/$max',
-                      style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                  Text(
+                    '${photos.length}/$max',
+                    style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                  ),
                 ],
               ),
             ),
@@ -687,7 +788,11 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
           alignment: Alignment.center,
           child: Text(
             '${currentValue.toStringAsFixed(0)} $unit',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
           ),
         ),
       ],
@@ -697,7 +802,9 @@ class _DynamicFormRendererState extends State<DynamicFormRenderer> {
   // ── Rating ──────────────────────────────────────────────────────────────
 
   Widget _buildRatingField(DynamicFieldSpec field) {
-    final rating = (_answers[field.key] is num) ? (_answers[field.key] as num).toInt() : 0;
+    final rating = (_answers[field.key] is num)
+        ? (_answers[field.key] as num).toInt()
+        : 0;
     return Row(
       children: List.generate(5, (index) {
         return IconButton(

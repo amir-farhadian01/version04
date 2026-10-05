@@ -1,10 +1,31 @@
-import { useState, useEffect } from 'react'
-import api from '../lib/api'
+import { useState, useEffect, useCallback } from 'react'
+import api, { getApiError } from '../lib/api'
 import { Shield, Search, CheckCircle2, XCircle, Clock, RefreshCw, Building2, UserCheck, User, Eye, FileText, Star, ThumbsUp, ThumbsDown, AlertTriangle } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type KycTab = 'personal' | 'business' | 'level0'
+type BusinessReviewAction = 'approve' | 'reject' | 'request_resubmit'
+
+export const KYC_STATUS_BADGE_COLORS: Record<string, string> = {
+  approved: 'text-nh-admin-success bg-nh-admin-success-bg',
+  rejected: 'text-nh-admin-danger bg-nh-admin-danger-bg',
+  pending: 'text-nh-admin-warning bg-nh-admin-warning-bg',
+  submitted: 'text-nh-admin-primary bg-nh-admin-primary-bg',
+  draft: 'text-nh-admin-text-secondary bg-nh-admin-border',
+  resubmit_requested: 'text-nh-admin-warning bg-nh-admin-warning-bg',
+}
+
+export function buildBusinessReviewRequest(
+  id: string,
+  action: BusinessReviewAction,
+  note: string,
+) {
+  return {
+    endpoint: `/admin/kyc/business/${id}/review`,
+    body: { action, note: note || undefined },
+  }
+}
 
 type KycResponse<T> = {
   page: number
@@ -22,8 +43,14 @@ interface BusinessKycRow {
   companyId: string
   schemaVersion: number
   answers: Record<string, unknown>
-  uploads: Record<string, unknown>
+  uploads: Array<{ fieldId: string; url: string; fileName?: string; mimeType?: string }>
   reviewNote: string | null
+  componentReview: {
+    registrationReviewStatus: string
+    registrationReviewNote: string | null
+    insuranceReviewStatus: string
+    insuranceReviewNote: string | null
+  } | null
   user: {
     email: string
     displayName: string | null
@@ -43,29 +70,46 @@ interface TrustScoreData {
   avgRating: number
   totalScore: number
 }
+type KycUser = { id?: string; email?: string; phone?: string; firstName?: string; displayName?: string; declaredLegalName?: string }
+type GeneralKycRow = KycUser & { id: string; status?: string; submittedAt?: string; createdAt?: string; updatedAt?: string; declaredLegalName?: string; user?: KycUser; company?: { name?: string }; emailVerified?: boolean; phoneVerified?: boolean; address?: string; lastUpdated?: string; adminAcknowledgedAt?: string }
 
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function AdminKyc() {
   const [tab, setTab] = useState<KycTab>('personal')
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<GeneralKycRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [businessTypeFilter, setBusinessTypeFilter] = useState('')
+  const [insuranceFilter, setInsuranceFilter] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   // ── Business review modal ─────────────────────────────────────────────────
   const [reviewItem, setReviewItem] = useState<BusinessKycRow | null>(null)
-  const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | 'request_resubmit' | null>(null)
+  const [reviewAction, setReviewAction] = useState<BusinessReviewAction | null>(null)
   const [reviewNote, setReviewNote] = useState('')
   const [reviewing, setReviewing] = useState(false)
 
   // ── Document preview modal ───────────────────────────────────────────────
   const [docPreview, setDocPreview] = useState<{ title: string; url: string } | null>(null)
 
+  const openDocumentPreview = async (title: string, reference: string) => {
+    try {
+      if (!reference.startsWith('kyc-document://')) throw new Error('Invalid private document reference')
+      const documentId = reference.slice('kyc-document://'.length)
+      const response = await api.get<{ url: string }>(`/kyc/v2/documents/${encodeURIComponent(documentId)}/access`)
+      setDocPreview({ title, url: response.data.url })
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Document access failed'
+        : err instanceof Error ? err.message : 'Document access failed'
+      setError(msg)
+    }
+  }
+
   // ── Trust score modal ────────────────────────────────────────────────────
   const [trustScoreItem, setTrustScoreItem] = useState<BusinessKycRow | null>(null)
-  const [trustScore, setTrustScore] = useState<TrustScoreData | null>(null)
   const [tsKycVerified, setTsKycVerified] = useState(false)
   const [tsLicenseVerified, setTsLicenseVerified] = useState(false)
   const [tsInsuranceVerified, setTsInsuranceVerified] = useState(false)
@@ -73,12 +117,14 @@ export default function AdminKyc() {
   const [savingTrustScore, setSavingTrustScore] = useState(false)
   const [trustScoreError, setTrustScoreError] = useState<string | null>(null)
 
-  const fetchKyc = async () => {
+  const fetchKyc = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const params: Record<string, string> = {}
       if (statusFilter) params.status = statusFilter
+      if (tab === 'business' && businessTypeFilter) params.businessType = businessTypeFilter
+      if (tab === 'business' && insuranceFilter) params.insuranceStatus = insuranceFilter
       if (search) params.q = search
 
       let endpoint: string
@@ -86,20 +132,17 @@ export default function AdminKyc() {
       else if (tab === 'business') endpoint = '/admin/kyc/business'
       else endpoint = '/admin/kyc/level0'
 
-      const res = await api.get<KycResponse<any>>(endpoint, { params })
+      const res = await api.get<KycResponse<GeneralKycRow>>(endpoint, { params })
       setItems(res.data.rows ?? [])
     } catch (err: unknown) {
-      const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as any).response?.data?.error ?? 'Failed to load KYC submissions'
-        : 'Failed to load KYC submissions'
-      setError(msg)
+      setError(getApiError(err, 'Failed to load KYC submissions'))
       setItems([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [businessTypeFilter, insuranceFilter, search, statusFilter, tab])
 
-  useEffect(() => { fetchKyc() }, [tab, statusFilter])
+  useEffect(() => { fetchKyc() }, [fetchKyc])
 
   const filtered = search
     ? items.filter((k) => {
@@ -115,32 +158,32 @@ export default function AdminKyc() {
       })
     : items
 
-  const statusBadge = (status: string) => {
+  const statusBadge = (status?: string) => {
     const map: Record<string, { color: string; icon: React.ReactNode }> = {
-      approved: { color: 'text-nh-admin-success bg-nh-admin-success-bg', icon: <CheckCircle2 className="h-3 w-3" /> },
-      rejected: { color: 'text-nh-admin-danger bg-nh-admin-danger-bg', icon: <XCircle className="h-3 w-3" /> },
-      pending: { color: 'text-nh-admin-warning bg-nh-admin-warning-bg', icon: <Clock className="h-3 w-3" /> },
-      submitted: { color: 'text-nh-admin-primary bg-nh-admin-primary-bg', icon: <Clock className="h-3 w-3" /> },
-      draft: { color: 'text-nh-admin-text-secondary bg-nh-admin-border', icon: <FileText className="h-3 w-3" /> },
-      request_resubmit: { color: 'text-nh-admin-warning bg-nh-admin-warning-bg', icon: <AlertTriangle className="h-3 w-3" /> },
+      approved: { color: KYC_STATUS_BADGE_COLORS.approved, icon: <CheckCircle2 className="h-3 w-3" /> },
+      rejected: { color: KYC_STATUS_BADGE_COLORS.rejected, icon: <XCircle className="h-3 w-3" /> },
+      pending: { color: KYC_STATUS_BADGE_COLORS.pending, icon: <Clock className="h-3 w-3" /> },
+      submitted: { color: KYC_STATUS_BADGE_COLORS.submitted, icon: <Clock className="h-3 w-3" /> },
+      draft: { color: KYC_STATUS_BADGE_COLORS.draft, icon: <FileText className="h-3 w-3" /> },
+      resubmit_requested: { color: KYC_STATUS_BADGE_COLORS.resubmit_requested, icon: <AlertTriangle className="h-3 w-3" /> },
     }
     const s = map[(status ?? '').toLowerCase()] ?? { color: 'text-nh-admin-text-secondary bg-nh-admin-border', icon: <Clock className="h-3 w-3" /> }
     return (
       <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${s.color}`}>
         {s.icon}
-        {status}
+        {status ?? 'unknown'}
       </span>
     )
   }
 
   const tabs: { key: KycTab; label: string; icon: React.ReactNode }[] = [
-    { key: 'personal', label: 'Personal', icon: <User className="h-4 w-4" /> },
-    { key: 'business', label: 'Business', icon: <Building2 className="h-4 w-4" /> },
-    { key: 'level0', label: 'Level 0', icon: <UserCheck className="h-4 w-4" /> },
+    { key: 'level0', label: 'Level 1 · Email & Phone', icon: <UserCheck className="h-4 w-4" /> },
+    { key: 'personal', label: 'Level 2 · Identity', icon: <User className="h-4 w-4" /> },
+    { key: 'business', label: 'Level 3 · Business', icon: <Building2 className="h-4 w-4" /> },
   ]
 
   // ── Business review action ────────────────────────────────────────────────
-  const openReviewModal = (item: BusinessKycRow, action: 'approve' | 'reject' | 'request_resubmit') => {
+  const openReviewModal = (item: BusinessKycRow, action: BusinessReviewAction) => {
     setReviewItem(item)
     setReviewAction(action)
     setReviewNote('')
@@ -150,19 +193,33 @@ export default function AdminKyc() {
     if (!reviewItem || !reviewAction) return
     setReviewing(true)
     try {
-      const endpoint = `/admin/kyc/business/${reviewItem.id}/${reviewAction}`
-      await api.put(endpoint, { reviewNote: reviewNote || undefined })
+      const request = buildBusinessReviewRequest(reviewItem.id, reviewAction, reviewNote)
+      await api.post(request.endpoint, request.body)
       setReviewItem(null)
       setReviewAction(null)
       setReviewNote('')
       fetchKyc()
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as any).response?.data?.error ?? 'Review failed'
+        ? getApiError(err, 'Review failed')
         : 'Review failed'
       setError(msg)
     }
     setReviewing(false)
+  }
+
+  const reviewBusinessComponent = async (item: BusinessKycRow, component: 'registration' | 'insurance', action: 'approve' | 'reject') => {
+    const note = action === 'reject' ? window.prompt(`Reason for rejecting ${component}`)?.trim() : undefined
+    if (action === 'reject' && !note) return
+    try {
+      await api.post(`/admin/kyc/business/${item.id}/components/${component}/review`, { action, note })
+      await fetchKyc()
+    } catch (err: unknown) {
+      const msg = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { error?: string } } }).response?.data?.error ?? 'Component review failed'
+        : 'Component review failed'
+      setError(msg)
+    }
   }
 
   // ── Trust score ───────────────────────────────────────────────────────────
@@ -172,22 +229,12 @@ export default function AdminKyc() {
     try {
       const res = await api.get<TrustScoreData>(`/admin/kyc/business/${item.id}/trust-score`)
       const ts = res.data
-      setTrustScore(ts)
       setTsKycVerified(ts.kycVerified)
       setTsLicenseVerified(ts.licenseVerified)
       setTsInsuranceVerified(ts.insuranceVerified)
       setTsAvgRating(ts.avgRating)
     } catch {
       // Default values
-      const companyId = item.companyId
-      setTrustScore({
-        workspaceId: companyId,
-        kycVerified: false,
-        licenseVerified: false,
-        insuranceVerified: false,
-        avgRating: 0,
-        totalScore: 0,
-      })
       setTsKycVerified(false)
       setTsLicenseVerified(false)
       setTsInsuranceVerified(false)
@@ -215,11 +262,10 @@ export default function AdminKyc() {
         avgRating: tsAvgRating,
       })
       setTrustScoreItem(null)
-      setTrustScore(null)
       fetchKyc()
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as any).response?.data?.error ?? 'Failed to save trust score'
+        ? getApiError(err, 'Failed to save trust score')
         : 'Failed to save trust score'
       setTrustScoreError(msg)
     }
@@ -233,7 +279,7 @@ export default function AdminKyc() {
       fetchKyc()
     } catch (err: unknown) {
       const msg = err && typeof err === 'object' && 'response' in err
-        ? (err as any).response?.data?.error ?? 'Failed to acknowledge'
+        ? getApiError(err, 'Failed to acknowledge')
         : 'Failed to acknowledge'
       setError(msg)
     }
@@ -250,6 +296,8 @@ export default function AdminKyc() {
             <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-nh-admin-text-secondary">Company</th>
             <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-nh-admin-text-secondary">Status</th>
             <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-nh-admin-text-secondary">Submitted</th>
+            <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-nh-admin-text-secondary">Registration review</th>
+            <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-nh-admin-text-secondary">Insurance review</th>
             <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-nh-admin-text-secondary">Docs</th>
             <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-nh-admin-text-secondary">Actions</th>
           </tr>
@@ -260,7 +308,9 @@ export default function AdminKyc() {
             const displayName = user?.displayName ?? user?.declaredLegalName ?? user?.email ?? '—'
             const email = user?.email ?? ''
             const initial = (displayName[0] ?? '?').toUpperCase()
-            const uploads = item.uploads as Record<string, string> | null
+            const uploads = Array.isArray(item.uploads) ? item.uploads : []
+            const registrationDocument = uploads.find((upload) => upload.fieldId === 'businessRegistrationDocument')
+            const insuranceCertificate = uploads.find((upload) => upload.fieldId === 'insuranceCertificate')
 
             return (
               <tr key={item.id} className="transition-colors hover:bg-nh-admin-surface-hover">
@@ -281,24 +331,42 @@ export default function AdminKyc() {
                   {item.submittedAt ? new Date(item.submittedAt).toLocaleDateString() : '—'}
                 </td>
                 <td className="px-4 py-3">
+                  <div className="flex flex-col gap-1">
+                    {statusBadge(item.componentReview?.registrationReviewStatus ?? 'pending')}
+                    <div className="flex gap-1">
+                      <button onClick={() => reviewBusinessComponent(item, 'registration', 'approve')} className="text-[10px] text-nh-admin-success">Approve</button>
+                      <button onClick={() => reviewBusinessComponent(item, 'registration', 'reject')} className="text-[10px] text-nh-admin-danger">Reject</button>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-1">
+                    {statusBadge(item.componentReview?.insuranceReviewStatus ?? 'pending')}
+                    <div className="flex gap-1">
+                      <button onClick={() => reviewBusinessComponent(item, 'insurance', 'approve')} className="text-[10px] text-nh-admin-success">Approve</button>
+                      <button onClick={() => reviewBusinessComponent(item, 'insurance', 'reject')} className="text-[10px] text-nh-admin-danger">Reject</button>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
                   <div className="flex gap-1">
-                    {uploads?.licenseDocUrl && (
+                    {registrationDocument && (
                       <button
-                        onClick={() => setDocPreview({ title: 'License Document', url: uploads.licenseDocUrl as string })}
+                        onClick={() => openDocumentPreview('Business Registration', registrationDocument.url)}
                         className="flex items-center gap-1 rounded-md bg-nh-admin-border px-2 py-1 text-[10px] text-nh-admin-text hover:bg-nh-admin-border transition-colors"
                       >
                         <Eye className="h-3 w-3" /> License
                       </button>
                     )}
-                    {uploads?.insuranceDocUrl && (
+                    {insuranceCertificate && (
                       <button
-                        onClick={() => setDocPreview({ title: 'Insurance Certificate', url: uploads.insuranceDocUrl as string })}
+                        onClick={() => openDocumentPreview('Insurance Certificate', insuranceCertificate.url)}
                         className="flex items-center gap-1 rounded-md bg-nh-admin-border px-2 py-1 text-[10px] text-nh-admin-text hover:bg-nh-admin-border transition-colors"
                       >
                         <Eye className="h-3 w-3" /> Insurance
                       </button>
                     )}
-                    {!uploads?.licenseDocUrl && !uploads?.insuranceDocUrl && (
+                    {!registrationDocument && !insuranceCertificate && (
                       <span className="text-[10px] text-nh-admin-text-muted">—</span>
                     )}
                   </div>
@@ -310,8 +378,9 @@ export default function AdminKyc() {
                       <>
                         <button
                           onClick={() => openReviewModal(item, 'approve')}
+                          disabled={item.componentReview?.registrationReviewStatus !== 'approved' || item.componentReview?.insuranceReviewStatus !== 'approved'}
                           className="flex items-center gap-1 rounded-md bg-nh-admin-success-bg px-2 py-1 text-[10px] text-nh-admin-success hover:bg-nh-admin-success-bg transition-colors"
-                          title="Approve"
+                          title="Approve after registration and insurance are separately approved"
                         >
                           <ThumbsUp className="h-3 w-3" /> Approve
                         </button>
@@ -362,7 +431,7 @@ export default function AdminKyc() {
         </tr>
       </thead>
       <tbody className="divide-y divide-nh-admin-border">
-        {filtered.map((item: any) => {
+        {filtered.map((item) => {
           // Level0 items have shape: { user: {...}, emailVerified, phoneVerified, address, ... }
           const user = item.user ?? item
           const displayName = user.displayName ?? user.email ?? '—'
@@ -403,7 +472,8 @@ export default function AdminKyc() {
               </td>
               <td className="px-4 py-3">
                 <button
-                  onClick={() => handleLevel0Acknowledge(user.id)}
+                  onClick={() => user.id && handleLevel0Acknowledge(user.id)}
+                  disabled={!user.id}
                   className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${
                     item.adminAcknowledgedAt
                       ? 'bg-nh-admin-success-bg text-nh-admin-success cursor-default'
@@ -442,7 +512,7 @@ export default function AdminKyc() {
         </tr>
       </thead>
       <tbody className="divide-y divide-nh-admin-border">
-        {filtered.map((item: any) => {
+        {filtered.map((item) => {
           const user = item.user ?? item
           const displayName = user.displayName ?? user.declaredLegalName ?? user.email ?? '—'
           const email = user.email ?? ''
@@ -473,10 +543,10 @@ export default function AdminKyc() {
               )}
               <td className="px-4 py-3">{statusBadge(item.status)}</td>
               <td className="px-4 py-3 text-sm text-nh-admin-text-secondary">
-                {new Date(item.submittedAt ?? item.createdAt).toLocaleDateString()}
+                {item.submittedAt || item.createdAt ? new Date(item.submittedAt ?? item.createdAt!).toLocaleDateString() : '—'}
               </td>
               <td className="px-4 py-3 text-sm text-nh-admin-text-secondary">
-                {new Date(item.updatedAt).toLocaleDateString()}
+                {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : '—'}
               </td>
             </tr>
           )
@@ -746,7 +816,7 @@ export default function AdminKyc() {
 
           <div className="flex justify-end gap-3">
             <button
-              onClick={() => { setTrustScoreItem(null); setTrustScore(null) }}
+              onClick={() => { setTrustScoreItem(null) }}
               className="rounded-xl border border-nh-admin-border px-4 py-2.5 text-sm text-nh-admin-text-secondary hover:text-nh-admin-text transition-colors"
             >
               Cancel
@@ -816,14 +886,21 @@ export default function AdminKyc() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-xl border border-nh-admin-border bg-nh-admin-surface px-4 py-2.5 text-sm text-nh-admin-text outline-none transition-all focus:border-nh-admin-primary-border"
         >
-          <option value="">All Status</option>
+          <option value="all">All Status</option>
           <option value="pending">Pending</option>
-          <option value="submitted">Submitted</option>
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
           <option value="draft">Draft</option>
-          <option value="request_resubmit">Resubmit Requested</option>
+          <option value="resubmit_requested">Resubmit Requested</option>
         </select>
+        {tab === 'business' && <>
+          <select value={businessTypeFilter} onChange={(e) => setBusinessTypeFilter(e.target.value)} aria-label="Business type" className="rounded-xl border border-nh-admin-border bg-nh-admin-surface px-4 py-2.5 text-sm text-nh-admin-text">
+            <option value="">All business types</option><option value="construction">Construction</option><option value="installation">Installation</option><option value="plumbing">Plumbing</option><option value="professional_services">Professional services</option><option value="retail">Retail</option><option value="other">Other</option>
+          </select>
+          <select value={insuranceFilter} onChange={(e) => setInsuranceFilter(e.target.value)} aria-label="Insurance status" className="rounded-xl border border-nh-admin-border bg-nh-admin-surface px-4 py-2.5 text-sm text-nh-admin-text">
+            <option value="">All insurance statuses</option><option value="insured">Insured</option><option value="uninsured">Uninsured</option><option value="not_required">Not required</option>
+          </select>
+        </>}
       </div>
 
       {error && (

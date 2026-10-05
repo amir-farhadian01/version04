@@ -15,6 +15,11 @@ export async function register(payload: RegisterPayload) {
 }
 
 export async function logout() {
-  await api.post('/auth/logout')
+  try {
+    await api.post('/auth/logout')
+  } catch {
+    // Token may already be expired and the server rejects the call — clear
+    // local state regardless so the user still gets logged out.
+  }
   useAuthStore.getState().logout()
 }

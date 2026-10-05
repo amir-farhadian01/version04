@@ -19,6 +19,7 @@ vi.mock('../lib/db.js', () => ({
 }));
 
 import prisma from '../lib/db.js';
+import { createGuestTrackingToken, verifyGuestTrackingToken } from './guestCheckout.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const mockFindUnique = prisma.user.findUnique as unknown as {
@@ -341,5 +342,27 @@ describe('Guest Checkout', () => {
 
     expect(result.status).toBe(400);
     expect(result.body).toHaveProperty('error', 'Invalid token');
+  });
+});
+
+describe('Guest tracking token security', () => {
+  it('round-trips a valid signed token', () => {
+    const now = Date.parse('2026-08-26T00:00:00Z');
+    const token = createGuestTrackingToken('user-guest-1', now);
+    expect(verifyGuestTrackingToken(token, now)).toBe('user-guest-1');
+  });
+
+  it('rejects a tampered token', () => {
+    const token = createGuestTrackingToken('user-guest-1');
+    const [payload, signature] = token.split('.');
+    const forgedPayload = Buffer.from('victim-user:9999999999999').toString('base64url');
+    expect(verifyGuestTrackingToken(`${forgedPayload}.${signature}`)).toBeNull();
+    expect(payload).not.toBe(forgedPayload);
+  });
+
+  it('rejects an expired token', () => {
+    const issuedAt = Date.parse('2026-08-01T00:00:00Z');
+    const token = createGuestTrackingToken('user-guest-1', issuedAt);
+    expect(verifyGuestTrackingToken(token, issuedAt + 8 * 24 * 60 * 60 * 1000)).toBeNull();
   });
 });

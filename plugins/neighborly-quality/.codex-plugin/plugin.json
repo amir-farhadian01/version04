@@ -1,0 +1,22 @@
+{
+  "name": "neighborly-quality",
+  "version": "0.1.0",
+  "description": "Local QA, debugging, security, observability, CI, and regression workflows for Neighborly.",
+  "author": {
+    "name": "Neighborly"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Neighborly Quality",
+    "shortDescription": "Test, debug, secure, and release Neighborly.",
+    "longDescription": "Routes Neighborly test, E2E, Flutter, debugging, security, observability, performance, and CI/release work through repository-owned controls.",
+    "developerName": "Neighborly",
+    "category": "DeveloperTools",
+    "capabilities": ["Read", "Test", "Debug"],
+    "defaultPrompt": [
+      "Run a release-readiness audit for Neighborly.",
+      "Debug this failure and add regression coverage.",
+      "Review security, monitoring, and CI gates."
+    ]
+  }
+}

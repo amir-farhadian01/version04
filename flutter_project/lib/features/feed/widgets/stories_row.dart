@@ -9,8 +9,10 @@ import '../../../theme/app_theme.dart';
 /// - Smooth horizontal scrolling with snap-to-item behavior
 class StoriesRow extends StatelessWidget {
   final List<Map<String, dynamic>> stories;
+
   /// Whether to show the "Your Story" cell as the first item
   final bool showYourStory;
+
   /// Called when the "Your Story" + cell is tapped
   final VoidCallback? onAddStory;
 
@@ -106,10 +108,7 @@ class StoriesRow extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.primary,
-                        border: Border.all(
-                          color: AppColors.bg,
-                          width: 2,
-                        ),
+                        border: Border.all(color: AppColors.bg, width: 2),
                       ),
                       child: const Icon(
                         Icons.add,
@@ -138,7 +137,11 @@ class StoriesRow extends StatelessWidget {
   }
 
   /// Individual story cell with gradient avatar ring
-  Widget _buildStoryCell(BuildContext context, Map<String, dynamic> story, int index) {
+  Widget _buildStoryCell(
+    BuildContext context,
+    Map<String, dynamic> story,
+    int index,
+  ) {
     final seen = story['seen'] as bool? ?? false;
     final avatarUrl = story['avatarUrl'] as String?;
     final name = story['name'] as String? ?? '';
@@ -148,11 +151,7 @@ class StoriesRow extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         if (id != null) {
-          Navigator.pushNamed(
-            context,
-            '/story',
-            arguments: id,
-          );
+          Navigator.pushNamed(context, '/story', arguments: id);
         }
       },
       child: Container(
@@ -186,7 +185,7 @@ class StoriesRow extends StatelessWidget {
                           fit: BoxFit.cover,
                           width: _avatarSize - _ringWidth * 2 - 4,
                           height: _avatarSize - _ringWidth * 2 - 4,
-                          placeholder: (_, __) => Center(
+                          placeholder: (_, _) => Center(
                             child: Text(
                               initial,
                               style: const TextStyle(
@@ -197,7 +196,7 @@ class StoriesRow extends StatelessWidget {
                               ),
                             ),
                           ),
-                          errorWidget: (_, __, ___) => Center(
+                          errorWidget: (_, _, _) => Center(
                             child: Text(
                               initial,
                               style: const TextStyle(

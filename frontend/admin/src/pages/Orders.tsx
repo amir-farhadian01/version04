@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import api from '../lib/api'
+import api, { getApiError } from '../lib/api'
 import { ShoppingCart, Search, RefreshCw } from 'lucide-react'
 
 type AdminOrder = {
@@ -41,8 +41,8 @@ export default function AdminOrders() {
     try {
       const res = await api.get<{ items: AdminOrder[]; total: number }>('/admin/orders')
       setOrders(res.data.items ?? [])
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to load orders')
+    } catch (err: unknown) {
+      setError(getApiError(err, 'Failed to load orders'))
       setOrders([])
     } finally {
       setLoading(false)

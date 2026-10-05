@@ -198,7 +198,7 @@ export default function Profile() {
     return () => clearTimeout(timer)
   }, [editUsername, checkUsername])
 
-  const userData = (user as any) ?? {}
+  const userData = user
   const displayName = userData?.displayName || `${userData?.firstName ?? ''} ${userData?.lastName ?? ''}`.trim() || 'User'
   const email = userData?.email ?? ''
   const avatarUrl = userData?.avatarUrl ?? ''

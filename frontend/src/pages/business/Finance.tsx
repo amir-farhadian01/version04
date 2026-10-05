@@ -17,20 +17,24 @@ interface FinanceData {
     total: number
   }>
   ledger: Array<{
+    kind: 'transaction' | 'order'
     id: string
-    orderId: string
-    type: string
+    at: string
+    label: string
+    detail: string | null
     amount: number
-    description: string
-    createdAt: string
+    currency: string | null
+    flow: 'credit' | 'debit' | 'neutral'
   }>
   invoices: Array<{
-    id: string
     orderId: string
-    invoiceNumber: string
-    total: number
-    status: string
-    createdAt: string
+    customerLabel: string
+    serviceName: string
+    amount: number
+    currency: string
+    orderStatus: string
+    contractVersionStatus: string | null
+    updatedAt: string
   }>
 }
 
@@ -199,11 +203,11 @@ export default function Finance() {
                     data.ledger.map((entry) => (
                       <div key={entry.id} className="bg-nh-surface rounded-xl p-3 mt-2 border border-nh-border flex justify-between items-center">
                         <div className="flex-1">
-                          <div className="text-xs font-semibold text-nh-text">{entry.description}</div>
-                          <div className="text-[11px] text-nh-text-muted mt-0.5">{entry.type.replace(/_/g, ' ')} · {formatDate(entry.createdAt)}</div>
+                          <div className="text-xs font-semibold text-nh-text">{entry.label}</div>
+                          <div className="text-[11px] text-nh-text-muted mt-0.5">{entry.kind.replace(/_/g, ' ')} · {formatDate(entry.at)}</div>
                         </div>
-                        <div className={`text-sm font-bold ml-3 ${entry.amount >= 0 ? 'text-nh-success' : 'text-nh-danger'}`}>
-                          {entry.amount >= 0 ? '+' : ''}{formatCurrency(entry.amount)}
+                        <div className={`text-sm font-bold ml-3 ${entry.flow === 'credit' ? 'text-nh-success' : entry.flow === 'debit' ? 'text-nh-danger' : 'text-nh-text-muted'}`}>
+                          {entry.flow === 'credit' ? '+' : entry.flow === 'debit' ? '-' : ''}{formatCurrency(entry.amount)}
                         </div>
                       </div>
                     ))
@@ -218,14 +222,14 @@ export default function Finance() {
                     <div className="text-center py-[30px] text-xs text-nh-text-muted">No invoices yet.</div>
                   ) : (
                     data.invoices.map((inv) => (
-                      <div key={inv.id} className="bg-nh-surface rounded-xl p-3 mt-2 border border-nh-border flex justify-between items-center">
+                      <div key={inv.orderId} className="bg-nh-surface rounded-xl p-3 mt-2 border border-nh-border flex justify-between items-center">
                         <div className="flex-1">
-                          <div className="text-xs font-semibold text-nh-text">{inv.invoiceNumber}</div>
-                          <div className="text-[11px] text-nh-text-muted mt-0.5">{formatDate(inv.createdAt)}</div>
+                          <div className="text-xs font-semibold text-nh-text">{inv.serviceName}</div>
+                          <div className="text-[11px] text-nh-text-muted mt-0.5">{inv.customerLabel} · {formatDate(inv.updatedAt)}</div>
                         </div>
                         <div className="text-right ml-3">
-                          <div className="text-sm font-bold text-nh-text">{formatCurrency(inv.total)}</div>
-                          <div className={`text-[10px] font-semibold mt-0.5 ${invoiceStatusColor(inv.status)}`}>{inv.status}</div>
+                          <div className="text-sm font-bold text-nh-text">{formatCurrency(inv.amount)}</div>
+                          <div className={`text-[10px] font-semibold mt-0.5 ${invoiceStatusColor(inv.orderStatus)}`}>{inv.orderStatus.replace(/_/g, ' ')}</div>
                         </div>
                       </div>
                     ))

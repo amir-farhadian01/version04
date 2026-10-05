@@ -11,7 +11,8 @@ import '../../services/api_service.dart';
 /// Flow (per ORDER_FLOW.md Phase 1-2):
 ///   1. User selects service/category and fills description
 ///   2. POST /orders/draft → creates draft order
-///   3. Navigate to review screen where user can submit via POST /orders/:id/submit-draft
+///   3. Navigate to review screen where the draft can be submitted via
+///      POST /orders/draft/:id/submit
 class NewOrderScreen extends StatefulWidget {
   const NewOrderScreen({super.key});
 
@@ -79,19 +80,39 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
   }
 
   List<Map<String, dynamic>> _mockCategories() => [
-        {'id': 'cat-auto', 'name': '🚗 Auto Services'},
-        {'id': 'cat-beauty', 'name': '💅 Beauty & Wellness'},
-        {'id': 'cat-building', 'name': '🏗️ Building & Construction'},
-        {'id': 'cat-health', 'name': '🏥 Health & Medical'},
-        {'id': 'cat-transport', 'name': '🚚 Transport & Delivery'},
-      ];
+    {'id': 'cat-auto', 'name': '🚗 Auto Services'},
+    {'id': 'cat-beauty', 'name': '💅 Beauty & Wellness'},
+    {'id': 'cat-building', 'name': '🏗️ Building & Construction'},
+    {'id': 'cat-health', 'name': '🏥 Health & Medical'},
+    {'id': 'cat-transport', 'name': '🚚 Transport & Delivery'},
+  ];
 
   List<Map<String, dynamic>> _mockServices() => [
-        {'id': 'svc-1', 'name': 'Oil Change', 'price': 6900, 'provider': 'AutoFix Vaughan'},
-        {'id': 'svc-2', 'name': 'Full Vehicle Service', 'price': 14900, 'provider': 'AutoFix Vaughan'},
-        {'id': 'svc-3', 'name': 'Tire Rotation', 'price': 4000, 'provider': 'AutoFix Vaughan'},
-        {'id': 'svc-4', 'name': 'Brake Inspection', 'price': 2500, 'provider': 'AutoFix Vaughan'},
-      ];
+    {
+      'id': 'svc-1',
+      'name': 'Oil Change',
+      'price': 6900,
+      'provider': 'AutoFix Vaughan',
+    },
+    {
+      'id': 'svc-2',
+      'name': 'Full Vehicle Service',
+      'price': 14900,
+      'provider': 'AutoFix Vaughan',
+    },
+    {
+      'id': 'svc-3',
+      'name': 'Tire Rotation',
+      'price': 4000,
+      'provider': 'AutoFix Vaughan',
+    },
+    {
+      'id': 'svc-4',
+      'name': 'Brake Inspection',
+      'price': 2500,
+      'provider': 'AutoFix Vaughan',
+    },
+  ];
 
   /// Phase 1: Create draft order → then navigate to review/confirmation screen
   Future<void> _submitOrder() async {
@@ -103,7 +124,9 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
     }
     final description = _descriptionController.text.trim();
     if (description.length < 20) {
-      _showError('Please describe your job in more detail (at least 20 characters).');
+      _showError(
+        'Please describe your job in more detail (at least 20 characters).',
+      );
       return;
     }
     if (description.length > 2000) {
@@ -113,26 +136,17 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
 
     setState(() => _submitting = true);
     try {
-      final body = <String, dynamic>{
-        'serviceCatalogId': serviceId,
-        'entryPoint': _prefillProviderId != null ? 'direct' : 'explorer',
-      };
-
-      if (description.isNotEmpty) {
-        body['description'] = description;
-      }
-
-      // Include prefill data from business page (service name, description, price, packageId)
-      final mergedPrefill = <String, dynamic>{
-        if (_prefillPackageId != null) 'packageId': _prefillPackageId,
-        ...?_prefillData,
-      };
-      if (mergedPrefill.isNotEmpty) {
-        body['prefill'] = mergedPrefill;
-      }
+      final body = ApiService.draftOrderBody(
+        serviceCatalogId: serviceId,
+        entryPoint: _prefillProviderId != null ? 'direct' : 'explorer',
+        description: description,
+        packageId: _prefillPackageId,
+        prefill: _prefillData,
+      );
 
       final result = await _api.createDraftOrder(body);
-      final orderId = (result['id'] ?? result['orderId'] ?? result['offerId']) as String?;
+      final orderId =
+          (result['id'] ?? result['orderId'] ?? result['offerId']) as String?;
 
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -140,7 +154,11 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
       if (orderId != null) {
         _showSuccess('Draft created! Review and submit to find providers.');
         // Navigate to order detail/review screen
-        Navigator.pushReplacementNamed(context, '/customer/order-detail', arguments: orderId);
+        Navigator.pushReplacementNamed(
+          context,
+          '/customer/order-detail',
+          arguments: orderId,
+        );
       } else {
         _showError('Order created but no ID returned.');
       }
@@ -185,7 +203,6 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? AppColors.bg : AppColorsLight.bg;
     final card = isDark ? AppColors.card : AppColorsLight.card;
     final border = isDark ? AppColors.border : AppColorsLight.border;
     final text = isDark ? AppColors.text : AppColorsLight.text;
@@ -195,249 +212,319 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
     final isDirectBooking = _prefillServiceCatalogId != null;
 
     return SingleChildScrollView(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Pre-filled service info card (when coming from business page)
-            if (isDirectBooking && _prefillData != null) ...[
-              _buildPrefillCard(card, border),
-              const SizedBox(height: 20),
-            ],
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Pre-filled service info card (when coming from business page)
+          if (isDirectBooking && _prefillData != null) ...[
+            _buildPrefillCard(card, border),
+            const SizedBox(height: 20),
+          ],
 
-            // Category picker (hidden for direct bookings)
-            if (!isDirectBooking) ...[
-              const Text('Select Category',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text2)),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 44,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: _categories.map((cat) {
-                    final selected = cat['id'] == _selectedCategoryId;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedCategoryId = cat['id'] as String;
-                          _selectedServiceId = null;
-                        });
-                        _loadServices(cat['id'] as String);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: selected ? AppColors.primary : card,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: selected ? AppColors.primary : border),
-                        ),
-                        child: Text(
-                          cat['name'] as String? ?? '',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: selected ? Colors.white : text2,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+          // Category picker (hidden for direct bookings)
+          if (!isDirectBooking) ...[
+            const Text(
+              'Select Category',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.text2,
               ),
-              const SizedBox(height: 20),
-
-              // Service list
-              if (_selectedCategoryId != null) ...[
-                const Text('Available Services',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text2)),
-                const SizedBox(height: 8),
-                if (_loading)
-                  const Center(child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-                  )),
-                if (!_loading && _services.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: card,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: border),
-                    ),
-                    child: const Center(
-                      child: Text('No services available in this category',
-                          style: TextStyle(fontSize: 13, color: AppColors.text3)),
-                    ),
-                  ),
-                ..._services.map((svc) {
-                  final price = svc['price'] as int? ?? 0;
-                  final selected = svc['id'] == _selectedServiceId;
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: _categories.map((cat) {
+                  final selected = cat['id'] == _selectedCategoryId;
                   return GestureDetector(
-                    onTap: () => setState(() => _selectedServiceId = svc['id'] as String),
+                    onTap: () {
+                      setState(() {
+                        _selectedCategoryId = cat['id'] as String;
+                        _selectedServiceId = null;
+                      });
+                      _loadServices(cat['id'] as String);
+                    },
                     child: Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
-                        color: selected ? AppColors.primary.withValues(alpha: 0.08) : card,
-                        borderRadius: BorderRadius.circular(12),
+                        color: selected ? AppColors.primary : card,
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: selected ? AppColors.primary : border,
-                          width: selected ? 2 : 1,
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: AppColors.card2,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.build, size: 20, color: AppColors.primary),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(svc['name'] as String? ?? '',
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text)),
-                                const SizedBox(height: 2),
-                                Text(svc['provider'] as String? ?? '',
-                                    style: const TextStyle(fontSize: 11, color: AppColors.text3)),
-                              ],
-                            ),
-                          ),
-                          Text('\$${(price / 100).toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                                fontFamily: 'Space Grotesk',
-                              )),
-                        ],
+                      child: Text(
+                        cat['name'] as String? ?? '',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: selected ? Colors.white : text2,
+                        ),
                       ),
                     ),
                   );
-                }),
-                const SizedBox(height: 20),
-              ],
-            ],
-
-            // Description field
-            const Text('Describe what you need',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text2)),
-            const SizedBox(height: 4),
-            Text(
-              'Minimum 20 characters — be specific about scope, timing, and location',
-              style: TextStyle(fontSize: 11, color: text2.withValues(alpha: 0.7)),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: card,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: border),
+                }).toList(),
               ),
-              child: TextField(
-                controller: _descriptionController,
-                maxLines: 4,
-                style: TextStyle(fontSize: 13, color: text),
-                decoration: InputDecoration(
-                  hintText: isDirectBooking
-                      ? 'Describe the job details, preferred date/time, and location...'
-                      : 'Describe what you need...',
-                  hintStyle: const TextStyle(fontSize: 13, color: AppColors.text3),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            const SizedBox(height: 20),
+
+            // Service list
+            if (_selectedCategoryId != null) ...[
+              const Text(
+                'Available Services',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text2,
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
-                  '${_descriptionController.text.length}/2000',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: _descriptionController.text.length < 20
-                        ? Colors.orange.shade400
-                        : text2.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Commission breakdown (visible when price is known)
-            if (_selectedServiceId != null) ...[
-              const SizedBox(height: 16),
-              _buildCommissionBreakdown(),
-            ],
-
-            // Submit button
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _submitting
-                    ? null
-                    : (isDirectBooking || _selectedServiceId != null ? _submitOrder : null),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                child: _submitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Place Order',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Flow explanation
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline, size: 16, color: AppColors.primary.withValues(alpha: 0.7)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'After placing your order, you\'ll be able to review details and submit it to find the best providers.',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: text2.withValues(alpha: 0.8),
-                        height: 1.4,
-                      ),
+              const SizedBox(height: 8),
+              if (_loading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
                     ),
                   ),
-                ],
+                ),
+              if (!_loading && _services.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: border),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'No services available in this category',
+                      style: TextStyle(fontSize: 13, color: AppColors.text3),
+                    ),
+                  ),
+                ),
+              ..._services.map((svc) {
+                final price = svc['price'] as int? ?? 0;
+                final selected = svc['id'] == _selectedServiceId;
+                return GestureDetector(
+                  onTap: () =>
+                      setState(() => _selectedServiceId = svc['id'] as String),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.primary.withValues(alpha: 0.08)
+                          : card,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: selected ? AppColors.primary : border,
+                        width: selected ? 2 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.card2,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.build,
+                            size: 20,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                svc['name'] as String? ?? '',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.text,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                svc['provider'] as String? ?? '',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.text3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          '\$${(price / 100).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            fontFamily: 'Space Grotesk',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 20),
+            ],
+          ],
+
+          // Description field
+          const Text(
+            'Describe what you need',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.text2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Minimum 20 characters — be specific about scope, timing, and location',
+            style: TextStyle(fontSize: 11, color: text2.withValues(alpha: 0.7)),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: border),
+            ),
+            child: TextField(
+              controller: _descriptionController,
+              maxLines: 4,
+              style: TextStyle(fontSize: 13, color: text),
+              decoration: InputDecoration(
+                hintText: isDirectBooking
+                    ? 'Describe the job details, preferred date/time, and location...'
+                    : 'Describe what you need...',
+                hintStyle: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.text3,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
-            const SizedBox(height: 40),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                '${_descriptionController.text.length}/2000',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: _descriptionController.text.length < 20
+                      ? Colors.orange.shade400
+                      : text2.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Commission breakdown (visible when price is known)
+          if (_selectedServiceId != null) ...[
+            const SizedBox(height: 16),
+            _buildCommissionBreakdown(),
           ],
-        ),
-      );
+
+          // Submit button
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _submitting
+                  ? null
+                  : (isDirectBooking || _selectedServiceId != null
+                        ? _submitOrder
+                        : null),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: AppColors.primary.withValues(
+                  alpha: 0.4,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: _submitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Place Order',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Flow explanation
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: AppColors.primary.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'After placing your order, you\'ll be able to review details and submit it to find the best providers.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: text2.withValues(alpha: 0.8),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
   }
 
   // ── Commission Breakdown ──
@@ -473,7 +560,11 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.receipt_long_outlined, size: 18, color: AppColors.text2),
+              Icon(
+                Icons.receipt_long_outlined,
+                size: 18,
+                color: AppColors.text2,
+              ),
               SizedBox(width: 8),
               Text(
                 'Payment Breakdown',
@@ -486,11 +577,25 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          _commissionRow('Service price', '\$${price.toStringAsFixed(2)}', AppColors.text, false),
-          _commissionRow('Platform fee (${(_commissionRate * 100).toStringAsFixed(1)}%)',
-              '-\$${commission.toStringAsFixed(2)}', AppColors.text3, false),
+          _commissionRow(
+            'Service price',
+            '\$${price.toStringAsFixed(2)}',
+            AppColors.text,
+            false,
+          ),
+          _commissionRow(
+            'Platform fee (${(_commissionRate * 100).toStringAsFixed(1)}%)',
+            '-\$${commission.toStringAsFixed(2)}',
+            AppColors.text3,
+            false,
+          ),
           const Divider(color: AppColors.border, height: 20),
-          _commissionRow('You pay', '\$${price.toStringAsFixed(2)}', AppColors.primary, true),
+          _commissionRow(
+            'You pay',
+            '\$${price.toStringAsFixed(2)}',
+            AppColors.primary,
+            true,
+          ),
           const SizedBox(height: 4),
           Text(
             'Provider receives \$${providerReceives.toStringAsFixed(2)} after platform fee',
@@ -505,7 +610,12 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
     );
   }
 
-  Widget _commissionRow(String label, String value, Color valueColor, bool bold) {
+  Widget _commissionRow(
+    String label,
+    String value,
+    Color valueColor,
+    bool bold,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -549,7 +659,11 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
                   color: AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.verified, size: 18, color: AppColors.primary),
+                child: const Icon(
+                  Icons.verified,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -585,7 +699,10 @@ class _NewOrderScreenState extends State<NewOrderScreen> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Text('CAD', style: TextStyle(fontSize: 11, color: AppColors.text3)),
+                const Text(
+                  'CAD',
+                  style: TextStyle(fontSize: 11, color: AppColors.text3),
+                ),
               ],
             ),
           ],

@@ -17,6 +17,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 
     const where: Record<string, unknown> = { archivedAt: null };
     if (status) where.moderationStatus = status;
+    if (uploaderType) where.uploader = { role: uploaderType };
 
     const [media, total] = await Promise.all([
       prisma.mediaAsset.findMany({

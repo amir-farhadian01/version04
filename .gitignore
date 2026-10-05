@@ -8,6 +8,8 @@ frontend/coverage/
 *.log
 .env*
 !.env.example
+!.env.staging.example
+private-uploads/
 
 # Process ID files
 *.pid
@@ -22,6 +24,9 @@ frontend/coverage/
 # Windows "Mark of the Web" — NTFS alternate stream shown as a sidecar file under WSL (e.g. foo.ts:Zone.Identifier). Not part of the project; safe to delete.
 **/*Zone.Identifier
 
+# Local helper scripts that may read credentials — never commit
+temp/
+
 # Build artifacts
 frontend/dist/
 flutter_project/build/
@@ -33,6 +38,8 @@ flutter_project/.flutter-plugins-dependencies
 # Coverage reports
 frontend/coverage/
 coverage/
+frontend/playwright-report/
+frontend/test-results/
 
 # IDE
 .idea/

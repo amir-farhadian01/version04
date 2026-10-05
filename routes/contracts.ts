@@ -72,7 +72,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
 
 // PUT /api/contracts/:id/sign
 router.put('/:id/sign', authenticate, async (req: AuthRequest, res: Response) => {
-  const { userId, role } = req.user!;
+  const { userId } = req.user!;
   try {
     const contract = await prisma.contract.findUnique({ where: { id: req.params.id } });
     if (!contract) return res.status(404).json({ error: 'Not found' });

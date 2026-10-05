@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 
@@ -40,7 +40,7 @@ export default function Invoices() {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [search, setSearch] = useState('')
 
-  const fetchInvoices = () => {
+  const fetchInvoices = useCallback(() => {
     if (!workspaceId) return
     setLoading(true)
     setError(null)
@@ -54,9 +54,9 @@ export default function Invoices() {
       })
       .catch((err) => setError(err?.response?.data?.message ?? 'Failed to load invoices'))
       .finally(() => setLoading(false))
-  }
+  }, [page, search, statusFilter, workspaceId])
 
-  useEffect(() => { fetchInvoices() }, [workspaceId, page, statusFilter])
+  useEffect(() => { fetchInvoices() }, [fetchInvoices])
 
   const handleSearch = () => {
     setPage(1)

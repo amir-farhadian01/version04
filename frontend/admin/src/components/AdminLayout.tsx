@@ -4,7 +4,6 @@ import { useAuthStore } from '../store/authStore'
 import {
   LogOut,
   Home,
-  Bell,
   Menu,
   X,
   LayoutDashboard,
@@ -18,7 +17,6 @@ import {
   ShieldAlert,
   Newspaper,
   BarChart3,
-  Wrench,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { motion, AnimatePresence } from 'motion/react'
@@ -35,7 +33,6 @@ const SIDEBAR_LINKS = [
   { label: 'Home Content', icon: Newspaper, path: '/admin/home-content' },
   { label: 'Moderation', icon: ShieldAlert, path: '/admin/moderation' },
   { label: 'Analytics', icon: BarChart3, path: '/admin/analytics' },
-  { label: 'Services', icon: Wrench, path: '/admin/orders' },
   { label: 'Settings', icon: Settings, path: '/admin/settings' },
 ]
 
@@ -50,11 +47,8 @@ export function AdminLayout() {
     navigate('/login')
   }
 
-  const isActive = (path: string) => {
-    const base = '/admin'
-    if (!path) return location.pathname === base
-    return location.pathname === `${base}/${path}`
-  }
+  const isActive = (path: string) =>
+    location.pathname === path || (path !== '/admin' && location.pathname.startsWith(`${path}/`))
 
   return (
     <div className="min-h-screen bg-nh-admin-bg font-sans text-nh-admin-text flex flex-col">
@@ -76,16 +70,6 @@ export function AdminLayout() {
               <span className="hidden md:inline max-w-[220px] truncate text-xs text-nh-admin-text-muted font-medium" title={user.email}>
                 {user.email}
               </span>
-            )}
-            {user && (
-              <Link
-                to="/notifications"
-                className="relative flex h-10 w-10 items-center justify-center rounded-full border border-nh-admin-border bg-nh-admin-surface text-nh-admin-text-secondary transition hover:border-nh-admin-primary hover:text-white"
-                aria-label="Notifications"
-              >
-                <Bell className="h-5 w-5" />
-                <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-nh-admin-danger ring-2 ring-nh-admin-surface" />
-              </Link>
             )}
             {user && <AccountAvatarBadge user={user} />}
 

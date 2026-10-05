@@ -1,6 +1,5 @@
 import { Router, Response } from 'express';
-import type { Prisma } from '@prisma/client';
-import { KycStatus, KycSubmissionType, UserRole } from '@prisma/client';
+import { KycStatus, KycSubmissionType, Prisma, UserRole } from '@prisma/client';
 import prisma from '../lib/db.js';
 import { authenticate, isAdmin, requireRole, AuthRequest } from '../lib/auth.middleware.js';
 import { isBusinessKycFormV1, type BusinessKycFormV1 } from '../lib/kycTypes.js';
@@ -79,7 +78,42 @@ function withComputedExpiry(
   return computeExpiryFlags(form, answers) as unknown as Record<string, unknown>;
 }
 
-// --- Level 0 ---
+type BusinessComponentReview = {
+  registrationReviewStatus: string;
+  registrationReviewNote: string | null;
+  insuranceReviewStatus: string;
+  insuranceReviewNote: string | null;
+};
+
+type BusinessSchemaSnapshotRow = {
+  id: string;
+  schemaSnapshot: unknown;
+};
+
+async function getBusinessSchemaSnapshots(ids: string[]): Promise<Map<string, BusinessKycFormV1>> {
+  if (ids.length === 0) return new Map();
+  const rows = await prisma.$queryRaw<BusinessSchemaSnapshotRow[]>(Prisma.sql`
+    SELECT "id", "schemaSnapshot"
+    FROM "BusinessKycSubmission"
+    WHERE "id" IN (${Prisma.join(ids)})
+  `);
+  const snapshots = new Map<string, BusinessKycFormV1>();
+  for (const row of rows) {
+    const snapshot = formFromSchemaJson(row.schemaSnapshot);
+    if (snapshot) snapshots.set(row.id, snapshot);
+  }
+  return snapshots;
+}
+
+async function getBusinessComponentReview(submissionId: string): Promise<BusinessComponentReview | null> {
+  const rows = await prisma.$queryRaw<BusinessComponentReview[]>`
+    SELECT "registrationReviewStatus", "registrationReviewNote", "insuranceReviewStatus", "insuranceReviewNote"
+    FROM "BusinessKycSubmission" WHERE "id" = ${submissionId} LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
+// --- Level 1 (legacy route name retained for compatibility) ---
 
 router.get('/level0', async (req: AuthRequest, res: Response) => {
   try {
@@ -274,7 +308,7 @@ router.post('/level0/:userId/acknowledge', async (req: AuthRequest, res: Respons
   }
 });
 
-// --- Personal (Level 1) ---
+// --- Personal (Level 2) ---
 
 router.get('/personal', async (req: AuthRequest, res: Response) => {
   try {
@@ -285,7 +319,7 @@ router.get('/personal', async (req: AuthRequest, res: Response) => {
     const userIdFilter = typeof req.query.userId === 'string' ? req.query.userId : '';
 
     const statusRaw = parseQueryStringArray(req.query.status);
-    const statusFilter = (statusRaw.length ? statusRaw : ['pending']) as KycStatus[];
+    const statusFilter = (statusRaw.includes('all') ? Object.values(KycStatus) : statusRaw.length ? statusRaw : ['pending']) as KycStatus[];
     for (const s of statusFilter) {
       if (!KYC_STATUS_VALUES.has(s)) {
         return res.status(400).json({ error: `Invalid status: ${s}` });
@@ -526,7 +560,7 @@ router.post(
   },
 );
 
-// --- Business (Level 2) ---
+// --- Business (Level 3) ---
 
 router.get('/business', async (req: AuthRequest, res: Response) => {
   try {
@@ -535,9 +569,11 @@ router.get('/business', async (req: AuthRequest, res: Response) => {
     const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : 'submittedAt';
     const sortDir = req.query.sortDir === 'asc' ? 'asc' : 'desc';
     const userIdFilter = typeof req.query.userId === 'string' ? req.query.userId : '';
+    const businessType = typeof req.query.businessType === 'string' ? req.query.businessType.trim() : '';
+    const insuranceStatus = typeof req.query.insuranceStatus === 'string' ? req.query.insuranceStatus.trim() : '';
 
     const statusRaw = parseQueryStringArray(req.query.status);
-    const statusFilter = (statusRaw.length ? statusRaw : ['pending']) as KycStatus[];
+    const statusFilter = (statusRaw.includes('all') ? Object.values(KycStatus) : statusRaw.length ? statusRaw : ['pending']) as KycStatus[];
     for (const s of statusFilter) {
       if (!KYC_STATUS_VALUES.has(s)) {
         return res.status(400).json({ error: `Invalid status: ${s}` });
@@ -548,6 +584,10 @@ router.get('/business', async (req: AuthRequest, res: Response) => {
       status: { in: statusFilter },
     };
     if (userIdFilter) where.userId = userIdFilter;
+    const jsonFilters: Prisma.BusinessKycSubmissionWhereInput[] = [];
+    if (businessType) jsonFilters.push({ answers: { path: ['businessCategory'], equals: businessType } });
+    if (insuranceStatus) jsonFilters.push({ answers: { path: ['insuranceStatus'], equals: insuranceStatus } });
+    if (jsonFilters.length) where.AND = jsonFilters;
     if (q) {
       where.OR = [
         { user: { email: { contains: q, mode: 'insensitive' } } },
@@ -599,10 +639,17 @@ router.get('/business', async (req: AuthRequest, res: Response) => {
       if (f) formByVersion.set(s.version, f);
     }
 
-    const rows = items.map((item) => ({
+    const snapshots = await getBusinessSchemaSnapshots(items.map((item) => item.id));
+
+    const rows = await Promise.all(items.map(async (item) => ({
       ...item,
-      expiryFlags: withComputedExpiry(item, formByVersion),
-    }));
+      componentReview: await getBusinessComponentReview(item.id),
+      resolvedSchema: snapshots.get(item.id) ?? formByVersion.get(item.schemaVersion) ?? null,
+      expiryFlags: computeExpiryFlags(
+        snapshots.get(item.id) ?? formByVersion.get(item.schemaVersion),
+        parseJsonRecord(item.answers),
+      ) as unknown as Record<string, unknown>,
+    })));
 
     res.json({ page, pageSize, total, rows });
   } catch (err: unknown) {
@@ -633,10 +680,12 @@ router.get('/business/:id', async (req: AuthRequest, res: Response) => {
     });
     if (!row) return res.status(404).json({ error: 'Not found' });
 
-    const schemaRow = await prisma.businessKycFormSchema.findUnique({
+    const snapshots = await getBusinessSchemaSnapshots([row.id]);
+    const snapshotSchema = snapshots.get(row.id) ?? null;
+    const schemaRow = snapshotSchema ? null : await prisma.businessKycFormSchema.findUnique({
       where: { version: row.schemaVersion },
     });
-    const resolvedSchema = schemaRow ? formFromSchemaJson(schemaRow.schema) : null;
+    const resolvedSchema = snapshotSchema ?? (schemaRow ? formFromSchemaJson(schemaRow.schema) : null);
     const formByVersion = new Map<number, BusinessKycFormV1>();
     if (resolvedSchema) formByVersion.set(row.schemaVersion, resolvedSchema);
 
@@ -650,6 +699,7 @@ router.get('/business/:id', async (req: AuthRequest, res: Response) => {
 
     res.json({
       ...row,
+      componentReview: await getBusinessComponentReview(row.id),
       resolvedSchema,
       expiryFlags: withComputedExpiry(row, formByVersion),
       auditHistory,
@@ -680,6 +730,17 @@ async function applyBusinessReview(
   await prisma.$transaction(async (tx) => {
     const sub = await tx.businessKycSubmission.findUnique({ where: { id: submissionId } });
     if (!sub) throw Object.assign(new Error('Submission not found'), { status: 404 });
+
+    if (action === 'approve') {
+      const reviewRows = await tx.$queryRaw<BusinessComponentReview[]>`
+        SELECT "registrationReviewStatus", "registrationReviewNote", "insuranceReviewStatus", "insuranceReviewNote"
+        FROM "BusinessKycSubmission" WHERE "id" = ${submissionId} LIMIT 1
+      `;
+      const review = reviewRows[0];
+      if (!review || review.registrationReviewStatus !== 'approved' || review.insuranceReviewStatus !== 'approved') {
+        throw Object.assign(new Error('Registration and insurance must be reviewed and approved separately'), { status: 409 });
+      }
+    }
 
     const fromStatus = sub.status;
 
@@ -762,6 +823,7 @@ router.post('/business/:id/review', async (req: AuthRequest, res: Response) => {
       const msg = e instanceof Error ? e.message : String(e);
       if (st === 400) return res.status(400).json({ error: msg });
       if (st === 404) return res.status(404).json({ error: msg });
+      if (st === 409) return res.status(409).json({ error: msg });
       throw e;
     }
     const updated = await prisma.businessKycSubmission.findUnique({ where: { id: req.params.id } });
@@ -769,6 +831,39 @@ router.post('/business/:id/review', async (req: AuthRequest, res: Response) => {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: message });
+  }
+});
+
+router.post('/business/:id/components/:component/review', async (req: AuthRequest, res: Response) => {
+  try {
+    const component = req.params.component;
+    const { action, note } = req.body as { action?: string; note?: string };
+    if (component !== 'registration' && component !== 'insurance') return res.status(400).json({ error: 'Invalid component' });
+    if (action !== 'approve' && action !== 'reject') return res.status(400).json({ error: 'Invalid action' });
+    if (action === 'reject' && (!note || !note.trim())) return res.status(400).json({ error: 'note is required for rejection' });
+    const sub = await prisma.businessKycSubmission.findUnique({ where: { id: req.params.id } });
+    if (!sub) return res.status(404).json({ error: 'Submission not found' });
+    const statusColumn = component === 'registration' ? 'registrationReviewStatus' : 'insuranceReviewStatus';
+    const noteColumn = component === 'registration' ? 'registrationReviewNote' : 'insuranceReviewNote';
+    if (component === 'registration') {
+      await prisma.$executeRaw`
+        UPDATE "BusinessKycSubmission" SET "registrationReviewStatus" = ${action === 'approve' ? 'approved' : 'rejected'},
+          "registrationReviewNote" = ${note?.trim() ?? null}, "updatedAt" = NOW() WHERE "id" = ${sub.id}
+      `;
+    } else {
+      await prisma.$executeRaw`
+        UPDATE "BusinessKycSubmission" SET "insuranceReviewStatus" = ${action === 'approve' ? 'approved' : 'rejected'},
+          "insuranceReviewNote" = ${note?.trim() ?? null}, "updatedAt" = NOW() WHERE "id" = ${sub.id}
+      `;
+    }
+    await prisma.kycReviewAuditLog.create({ data: {
+      submissionType: KycSubmissionType.business, submissionId: sub.id, actorId: req.user!.userId,
+      fromStatus: 'pending', toStatus: action === 'approve' ? 'approved' : 'rejected', note: note?.trim() ?? null,
+      metadata: { action, component, statusColumn, noteColumn },
+    } });
+    res.json({ success: true, componentReview: await getBusinessComponentReview(sub.id) });
+  } catch (err: unknown) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
 

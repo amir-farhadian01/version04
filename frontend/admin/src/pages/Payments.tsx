@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import api from '../lib/api'
+import { useState, useEffect, useCallback } from 'react'
+import api, { getApiError } from '../lib/api'
 import { DollarSign, Search, RefreshCw } from 'lucide-react'
 
 type PaymentRow = {
@@ -45,7 +45,7 @@ export default function AdminPayments() {
   const [total, setTotal] = useState(0)
   const pageSize = 20
 
-  const fetchPayments = async (p = page) => {
+  const fetchPayments = useCallback(async (p = 1) => {
     setLoading(true)
     setError(null)
     try {
@@ -53,15 +53,15 @@ export default function AdminPayments() {
       setPayments(res.data.items ?? [])
       setTotal(res.data.total ?? 0)
       setPage(res.data.page ?? p)
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to load payments')
+    } catch (err: unknown) {
+      setError(getApiError(err, 'Failed to load payments'))
       setPayments([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { fetchPayments(1) }, [])
+  useEffect(() => { fetchPayments(1) }, [fetchPayments])
 
   const filtered = search
     ? payments.filter((p) =>

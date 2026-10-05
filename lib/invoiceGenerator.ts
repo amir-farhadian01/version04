@@ -5,8 +5,6 @@ import prisma from './db.js';
 // Types
 // ---------------------------------------------------------------------------
 
-type OrderForInvoice = NonNullable<Awaited<ReturnType<typeof queryOrderForInvoice>>>;
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -229,7 +227,6 @@ export async function generateInvoicePdf(orderId: string): Promise<Buffer> {
   const workspace = order.matchedWorkspace;
   const customer = order.customer;
   const service = order.serviceCatalog;
-  const pkg = order.matchedPackage;
   const jobRecord = order.jobRecord;
 
   const invoiceNumber = `INV-${orderId.substring(0, 8).toUpperCase()}`;
@@ -265,7 +262,6 @@ export async function generateInvoicePdf(orderId: string): Promise<Buffer> {
   const sectionY = 155;
   const leftColX = margin;
   const rightColX = pageWidth / 2 + 10;
-  const colWidth = contentWidth / 2 - 20;
 
   // --- Provider ---
   doc.font('Helvetica-Bold').fontSize(FONT_SIZES.sectionHeader).fillColor(COLORS.header);

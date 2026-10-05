@@ -2,7 +2,7 @@
 
 **Version:** 3.0.0
 **Last Updated:** 2026-08-11
-**Status:** ✅ **MVP COMPLETE — All phases done. Ready for deployment.**
+**Historical status (2026-08-11):** MVP completion was reported. This reconciliation preserves that report, not a current release-readiness certification. Current delivery/driver work and fresh verification remain outstanding.
 
 > ⚠️ THIS IS THE SOURCE OF TRUTH.
 > Every agent, every PR, every sprint MUST read this file BEFORE writing code.
@@ -49,7 +49,7 @@ Neighborly is a **social marketplace location-aware platform** — combining soc
 
 ---
 
-## 4. Phase Matrix — ALL DONE ✅
+## 4. Historical Phase Matrix - reported 2026-08-11
 
 ### Phase 0 — Cleanup & Frontend Bootstrap ✅
 ### Phase 1 — Auth, KYC & Identity ✅
@@ -93,7 +93,7 @@ Neighborly is a **social marketplace location-aware platform** — combining soc
 
 ---
 
-## 7. Verification & Sign-off
+## 7. Historical Verification & Sign-off - requires fresh evidence
 
 - ✅ All backend APIs implemented and tested
 - ✅ All frontend components (Client + Admin) built
@@ -103,4 +103,26 @@ Neighborly is a **social marketplace location-aware platform** — combining soc
 - ✅ All documentation updated
 - ✅ Team sign-off: Software Design, Project Managers, Product Manager — approved 2026-08-11
 
-**STATUS: MVP 100% COMPLETE. No remaining tasks. Ready for production deployment.**
+**Historical claim only:** the prior MVP sign-off does not establish current deployment readiness or completion of subsequently authorized features.
+
+---
+
+# Growth Roadmap
+
+## Current product state
+
+The MVP is treated as complete for purposes of this growth architecture. Product changes remain outside the scope of GTM agents unless separately approved through engineering governance.
+
+## Current priority: evidence-led micro-market liquidity
+
+1. Establish product facts and instrumentation coverage.
+2. Research geography × category candidates without assuming a winner.
+3. Select one micro-market through a documented, weighted decision and Red Team review.
+4. Build verified, qualified supply before scaling demand.
+5. Measure matches, completed transactions, repeat behavior, trust indicators, and contribution margin.
+6. Improve the active market until its founder-approved liquidity thresholds are sustained.
+7. Evaluate an adjacent geography or category only after metric gates pass—not after a fixed time period.
+
+## Status
+
+**STATUS: RESEARCH REQUIRED** — no starting geography, category, threshold values, or expansion candidate has been selected in this repository.

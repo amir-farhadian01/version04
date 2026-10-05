@@ -32,6 +32,10 @@ vi.mock('../lib/auth.middleware.js', () => ({
   AuthRequest: class {},
 }));
 
+vi.mock('../lib/bus.js', () => ({
+  publish: vi.fn().mockResolvedValue(undefined),
+}));
+
 // ── Import router after mocks ─────────────────────────────────────────────────
 
 import adminDisputesRouter from './adminDisputes.js';
