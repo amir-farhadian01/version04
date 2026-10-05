@@ -14,6 +14,7 @@ import prisma from "./lib/db.js";
 import { getRedis, pingRedis } from "./lib/redis.js";
 import { getNats, isNatsAvailable, startNatsNotificationConsumers } from "./lib/bus.js";
 import { incrementOperationalMetric, installObservability } from "./lib/observability.js";
+import { resolveApiVersion } from "./lib/releaseInfo.js";
 import { apiLimiter, adminLimiter } from "./lib/rateLimiter.js";
 import { ensureMediaSchema } from "./lib/mediaDb.js";
 import { startLocationFlusher, stopLocationFlusher } from "./lib/locationCache.js";
@@ -257,7 +258,9 @@ function createWebApp(opts?: { adminOnly?: boolean }): Express {
     isNatsAvailable,
     storagePath: uploadsDir,
     service: opts?.adminOnly ? 'neighborly-admin' : 'neighborly-api',
-    version: process.env.APP_VERSION || '2.0.0',
+    // Canonical default comes from release-manifest.json (single source of truth);
+    // APP_VERSION stays as an explicit deployment-time override (e.g. image-stamped builds).
+    version: process.env.APP_VERSION || resolveApiVersion(),
     requiredServices,
     metricsToken: process.env.METRICS_TOKEN,
     environment: process.env.APP_ENV || process.env.NODE_ENV,
