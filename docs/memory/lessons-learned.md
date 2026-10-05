@@ -70,3 +70,8 @@ Append after every completed goal or notable failure.
 - **What happened:** Two sequential-looking `run_commands` array items (migrate deploy + seed on the same temp DB, and deploy + diff) actually started concurrently: seed hit `P2021: table does not exist` mid-deploy, and a drift `diff` captured the pre-deploy state (reporting drift that no longer existed). Both "failures" vanished when the steps were re-run chained inside a single shell command.
 - **Root cause:** bad test/process assumption (tool-level parallelism mistaken for sequential execution), not bad code.
 - **Rule for next time:** In this environment, steps that depend on each other MUST be chained in one command string (`a && b && c`); use separate array items only for genuinely independent work. When an output looks impossible, first suspect a race, re-run sequentially before debugging the app.
+
+## [2026-10-05] corsOrigin.test.ts was committed broken — full suite not run before commit
+- **What happened:** `lib/corsOrigin.test.ts` (commit f16eef1) crashed at module scope in every vitest run (`fileURLToPath(new URL(...))` — under the repo's global jsdom environment, vitest's web-transform rewrites `import.meta.url` to an http URL). The file had been committed without running the FULL backend suite; only targeted test files were executed. Discovered days later by the G-008 full-gate run.
+- **Root cause:** bad test discipline (partial test execution accepted as green), not bad code.
+- **Rule for next time:** "Tests pass" means the whole suite for that package, run in one command, output captured. Any new use of `import.meta.url`/`fileURLToPath` inside tests needs `// @vitest-environment node` (or a cwd-relative path) because `vitest.config.ts` sets `environment: 'jsdom'` globally.
