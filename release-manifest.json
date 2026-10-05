@@ -14,6 +14,7 @@
   },
   "toolchain": {
     "node": "22.14.0",
+    "npm": ">=10",
     "flutter": "3.41.6",
     "dart": "3.11.4",
     "prisma": "5.22.0",
@@ -21,6 +22,12 @@
     "reactRouter": "7.18.2",
     "vitestFrontend": "4.1.0",
     "bcrypt": "6.0.0"
+  },
+  "database": {
+    "migrationsDirectory": "prisma/migrations",
+    "migrationCount": 67,
+    "latestMigration": "20261004120000_align_schema_with_models",
+    "note": "Count/latest are asserted against the repository by release:manifest-check."
   },
   "services": {
     "postgres": "16.8-alpine",

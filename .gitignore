@@ -24,6 +24,9 @@ private-uploads/
 # Windows "Mark of the Web" — NTFS alternate stream shown as a sidecar file under WSL (e.g. foo.ts:Zone.Identifier). Not part of the project; safe to delete.
 **/*Zone.Identifier
 
+# Local helper scripts that may read credentials — never commit
+temp/
+
 # Build artifacts
 frontend/dist/
 flutter_project/build/
