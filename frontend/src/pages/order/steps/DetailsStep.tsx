@@ -8,9 +8,9 @@ import type { OrderDraft } from '../../../services/orderDraft.js';
 interface QuestionnaireField {
   id: string;
   label: string;
-  type: 'text' | 'number' | 'select' | 'textarea';
+  type: string;
   required?: boolean;
-  options?: string[];
+  options?: { value: string; label: string }[];
 }
 
 interface DetailsStepProps {
@@ -29,6 +29,7 @@ export default function DetailsStep({ draft, onUpdate, onNext, onBack }: Details
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireField[]>([]);
   const [questionnaireLoading, setQuestionnaireLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,13 +53,18 @@ export default function DetailsStep({ draft, onUpdate, onNext, onBack }: Details
           `/service-catalog/${catalogId}/schema`,
         );
         if (!cancelled) {
-          // Support both raw schema format and fields array
-          const schema = res.data;
-          if (schema?.fields) {
-            setQuestionnaire(schema.fields);
-          } else if (schema?.schema?.properties) {
-            const requiredFields = new Set(schema.schema.required ?? []);
-            const fields: QuestionnaireField[] = Object.entries(schema.schema.properties).map(([key, prop]) => ({
+          // ServiceQuestionnaireV1 (canonical): response.schema is the V1 object.
+          const v1 = (res.data as { schema?: { fields?: QuestionnaireField[] } | null })?.schema;
+          if (v1 && Array.isArray(v1.fields)) {
+            // The wizard has one generic photo uploader; schema photo fields
+            // are satisfied by it (fieldId mapping happens at submit time).
+            setQuestionnaire(v1.fields.filter((f) => f && f.type !== 'photo'));
+          } else if (res.data?.fields) {
+            setQuestionnaire(res.data.fields);
+          } else if (res.data?.schema?.properties) {
+            const legacy = res.data.schema as { properties?: Record<string, { type?: string; title?: string; description?: string }>; required?: string[] };
+            const requiredFields = new Set(legacy.required ?? []);
+            const fields: QuestionnaireField[] = Object.entries(legacy.properties ?? {}).map(([key, prop]) => ({
               id: key,
               label: prop.title ?? prop.description ?? key,
               type: prop.type === 'number' || prop.type === 'integer' ? 'number' : 'text',
@@ -92,22 +98,26 @@ export default function DetailsStep({ draft, onUpdate, onNext, onBack }: Details
     setUploading(true);
 
     const newUrls: string[] = [];
+    let failedCount = 0;
 
     for (const file of toUpload) {
       try {
         const formData = new FormData();
         formData.append('file', file);
-        const res = await api.post<{ data: { url: string } }>('/uploads/photo', formData, {
+        // Backend mounts the single-file multer upload at POST /api/upload and answers { url }.
+        const res = await api.post<{ url: string }>('/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        const url = res.data?.data?.url;
+        const url = res.data?.url;
         if (url) newUrls.push(url);
+        else failedCount += 1;
       } catch {
-        // skip failed uploads
+        failedCount += 1;
       }
     }
 
     setPhotos((prev) => [...prev, ...newUrls].slice(0, MAX_PHOTOS));
+    setUploadError(failedCount > 0 ? `${failedCount} photo upload${failedCount > 1 ? 's' : ''} failed. Please retry.` : null);
     setUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -212,6 +222,9 @@ export default function DetailsStep({ draft, onUpdate, onNext, onBack }: Details
         <p className="text-sm font-medium text-nh-text-secondary mb-2">
           Photos <span className="text-nh-text-muted text-xs">(up to {MAX_PHOTOS})</span>
         </p>
+        {uploadError && (
+          <p className="text-xs text-nh-danger mb-2" role="alert">{uploadError}</p>
+        )}
         {photos.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
             {photos.map((url, i) => (
@@ -267,16 +280,87 @@ export default function DetailsStep({ draft, onUpdate, onNext, onBack }: Details
         <NHCard>
           <div className="p-4 space-y-3">
             <p className="text-sm font-medium text-nh-text-secondary">Additional Details</p>
-            {questionnaire.map((field) => (
-              <NHInput
-                key={field.id}
-                label={field.label}
-                error={formErrors[field.id]}
-                placeholder={`Enter ${field.label.toLowerCase()}`}
-                type={field.type === 'number' ? 'number' : 'text'}
-                onChange={(e) => onUpdate({ [field.id]: e.target.value } as Partial<OrderDraft>)}
-              />
-            ))}
+            {questionnaire.map((field) => {
+              const err = formErrors[field.id];
+              const currentValue = draft[field.id as keyof OrderDraft];
+              if (field.type === 'select') {
+                return (
+                  <div key={field.id}>
+                    <label htmlFor={`q-${field.id}`} className="block text-sm font-medium text-nh-text-secondary mb-1.5">
+                      {field.label}{field.required && <span className="text-nh-danger"> *</span>}
+                    </label>
+                    <select
+                      id={`q-${field.id}`}
+                      className="w-full rounded-nh-input bg-nh-surface px-4 py-3 text-sm text-nh-text border border-nh-border transition-colors focus:border-nh-primary focus:outline-none focus:ring-1 focus:ring-nh-primary"
+                      value={typeof currentValue === 'string' ? currentValue : ''}
+                      onChange={(e) => onUpdate({ [field.id]: e.target.value } as Partial<OrderDraft>)}
+                    >
+                      <option value="">Choose…</option>
+                      {(field.options ?? []).map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                    {err && <p className="text-xs text-nh-danger mt-1">{err}</p>}
+                  </div>
+                );
+              }
+              if (field.type === 'boolean') {
+                return (
+                  <label key={field.id} className="flex items-center gap-2 text-sm text-nh-text">
+                    <input
+                      type="checkbox"
+                      checked={String(currentValue) === 'true'}
+                      onChange={(e) => onUpdate({ [field.id]: e.target.checked ? 'true' : 'false' } as Partial<OrderDraft>)}
+                    />
+                    {field.label}{field.required && <span className="text-nh-danger"> *</span>}
+                  </label>
+                );
+              }
+              if (field.type === 'date') {
+                return (
+                  <div key={field.id}>
+                    <label htmlFor={`q-${field.id}`} className="block text-sm font-medium text-nh-text-secondary mb-1.5">
+                      {field.label}{field.required && <span className="text-nh-danger"> *</span>}
+                    </label>
+                    <input
+                      id={`q-${field.id}`}
+                      type="date"
+                      className="w-full rounded-nh-input bg-nh-surface px-4 py-3 text-sm text-nh-text border border-nh-border"
+                      value={typeof currentValue === 'string' ? currentValue : ''}
+                      onChange={(e) => onUpdate({ [field.id]: e.target.value } as Partial<OrderDraft>)}
+                    />
+                    {err && <p className="text-xs text-nh-danger mt-1">{err}</p>}
+                  </div>
+                );
+              }
+              if (field.type === 'textarea') {
+                return (
+                  <div key={field.id}>
+                    <label htmlFor={`q-${field.id}`} className="block text-sm font-medium text-nh-text-secondary mb-1.5">
+                      {field.label}{field.required && <span className="text-nh-danger"> *</span>}
+                    </label>
+                    <textarea
+                      id={`q-${field.id}`}
+                      rows={3}
+                      className="w-full rounded-nh-input bg-nh-surface px-4 py-3 text-sm text-nh-text border border-nh-border"
+                      value={typeof currentValue === 'string' ? currentValue : ''}
+                      onChange={(e) => onUpdate({ [field.id]: e.target.value } as Partial<OrderDraft>)}
+                    />
+                    {err && <p className="text-xs text-nh-danger mt-1">{err}</p>}
+                  </div>
+                );
+              }
+              return (
+                <NHInput
+                  key={field.id}
+                  label={field.label}
+                  error={err}
+                  placeholder={`Enter ${field.label.toLowerCase()}`}
+                  type={field.type === 'number' ? 'number' : 'text'}
+                  onChange={(e) => onUpdate({ [field.id]: e.target.value } as Partial<OrderDraft>)}
+                />
+              );
+            })}
           </div>
         </NHCard>
       )}

@@ -317,7 +317,11 @@ router.get('/:workspaceId/finance', authenticate, async (req: AuthRequest, res: 
 
     res.json({
       ...financeData,
-      pipeline,
+      pipeline: pipelineStatuses.map((s) => ({
+        status: s,
+        count: pipeline[s].count,
+        total: pipeline[s].amount,
+      })),
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';

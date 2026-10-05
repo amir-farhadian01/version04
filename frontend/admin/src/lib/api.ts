@@ -32,11 +32,16 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Handle 401 by clearing auth state
+// Handle 401 by clearing auth state — but never for auth endpoints themselves:
+// a best-effort `POST /auth/logout` with an expired token 401s, and reacting
+// to that with a redirect would reload the login page in a loop.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const url: unknown = error.config?.url
+    const isAuthCall =
+      typeof url === 'string' && /\/auth\/(login|register|refresh|logout)\/?$/.test(url)
+    if (error.response?.status === 401 && !isAuthCall) {
       localStorage.removeItem('neighborly-admin-auth')
       window.location.href = '/login'
     }

@@ -10,6 +10,7 @@ import {
   type DependencyCatalogV1,
 } from '../lib/dependencyCatalog.js';
 import { getAdminUsersList, getAdminUserIds } from '../lib/adminUsersList.js';
+import { toAuditLogEntry } from '../lib/adminAudit.js';
 import { fetchAdminUserFull } from '../lib/adminUserDetail.js';
 import { computeAdminOverviewStats, computeOrdersSubmittedTrend } from '../lib/adminOverviewStats.js';
 
@@ -343,12 +344,12 @@ router.get('/audit-log', async (req: AuthRequest, res: Response) => {
   try {
     const limitRaw = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 10;
     const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 10));
-    const items = await prisma.auditLog.findMany({
+    const rows = await prisma.auditLog.findMany({
       include: { actor: { select: { id: true, displayName: true, email: true } } },
       orderBy: { timestamp: 'desc' },
       take: limit,
     });
-    res.json({ items });
+    res.json({ items: rows.map(toAuditLogEntry) });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

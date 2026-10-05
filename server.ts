@@ -87,6 +87,7 @@ import stripeWebhookRoutes from "./routes/stripeWebhook.js";
 import invoiceRoutes from "./routes/invoices.js";
 import workspaceFinanceRoutes from "./routes/workspaceFinance.js";
 import workspaceSocialRoutes from "./routes/workspaceSocial.js";
+import workspaceDashboardRoutes from "./routes/workspaceDashboard.js";
 import { router as serviceSearchRoutes } from "./routes/serviceSearch.js";
 import subcontractorRoutes from "./routes/subcontractor.js";
 import staffScheduleRoutes from "./routes/staffSchedule.js";
@@ -154,6 +155,7 @@ function mountApiRoutes(app: Express) {
   app.use("/api/workspace/invoices", invoiceRoutes);
   app.use("/api/workspace/finance", workspaceFinanceRoutes);
   app.use("/api/workspace/social", workspaceSocialRoutes);
+  app.use("/api/workspace", workspaceDashboardRoutes);
   app.use("/api/guest", guestCheckoutRouter);
   app.use("/api/auth", gdprRoutes);
 }

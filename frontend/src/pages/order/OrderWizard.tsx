@@ -147,7 +147,7 @@ export default function OrderWizard() {
               ...(pkg.categoryId ? { categoryId: pkg.categoryId } : {}),
               ...(pkg.categoryName ? { categoryName: pkg.categoryName } : {}),
               ...(pkg.businessId ? { businessId: pkg.businessId } : {}),
-              ...(pkg.price ? { budgetCents: pkg.price } : {}),
+              ...(pkg.price ? { budgetCents: Math.round(pkg.price * 100) } : {}), // package prices are dollars; Order.budget is stored in cents
             });
           }
         }

@@ -4,7 +4,7 @@ import { NHCard } from '../../../components/ui/NHCard.js';
 import { NHButton } from '../../../components/ui/NHButton.js';
 import { NHBadge } from '../../../components/ui/NHBadge.js';
 import type { OrderDraft } from '../../../services/orderDraft.js';
-import { clearDraft } from '../../../services/orderDraft.js';
+import { applyPhotoFieldMapping, clearDraft, extractAnswers, extractPhotos, parseBudgetDollars, resolvePhotoFieldId, saveDraftToApi } from '../../../services/orderDraft.js';
 import { useAuthStore } from '../../../store/authStore.js';
 
 interface ReviewStepProps {
@@ -13,7 +13,7 @@ interface ReviewStepProps {
   onBack: () => void;
 }
 
-export default function ReviewStep({ draft, onUpdate, onBack }: ReviewStepProps) {
+export default function ReviewStep({ draft, onUpdate: _onUpdate, onBack }: ReviewStepProps) {
   const [budgetDollars, setBudgetDollars] = useState(
     draft.budgetCents ? (draft.budgetCents / 100).toString() : '',
   );
@@ -34,11 +34,7 @@ export default function ReviewStep({ draft, onUpdate, onBack }: ReviewStepProps)
     }
   };
 
-  const budgetCents = (() => {
-    const parsed = parseFloat(budgetDollars);
-    if (isNaN(parsed) || parsed < 0) return undefined;
-    return Math.round(parsed * 100);
-  })();
+  const budgetCents = parseBudgetDollars(budgetDollars);
 
   const handleSubmit = async () => {
     if (!token) {
@@ -50,33 +46,81 @@ export default function ReviewStep({ draft, onUpdate, onBack }: ReviewStepProps)
     setError(null);
 
     try {
-      const payload: Record<string, unknown> = {
-        categoryId: draft.categoryId,
-        description: draft.description,
-        scheduledDate: draft.scheduledDate,
-        urgency: draft.urgency,
-        status: 'published',
+      // 1. Persist/update the server-side draft (creates one on first call).
+      const draftWithBudget: OrderDraft = {
+        ...draft,
+        ...(budgetCents !== undefined ? { budgetCents } : {}),
+        updatedAt: new Date().toISOString(),
       };
-      if (draft.serviceCatalogId) payload.serviceCatalogId = draft.serviceCatalogId;
-      if (draft.address) payload.address = draft.address;
-      if (budgetCents && budgetCents > 0) payload.budgetCents = budgetCents;
+      const draftId = await saveDraftToApi(draftWithBudget);
+      if (!draftId) {
+        setError('Could not save your order draft. Please try again.');
+        setSubmitting(false);
+        return;
+      }
 
-      const res = await api.post('/orders', payload);
-      if (res.data?.data) {
+      // 2. Submit the draft — backend merges this body over the stored draft.
+      // Photos must map onto the effective questionnaire's photo fields:
+      // - 1 photo field  → fieldId may be omitted (backend assigns it)
+      // - ≥2 photo fields → explicit fieldId required on every photo
+      // - 0 photo fields (or unusable schema) → photos are not submittable
+      let photos = extractPhotos(draft);
+      const submitCatalogId = draft.serviceCatalogId ?? draft.serviceId;
+      if (submitCatalogId) {
+        try {
+          const schemaRes = await api.get<{ schema?: { fields?: { id?: string; type?: string }[] } | null }>(
+            `/service-catalog/${submitCatalogId}/schema`,
+          );
+          photos = applyPhotoFieldMapping(photos, resolvePhotoFieldId(schemaRes.data?.schema?.fields));
+        } catch {
+          // Unusable questionnaire (e.g. server-side fallback) has no photo
+          // fields — drop photos rather than failing the whole submit.
+          photos = [];
+        }
+      }
+
+      const submitPayload: Record<string, unknown> = {
+        description: draft.description,
+        address: draft.address,
+        scheduledAt: draft.scheduledDate,
+        scheduleFlexibility: 'specific',
+        photos,
+        answers: extractAnswers(draft),
+        urgency: draft.urgency === 'high' ? 'urgent' : 'standard',
+      };
+      if (budgetCents && budgetCents > 0) submitPayload.budget = budgetCents;
+
+      let submitted: unknown = null;
+      try {
+        const res = await api.post(`/orders/draft/${draftId}/submit`, submitPayload);
+        submitted = res.data;
+      } catch (submitErr: unknown) {
+        // 409 "Already submitted" is an idempotent success — reuse the stored order.
+        const status = (submitErr as { response?: { status?: number } })?.response?.status;
+        const data = (submitErr as { response?: { data?: { order?: unknown } } })?.response?.data;
+        if (status === 409 && data?.order) {
+          submitted = data.order;
+        } else {
+          throw submitErr;
+        }
+      }
+
+      if (submitted) {
         clearDraft();
         setSuccess(true);
-        onUpdate({ budgetCents });
         setTimeout(() => {
           window.location.href = '/app/home';
         }, 1500);
       } else {
-        setError('Failed to create order. Please try again.');
+        setError('Failed to submit order. Please try again.');
       }
     } catch (err: unknown) {
+      const axiosData = (err as { response?: { data?: { error?: string; message?: string } } })
+        ?.response?.data;
       const msg =
-        err instanceof Error
-          ? err.message
-          : (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'An error occurred';
+        axiosData?.error ??
+        axiosData?.message ??
+        (err instanceof Error ? err.message : 'An error occurred');
       setError(msg);
     } finally {
       setSubmitting(false);

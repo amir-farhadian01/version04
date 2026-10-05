@@ -80,7 +80,7 @@ function mapBackendUser(backendUser: {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       token: null,
       refreshToken: null,
       user: null,
@@ -156,20 +156,23 @@ export const useAuthStore = create<AuthState>()(
       },
 
       refresh: async () => {
-        const { refreshToken } = get()
-        if (!refreshToken) return false
+        // The refresh token lives in an httpOnly cookie set by the backend;
+        // the store never holds it. The cookie must travel with the request
+        // (credentials: 'include') and the response only carries a new
+        // accessToken.
         try {
           const res = await fetch(
             `${import.meta.env.VITE_API_URL ?? '/api'}/auth/refresh`,
             {
               method: 'POST',
+              credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refreshToken }),
             }
           )
           if (!res.ok) return false
-          const data = (await res.json()) as { accessToken: string; refreshToken: string }
-          set({ token: data.accessToken, refreshToken: data.refreshToken })
+          const data = (await res.json()) as { accessToken?: string }
+          if (!data.accessToken) return false
+          set({ token: data.accessToken })
           return true
         } catch {
           return false
