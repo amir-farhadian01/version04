@@ -19,3 +19,4 @@ Canonical sources (never duplicate version facts anywhere else):
 - `null` fields are allowed only with an explicit `*Reason` string; a deployed entry must have SHA + digest + date.
 - Migration count/latest in the ledger must match the manifest; the manifest must match the repository (validator enforces both).
 - Staging/production deployments and any DB action on shared environments remain behind the explicit human approval gate (`docs/launch/staging-runbook.md`).
+- Data-bearing upgrades: the corrective migration hard-stops (and preserves all data) if it finds values outside its documented mappings; deliberate the mapping first, then `prisma migrate resolve --rolled-back 20261004120000_align_schema_with_models` and re-run `migrate deploy`. Legacy rows dropped from the live schema live in the `_legacy_*` tombstone tables.

@@ -20,7 +20,7 @@
         "freshInstall": "pass",
         "upgradeRehearsal": "pass",
         "driftCheck": "pass",
-        "note": "Two temp PostgreSQL 16 clusters: fresh deploy x2 + idempotent re-run + diff vs schema.prisma = none; legacy state (main migrations) + representative data + 7 new migrations = data preserved, final drift none."
+        "note": "Data-preserving revision (2026-10-05): fresh deploy x2 = pass with empty drift; upgrade rehearsal from the 66-migration legacy state with legacy-shaped data (4 posts covering all moderation statuses, 3 comments with legacy userId, 3 media rows image/video, 4 reactions, 3 services incl. fractional 49.5/89.99) asserted value+relation preservation: authorId backfilled from userId before NOT NULL, moderationStatus/media type converted in place, reactions archived verbatim in _legacy_PostReaction, exact fractional prices archived in _legacy_Service_prices under the whole-dollar contract; idempotent re-run x2 = pass; drift after upgrade = the two documented tombstone tables only; an unknown moderationStatus value hard-stops the migration with data intact and is recoverable via migrate resolve --rolled-back."
       },
       "targetEnvironment": "staging",
       "deployedAt": null,
