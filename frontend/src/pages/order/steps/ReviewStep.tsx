@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../../lib/api.js';
 import { NHCard } from '../../../components/ui/NHCard.js';
 import { NHButton } from '../../../components/ui/NHButton.js';
@@ -14,6 +15,7 @@ interface ReviewStepProps {
 }
 
 export default function ReviewStep({ draft, onUpdate: _onUpdate, onBack }: ReviewStepProps) {
+  const navigate = useNavigate();
   const [budgetDollars, setBudgetDollars] = useState(
     draft.budgetCents ? (draft.budgetCents / 100).toString() : '',
   );
@@ -109,7 +111,10 @@ export default function ReviewStep({ draft, onUpdate: _onUpdate, onBack }: Revie
         clearDraft();
         setSuccess(true);
         setTimeout(() => {
-          window.location.href = '/app/home';
+          const orderId = typeof (submitted as { id?: unknown }).id === 'string'
+            ? (submitted as { id: string }).id
+            : null;
+          navigate(orderId ? `/app/orders/${orderId}` : '/app/orders', { replace: true });
         }, 1500);
       } else {
         setError('Failed to submit order. Please try again.');

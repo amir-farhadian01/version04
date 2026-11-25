@@ -12,6 +12,7 @@ const Explore = lazy(() => import('../pages/public/Explore'))
 const ServiceDetail = lazy(() => import('../pages/public/ServiceDetail'))
 const BusinessPage = lazy(() => import('../pages/public/BusinessPage'))
 const Login = lazy(() => import('../pages/auth/Login'))
+const Register = lazy(() => import('../pages/auth/Register.js'))
 const Activity = lazy(() => import('../pages/customer/Activity'))
 const Profile = lazy(() => import('../pages/customer/Profile'))
 const CustomerDashboard = lazy(() => import('../pages/customer/Dashboard'))
@@ -89,6 +90,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/auth', element: <Login /> },
       { path: '/auth/login', element: <Login /> },
+      { path: '/auth/register', element: <Register /> },
       { path: '/order/new', element: <OrderWizard /> },
       { path: '/orders/:id', element: <OrderDetail /> },
     ],

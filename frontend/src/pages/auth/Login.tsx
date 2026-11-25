@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore.js'
 
 /** Role-ordered route priority for post-login redirect */
@@ -126,6 +126,8 @@ export default function Login() {
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
+
+        <p className="mt-5 text-sm text-nh-text-secondary">New to Neighborly? <Link to="/auth/register" className="text-nh-primary underline">Create account</Link></p>
 
       </div>
     </div>

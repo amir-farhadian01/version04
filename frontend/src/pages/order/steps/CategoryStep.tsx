@@ -27,9 +27,12 @@ export default function CategoryStep({ draft, onUpdate, onNext }: CategoryStepPr
     let cancelled = false;
     async function fetchTree() {
       try {
-        const res = await api.get<CategoryNode[]>('/categories/tree');
+        const res = await api.get<unknown>('/categories/tree');
         if (!cancelled) {
-          setTree(res.data ?? []);
+          // The category endpoint contract is an array. Keep the wizard usable
+          // if a proxy or fixture returns an unexpected envelope instead of
+          // letting a render-time `tree.map` exception reach the route boundary.
+          setTree(Array.isArray(res.data) ? res.data as CategoryNode[] : []);
         }
       } catch (err: unknown) {
         if (!cancelled) {
