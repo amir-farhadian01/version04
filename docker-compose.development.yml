@@ -1,0 +1,58 @@
+name: version04_dev
+
+# Development infrastructure only. Invoke Compose with both the numeric registry
+# and a separately provisioned, mode-0600 credential file; neither is created
+# by this file or by run-project.sh.
+services:
+  postgres:
+    image: postgres:16.8-alpine
+    environment:
+      POSTGRES_USER: ${DEVELOPMENT_DB_USER:?provide a development credential file}
+      POSTGRES_PASSWORD: ${DEVELOPMENT_DB_PASSWORD:?provide a development credential file}
+      POSTGRES_DB: ${DEVELOPMENT_DB_NAME:?provide a development credential file}
+    ports:
+      - "127.0.0.1:${DEVELOPMENT_POSTGRES_HOST_PORT}:${BASE_COMPOSE_POSTGRES_CONTAINER_PORT}"
+    volumes:
+      - version04_dev_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-media:
+    image: postgres:16.8-alpine
+    environment:
+      POSTGRES_USER: ${DEVELOPMENT_MEDIA_DB_USER:?provide a development credential file}
+      POSTGRES_PASSWORD: ${DEVELOPMENT_MEDIA_DB_PASSWORD:?provide a development credential file}
+      POSTGRES_DB: ${DEVELOPMENT_MEDIA_DB_NAME:?provide a development credential file}
+    ports:
+      - "127.0.0.1:${DEVELOPMENT_POSTGRES_MEDIA_HOST_PORT}:${BASE_COMPOSE_POSTGRES_MEDIA_CONTAINER_PORT}"
+    volumes:
+      - version04_dev_postgres_media:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4.2-alpine
+    command: redis-server --appendonly yes --save 60 1
+    ports:
+      - "127.0.0.1:${DEVELOPMENT_REDIS_HOST_PORT}:${BASE_COMPOSE_REDIS_CONTAINER_PORT}"
+    volumes:
+      - version04_dev_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  version04_dev_postgres:
+    name: version04_dev_postgres
+  version04_dev_postgres_media:
+    name: version04_dev_postgres_media
+  version04_dev_redis:
+    name: version04_dev_redis

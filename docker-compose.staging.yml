@@ -6,22 +6,22 @@ services:
     env_file: !override
       - path: .env.staging
         required: true
-    ports: !override ["55432:5432"]
+    ports: !override ["${STAGING_POSTGRES_HOST_PORT}:${BASE_COMPOSE_POSTGRES_CONTAINER_PORT}"]
   postgres-media:
     container_name: neighborly_staging_media_db
     env_file: !override
       - path: .env.staging
         required: true
-    ports: !override ["55433:5432"]
+    ports: !override ["${STAGING_POSTGRES_MEDIA_HOST_PORT}:${BASE_COMPOSE_POSTGRES_MEDIA_CONTAINER_PORT}"]
   redis:
     container_name: neighborly_staging_redis
-    ports: !override ["56379:6379"]
+    ports: !override ["${STAGING_REDIS_HOST_PORT}:${BASE_COMPOSE_REDIS_CONTAINER_PORT}"]
   nats:
     container_name: neighborly_staging_nats
-    ports: !override ["54222:4222"]
+    ports: !override ["${STAGING_NATS_HOST_PORT}:${BASE_COMPOSE_NATS_CONTAINER_PORT}"]
   minio:
     container_name: neighborly_staging_minio
-    ports: !override ["59002:9000", "59003:9001"]
+    ports: !override ["${STAGING_MINIO_API_HOST_PORT}:${BASE_COMPOSE_MINIO_API_CONTAINER_PORT}", "${STAGING_MINIO_CONSOLE_HOST_PORT}:${BASE_COMPOSE_MINIO_CONSOLE_CONTAINER_PORT}"]
   web-app:
     container_name: neighborly_staging_api
     env_file: !override
@@ -30,12 +30,12 @@ services:
     environment:
       APP_ENV: staging
       NODE_ENV: production
-    ports: !override ["18080:8080", "19090:9090"]
+    ports: !override ["${STAGING_API_HOST_PORT}:${BASE_COMPOSE_API_CONTAINER_PORT}", "${STAGING_ADMIN_HOST_PORT}:${BASE_COMPOSE_ADMIN_CONTAINER_PORT}"]
   frontend:
     container_name: neighborly_staging_frontend
     environment:
-      VITE_API_URL: http://localhost:18080/api
-    ports: !override ["15173:5173"]
+      VITE_API_URL: http://localhost:${STAGING_API_HOST_PORT}/api
+    ports: !override ["${STAGING_FRONTEND_HOST_PORT}:${BASE_COMPOSE_FRONTEND_CONTAINER_PORT}"]
   traefik:
     container_name: neighborly_staging_traefik
     command:
@@ -43,23 +43,23 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=neighborly_staging_network"
-      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.address=:${BASE_COMPOSE_TRAEFIK_HTTP_CONTAINER_PORT}"
       - "--log.level=INFO"
-    ports: !override ["18000:80", "19191:8080"]
+    ports: !override ["${STAGING_TRAEFIK_HTTP_HOST_PORT}:${BASE_COMPOSE_TRAEFIK_HTTP_CONTAINER_PORT}", "${STAGING_TRAEFIK_DASHBOARD_HOST_PORT}:${BASE_COMPOSE_TRAEFIK_DASHBOARD_CONTAINER_PORT}"]
   loki:
     container_name: neighborly_staging_loki
   grafana:
     container_name: neighborly_staging_grafana
-    ports: !override ["13000:3000"]
+    ports: !override ["${STAGING_GRAFANA_HOST_PORT}:${BASE_COMPOSE_GRAFANA_CONTAINER_PORT}"]
   dozzle:
     container_name: neighborly_staging_dozzle
-    ports: !override ["18899:8080"]
+    ports: !override ["${STAGING_DOZZLE_HOST_PORT}:${BASE_COMPOSE_DOZZLE_CONTAINER_PORT}"]
   metabase:
     container_name: neighborly_staging_metabase
-    ports: !override ["13001:3000"]
+    ports: !override ["${STAGING_METABASE_HOST_PORT}:${BASE_COMPOSE_METABASE_CONTAINER_PORT}"]
   portainer:
     container_name: neighborly_staging_portainer
-    ports: !override ["19000:9000"]
+    ports: !override ["${STAGING_PORTAINER_HOST_PORT}:${BASE_COMPOSE_PORTAINER_CONTAINER_PORT}"]
 
 networks:
   neighborly_network:

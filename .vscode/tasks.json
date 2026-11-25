@@ -2,6 +2,55 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Neighborly: Doctor (read-only)",
+      "type": "shell",
+      "command": "./run-project.sh doctor",
+      "options": { "cwd": "${workspaceFolder}" },
+      "runOptions": { "runOn": "folderOpen" },
+      "presentation": { "reveal": "silent", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Neighborly: Status (read-only)",
+      "type": "shell",
+      "command": "./run-project.sh status",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Neighborly: Start development",
+      "type": "shell",
+      "command": "./run-project.sh start",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Neighborly: Restart development hosts",
+      "type": "shell",
+      "command": "./run-project.sh restart",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Neighborly: Stop development",
+      "type": "shell",
+      "command": "./run-project.sh stop --service development",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Neighborly: Logs managed API",
+      "type": "shell",
+      "command": "./run-project.sh logs --service api --lines 200",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
       "label": "Flutter Web (neighborly) — port 9088",
       "type": "shell",
       "command": "flutter run -d web-server --web-hostname=0.0.0.0 --web-port=9088 --dart-define=API_BASE_URL=http://localhost:8077",
