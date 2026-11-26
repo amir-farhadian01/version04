@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, type KeyboardEvent } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 
@@ -91,29 +91,79 @@ export default function BusinessPage() {
   const [activeTab, setActiveTab] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [shareStatus, setShareStatus] = useState<string | null>(null)
+
+  const loadBusiness = useCallback(async () => {
+    if (!id) {
+      setData(null)
+      setError('Business not found')
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const [profileRes, servicesRes, reviewsRes] = await Promise.all([
+        api.get(`/business-page/${id}`),
+        api.get(`/business-page/${id}/services`),
+        api.get(`/business-page/${id}/reviews`),
+      ])
+      setData(profileRes.data)
+      setPackages(servicesRes.data.items ?? [])
+      setReviews(reviewsRes.data.items ?? [])
+    } catch (err) {
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Failed to load business profile')
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
 
   useEffect(() => {
-    if (!id) return
-    setLoading(true)
-    Promise.all([
-      api.get(`/business-page/${id}`),
-      api.get(`/business-page/${id}/services`),
-      api.get(`/business-page/${id}/reviews`),
-    ])
-      .then(([profileRes, servicesRes, reviewsRes]) => {
-        setData(profileRes.data)
-        setPackages(servicesRes.data.items ?? [])
-        setReviews(reviewsRes.data.items ?? [])
-      })
-      .catch((err) => {
-        setError(err?.response?.data?.error ?? 'Failed to load business profile')
-      })
-      .finally(() => setLoading(false))
-  }, [id])
+    void loadBusiness()
+  }, [loadBusiness])
+
+  const handleShare = async () => {
+    const shareData = {
+      title: data?.company.name ?? 'Business Profile',
+      text: data?.company.slogan ?? 'View this business on Neighborly',
+      url: window.location.href,
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+        setShareStatus('Share sheet opened')
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareData.url)
+        setShareStatus('Link copied')
+      } else {
+        setShareStatus('Sharing is not available in this browser')
+      }
+    } catch {
+      setShareStatus('Could not share the link. Please copy the address from your browser.')
+    }
+  }
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const keyToIndex: Record<string, number> = {
+      ArrowLeft: (index - 1 + TABS.length) % TABS.length,
+      ArrowRight: (index + 1) % TABS.length,
+      Home: 0,
+      End: TABS.length - 1,
+    }
+    const nextIndex = keyToIndex[event.key]
+    if (nextIndex === undefined) return
+
+    event.preventDefault()
+    setActiveTab(nextIndex)
+    document.getElementById(`business-tab-${nextIndex}`)?.focus()
+  }
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center text-sm text-nh-text-secondary">
+      <div className="flex-1 flex items-center justify-center text-sm text-nh-text-secondary" aria-busy="true">
         Loading...
       </div>
     )
@@ -121,8 +171,9 @@ export default function BusinessPage() {
 
   if (error || !data) {
     return (
-      <div className="flex-1 flex items-center justify-center text-sm text-nh-danger">
-        {error ?? 'Business not found'}
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-sm text-nh-danger" role="alert">
+        <span>{error ?? 'Business not found'}</span>
+        {id && <button type="button" onClick={() => void loadBusiness()} className="rounded-lg border border-nh-danger/40 px-4 py-2 text-xs font-semibold hover:bg-nh-danger/10">Try again</button>}
       </div>
     )
   }
@@ -133,14 +184,19 @@ export default function BusinessPage() {
     <div className="flex-1 flex flex-col">
       {/* Back + Share header */}
       <div className="flex items-center px-4 py-2.5 border-b border-nh-border gap-3 bg-nh-bg">
-        <svg width="20" height="20" viewBox="0 0 24 24" className="fill-nh-text-secondary cursor-pointer" onClick={() => navigate(-1)}>
-          <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
-        </svg>
+        <button type="button" aria-label="Go back" className="rounded p-1 text-nh-text-secondary hover:bg-nh-surface-elevated focus:outline-none focus:ring-2 focus:ring-nh-primary" onClick={() => navigate(-1)}>
+          <svg width="20" height="20" viewBox="0 0 24 24" className="fill-current" aria-hidden="true">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+          </svg>
+        </button>
         <span className="flex-1 text-sm font-semibold text-nh-text">Business Profile</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" className="fill-nh-text-secondary cursor-pointer">
-          <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
-        </svg>
+        <button type="button" aria-label="Share business profile" className="rounded p-1 text-nh-text-secondary hover:bg-nh-surface-elevated focus:outline-none focus:ring-2 focus:ring-nh-primary" onClick={() => void handleShare()}>
+          <svg width="20" height="20" viewBox="0 0 24 24" className="fill-current" aria-hidden="true">
+            <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z" />
+          </svg>
+        </button>
       </div>
+      <p className="sr-only" aria-live="polite">{shareStatus}</p>
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto scrollbar-none">
@@ -215,11 +271,17 @@ export default function BusinessPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-nh-bg border-b border-nh-border">
+        <div className="flex bg-nh-bg border-b border-nh-border" role="tablist" aria-label="Business profile sections">
           {TABS.map((tab, i) => (
-            <div
+            <button
+              type="button"
+              role="tab"
               key={tab}
+              id={`business-tab-${i}`}
+              aria-controls="business-profile-panel"
+              aria-selected={activeTab === i}
               onClick={() => setActiveTab(i)}
+              onKeyDown={(event) => handleTabKeyDown(event, i)}
               className={`flex-1 py-3 text-center text-[13px] font-medium cursor-pointer transition-all duration-200 border-b-2 ${
                 activeTab === i
                   ? 'text-nh-primary border-nh-primary'
@@ -227,11 +289,12 @@ export default function BusinessPage() {
               }`}
             >
               {tab}
-            </div>
+            </button>
           ))}
         </div>
 
         {/* Tab Content */}
+        <div id="business-profile-panel" role="tabpanel" aria-labelledby={`business-tab-${activeTab}`}>
         {activeTab === 0 && (
           <div>
             {packages.length === 0 && (
@@ -297,12 +360,13 @@ export default function BusinessPage() {
                     </div>
                   )}
                 </div>
-                <div
+                <button
+                  type="button"
                   onClick={() => navigate(`/order/new?packageId=${pkg.id}&businessId=${id}`)}
                   className="absolute bottom-[14px] right-[14px] bg-nh-primary rounded-lg px-[14px] py-1.5 text-[11px] font-bold text-white cursor-pointer hover:bg-nh-primary/90 transition-colors"
                 >
                   Book Now
-                </div>
+                </button>
               </div>
             ))}
           </div>
@@ -411,6 +475,7 @@ export default function BusinessPage() {
           </div>
         )}
 
+        </div>
         <div className="h-[100px]" /> {/* space for floating nav */}
       </div>
 
