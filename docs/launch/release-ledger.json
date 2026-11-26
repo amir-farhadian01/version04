@@ -60,7 +60,7 @@
       },
       "tests": {
         "status": "pass",
-        "evidencePath": "~/nb-staging/evidence/ (local staging host; ledger copy of key artifacts committed under docs/launch/evidence/)"
+        "evidencePath": "docs/launch/evidence/2026-10-06-g009-staging/e2e-20261006-023252.md"
       },
       "targetEnvironment": "staging",
       "deployedAt": null,
@@ -77,4 +77,3 @@
     }
   ]
 }
-
