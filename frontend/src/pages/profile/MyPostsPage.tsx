@@ -114,7 +114,7 @@ export default function MyPostsPage() {
               </div>
             </div>
             {showDelete && !(viewMode === 'grid') && (
-              <div onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }} className="text-sm text-nh-text-muted hover:text-nh-danger cursor-pointer p-1" title="Delete post">🗑</div>
+              <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }} aria-label="Delete post" className="border-0 bg-transparent p-1 text-sm text-nh-text-muted hover:text-nh-danger cursor-pointer">🗑</button>
             )}
           </div>
         ))}

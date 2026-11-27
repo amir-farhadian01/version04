@@ -501,9 +501,9 @@ export default function Profile() {
           </div>
         )}
         {addrModal && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setAddrModal(null)}>
-            <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-              <h3 className="text-nh-text font-display font-semibold text-lg mb-4">{addrModal.existing ? 'Edit Address' : 'Add Address'}</h3>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={closeAddress}>
+            <div ref={addressDialogRef} role="dialog" aria-modal="true" aria-labelledby="address-subscreen-modal-title" tabIndex={-1} className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+              <h3 id="address-subscreen-modal-title" className="text-nh-text font-display font-semibold text-lg mb-4">{addrModal.existing ? 'Edit Address' : 'Add Address'}</h3>
               <input value={addrLabel} onChange={e => setAddrLabel(e.target.value)} placeholder="Label (e.g. Home, Work)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={addrStreet} onChange={e => setAddrStreet(e.target.value)} placeholder="Street Address" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={addrCity} onChange={e => setAddrCity(e.target.value)} placeholder="City" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
@@ -511,7 +511,7 @@ export default function Profile() {
               <input value={addrPostal} onChange={e => setAddrPostal(e.target.value)} placeholder="Postal Code" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={addrCountry} onChange={e => setAddrCountry(e.target.value)} placeholder="Country (default: CA)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none" />
               <div className="flex justify-end gap-3 mt-5">
-                <button onClick={() => setAddrModal(null)} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
+                <button onClick={closeAddress} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
                 <button onClick={saveAddress} className="px-5 py-2 rounded-lg bg-nh-primary text-white text-sm font-semibold">{addrModal.existing ? 'Update' : 'Add'}</button>
               </div>
             </div>
@@ -554,9 +554,9 @@ export default function Profile() {
           </div>
         )}
         {carModal && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setCarModal(null)}>
-            <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-              <h3 className="text-nh-text font-display font-semibold text-lg mb-4">{carModal.existing ? 'Edit Car' : 'Add Car'}</h3>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={closeCar}>
+            <div ref={carDialogRef} role="dialog" aria-modal="true" aria-labelledby="car-subscreen-modal-title" tabIndex={-1} className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+              <h3 id="car-subscreen-modal-title" className="text-nh-text font-display font-semibold text-lg mb-4">{carModal.existing ? 'Edit Car' : 'Add Car'}</h3>
               <input value={carLabel} onChange={e => setCarLabel(e.target.value)} placeholder="Label (e.g. My Civic)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={carMake} onChange={e => setCarMake(e.target.value)} placeholder="Make (e.g. Honda)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={carModel} onChange={e => setCarModel(e.target.value)} placeholder="Model (e.g. Civic)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
@@ -564,7 +564,7 @@ export default function Profile() {
               <input value={carColor} onChange={e => setCarColor(e.target.value)} placeholder="Color (optional)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={carPlate} onChange={e => setCarPlate(e.target.value)} placeholder="License Plate (optional)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none" />
               <div className="flex justify-end gap-3 mt-5">
-                <button onClick={() => setCarModal(null)} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
+                <button onClick={closeCar} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
                 <button onClick={saveCar} className="px-5 py-2 rounded-lg bg-nh-primary text-white text-sm font-semibold">{carModal.existing ? 'Update' : 'Add'}</button>
               </div>
             </div>
