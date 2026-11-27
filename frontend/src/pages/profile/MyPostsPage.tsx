@@ -53,7 +53,7 @@ export default function MyPostsPage() {
   const renderPostList = (posts: FeedPost[], loading: boolean, error: boolean, emptyMessage: string, showDelete: boolean = false) => {
     if (loading) {
       return (
-        <div className="px-[14px] py-5">
+        <div role="status" aria-live="polite" aria-label="Loading posts" className="px-[14px] py-5">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-nh-surface rounded-xl p-3 my-2 flex gap-3 border border-nh-border">
               <div className="w-16 h-16 rounded-[10px] bg-nh-border-elevated shrink-0" />
