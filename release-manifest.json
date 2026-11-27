@@ -25,8 +25,8 @@
   },
   "database": {
     "migrationsDirectory": "prisma/migrations",
-    "migrationCount": 67,
-    "latestMigration": "20261004120000_align_schema_with_models",
+    "migrationCount": 68,
+    "latestMigration": "20261126120000_add_custom_intake_forms_and_order_line_items",
     "note": "Count/latest are asserted against the repository by release:manifest-check."
   },
   "services": {
