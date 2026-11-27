@@ -502,6 +502,8 @@ model Company {
   interacEmail        String?     @map("interac_email")
   squareEnabled       Boolean?    @default(false) @map("square_enabled")
   squareLocationId    String?     @map("square_location_id")
+  customIntakeForms   CustomIntakeForm[]
+  workspacePipelineStages WorkspacePipelineStage[]
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 }
@@ -543,6 +545,7 @@ model ServiceCatalog {
   providerPackages        ProviderServicePackage[]
   linkedPosts             Post[]
   formTemplates           ServiceFormTemplate[]
+  customIntakeForms       CustomIntakeForm[]
 
   @@index([categoryId])
   @@index([categoryId, sortOrder])
@@ -575,6 +578,7 @@ model ProviderServicePackage {
   bom               ProductInPackage[]
   offerMatchAttempts OfferMatchAttempt[]
   matchedOrders      Order[]              @relation("OrderMatchedPkg")
+  orderLineItems     OrderLineItem[]
   staffAssignments   PackageStaffAssignment[]
 
   @@index([workspaceId])
@@ -757,6 +761,13 @@ model Order {
   subcontractorAssignment SubcontractorAssignment? @relation("OrderSubcontract")
   fulfillment            Fulfillment?
   formTemplateVersion   Int?            @map("form_template_version")
+  orderKind             OrderKind       @default(service_request) @map("order_kind")
+  currentStageId        String?         @map("current_stage_id")
+  currentStage          WorkspacePipelineStage? @relation(fields: [currentStageId], references: [id])
+  overallStartAt        DateTime?       @map("overall_start_at")
+  overallEndAt          DateTime?       @map("overall_end_at")
+  intakeAnswers         Json?           @map("intake_answers")
+  lineItems             OrderLineItem[]
 
   @@index([customerId])
   @@index([status])
@@ -2063,4 +2074,104 @@ model GroupSessionAttendee {
   @@unique([sessionId, userId])
   @@index([sessionId])
   @@map("group_session_attendees")
+}
+
+// ─── Custom Intake Forms, Pipeline Stages & Order Line Items (ADR-0086) ──────
+
+enum FormFieldType {
+  text
+  number
+  date
+  single_select
+  multi_select
+  file_upload
+}
+
+enum BaseOrderStatus {
+  Draft
+  Submitted
+  InReview
+  Accepted
+  InProgress
+  Completed
+  Cancelled
+}
+
+enum OrderKind {
+  service_request
+  goods_purchase
+  package_purchase
+  custom_bundle
+  mixed_order
+}
+
+model CustomIntakeForm {
+  id               String          @id @default(cuid())
+  workspaceId      String          @map("workspace_id")
+  workspace        Company         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  serviceCatalogId String?         @map("service_catalog_id")
+  serviceCatalog   ServiceCatalog? @relation(fields: [serviceCatalogId], references: [id], onDelete: SetNull)
+  name             String
+  description      String?
+  isActive         Boolean         @default(true) @map("is_active")
+  fields           FormField[]
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  @@index([workspaceId, isActive])
+  @@map("custom_intake_forms")
+}
+
+model FormField {
+  id          String           @id @default(cuid())
+  formId      String           @map("form_id")
+  form        CustomIntakeForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  label       String
+  fieldType   FormFieldType    @map("field_type")
+  isRequired  Boolean          @default(false) @map("is_required")
+  placeholder String?
+  options     Json?
+  sortOrder   Int              @default(0) @map("sort_order")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@index([formId, sortOrder])
+  @@map("form_fields")
+}
+
+model WorkspacePipelineStage {
+  id          String          @id @default(cuid())
+  workspaceId String          @map("workspace_id")
+  workspace   Company         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  baseStatus  BaseOrderStatus @map("base_status")
+  sortOrder   Int             @default(0) @map("sort_order")
+  isDefault   Boolean         @default(false) @map("is_default")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  orders      Order[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, baseStatus])
+  @@map("workspace_pipeline_stages")
+}
+
+model OrderLineItem {
+  id               String                  @id @default(cuid())
+  orderId          String                  @map("order_id")
+  order            Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  packageId        String?                 @map("package_id")
+  package          ProviderServicePackage? @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  packageSnapshot  Json?                   @map("package_snapshot")
+  title            String
+  quantity         Int                     @default(1)
+  unitPriceCents   Int                     @map("unit_price_cents")
+  totalPriceCents  Int                     @map("total_price_cents")
+  scheduledStartAt DateTime?               @map("scheduled_start_at")
+  scheduledEndAt   DateTime?               @map("scheduled_end_at")
+  sessionIndex     Int?                    @map("session_index")
+  status           BaseOrderStatus         @default(Draft)
+  createdAt        DateTime                @default(now()) @map("created_at")
+
+  @@index([orderId])
+  @@index([packageId])
+  @@map("order_line_items")
 }

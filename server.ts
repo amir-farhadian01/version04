@@ -96,6 +96,10 @@ import dynamicFormsRoutes from "./routes/dynamicForms.js";
 import deliveryOperationsRoutes from "./routes/deliveryOperations.js";
 import driverDeliveriesRoutes from "./routes/driverDeliveries.js";
 import adminDeliveryOperationsRoutes from "./routes/adminDeliveryOperations.js";
+import {
+  customBundleOrdersRoutes,
+  workspaceCustomFormsRoutes,
+} from "./routes/customOrdersAndForms.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -116,12 +120,14 @@ function mountApiRoutes(app: Express) {
   app.use("/api/posts", postRoutes);
   app.use("/api/chat", chatRoutes);
   app.use("/api/categories", categoryRoutes);
+  app.use("/api/orders", customBundleOrdersRoutes);
   app.use("/api/orders", ordersRoutes);
   app.use("/api/orders/:orderId/chat", orderChatRoutes);
   app.use("/api/orders/:orderId/contracts", orderContractsRoutes);
   app.use("/api/orders/:orderId/payments", orderPaymentsRoutes);
   app.use("/api/orders/:orderId/sessions", orderSessionsRoutes);
   app.use("/api/orders/:orderId/group-sessions", groupSessionsRoutes);
+  app.use("/api/workspaces", workspaceCustomFormsRoutes);
   app.use("/api/workspaces", workspacesRoutes);
   app.use("/api/workspaces", subcontractorRoutes);
   app.use("/api/workspaces/:workspaceId/delivery-operations", deliveryOperationsRoutes);
