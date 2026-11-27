@@ -71,7 +71,7 @@ export default function MyPostsPage() {
       return (
         <div className="px-[14px] py-10 text-center">
           <div className="text-sm text-nh-text-muted mb-3">Failed to load</div>
-          <div onClick={() => activeTab === 'saved' ? refetchSaved() : refetchMy()} className="inline-block px-5 py-2 bg-nh-primary text-white rounded-lg text-[13px] font-semibold cursor-pointer">Retry</div>
+          <button type="button" onClick={() => activeTab === 'saved' ? refetchSaved() : refetchMy()} className="inline-block rounded-lg border-0 bg-nh-primary px-5 py-2 text-[13px] font-semibold text-white cursor-pointer">Retry</button>
         </div>
       )
     }
