@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import prisma from '../lib/db.js';
-import { authenticate, AuthRequest } from '../lib/auth.middleware.js';
+import { AuthRequest } from '../lib/auth.middleware.js';
 import { getNearbyProviders } from '../lib/locationCache.js';
 
 const router = Router();

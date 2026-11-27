@@ -29,20 +29,6 @@ function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-function formatRelativeTime(date: Date): string {
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
-}
-
 // ─── GET /api/home/banner ──────────────────────────────────────────────────
 // Returns the active home banner (highest sortOrder that is currently active)
 router.get('/banner', optionalAuth, async (req: Request, res: Response) => {

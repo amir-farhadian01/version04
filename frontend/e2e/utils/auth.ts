@@ -130,6 +130,9 @@ export async function verifyAuthTokenInStorage(page: Page, storageKey: string = 
  * Clear auth from localStorage.
  */
 export async function clearAuth(page: Page, storageKey: string = 'neighborly-auth'): Promise<void> {
+  if (!/^https?:/.test(page.url())) {
+    await page.goto(CLIENT_URL, { waitUntil: 'domcontentloaded' })
+  }
   await page.evaluate((key) => {
     localStorage.removeItem(key)
   }, storageKey)

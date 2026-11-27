@@ -46,7 +46,7 @@ router.get('/:workspaceId', authenticate, async (req: AuthRequest, res: Response
       return res.status(access.error!.status).json({ error: access.error!.message });
     }
 
-    const where: Record<string, unknown> = { companyId: workspaceId };
+    const where: Record<string, unknown> = { companyId: workspaceId, purpose: 'service' };
 
     if (staffId) {
       where.staffId = staffId;
@@ -105,6 +105,7 @@ router.post('/:workspaceId', authenticate, async (req: AuthRequest, res: Respons
         taskId: taskId ?? null,
         status: status ?? 'scheduled',
         isActive: true,
+        purpose: 'service',
       },
       include: {
         staff: {
@@ -140,7 +141,7 @@ router.put('/:workspaceId/:scheduleId', authenticate, async (req: AuthRequest, r
     const existing = await prisma.schedule.findUnique({
       where: { id: scheduleId },
     });
-    if (!existing || existing.companyId !== workspaceId) {
+    if (!existing || existing.companyId !== workspaceId || existing.purpose !== 'service') {
       return res.status(404).json({ error: 'Schedule not found' });
     }
 
@@ -186,7 +187,7 @@ router.delete('/:workspaceId/:scheduleId', authenticate, async (req: AuthRequest
     const existing = await prisma.schedule.findUnique({
       where: { id: scheduleId },
     });
-    if (!existing || existing.companyId !== workspaceId) {
+    if (!existing || existing.companyId !== workspaceId || existing.purpose !== 'service') {
       return res.status(404).json({ error: 'Schedule not found' });
     }
 
@@ -226,6 +227,7 @@ router.get('/:workspaceId/slots', async (req: AuthRequest, res: Response) => {
     const schedules = await prisma.schedule.findMany({
       where: {
         companyId: workspaceId,
+        purpose: 'service',
         isActive: true,
         startTime: { gte: dayStart },
         endTime: { lte: dayEnd },
@@ -313,6 +315,7 @@ async function calculateSlotsForPackage(
     where: {
       companyId: workspaceId,
       staffId: { in: staffIds },
+      purpose: 'service',
       isActive: true,
       startTime: { gte: dayStart },
       endTime: { lte: dayEnd },

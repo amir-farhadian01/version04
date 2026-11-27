@@ -1,8 +1,13 @@
 import { Pool } from "pg";
 
-const mediaDbUrl =
-  process.env.MEDIA_DATABASE_URL ||
-  "postgresql://postgres:EagleRock901@postgres-media:5432/media_db";
+const mediaDbUrl = process.env.MEDIA_DATABASE_URL;
+
+if (!mediaDbUrl) {
+  // No hardcoded fallback: connection credentials must come from the environment.
+  throw new Error(
+    "MEDIA_DATABASE_URL is required but not set. Copy .env.example and configure it locally.",
+  );
+}
 
 const pool = new Pool({ connectionString: mediaDbUrl });
 

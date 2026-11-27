@@ -4,12 +4,12 @@ import type { BusinessKycFormV1 } from "../lib/kycTypes.js";
 
 const prisma = new PrismaClient();
 
-/** Idempotent default Business KYC form (version 1, active). */
+/** Idempotent Canada-first Business KYC form (database version 2, active). */
 export function buildDefaultBusinessKycFormV1(): BusinessKycFormV1 {
   return {
     version: 1,
     title: "Business KYC",
-    description: "Default seeded questionnaire",
+    description: "Canada-first, versioned Level 3 questionnaire",
     sections: [
       { id: "general", title: "General", order: 1 },
       { id: "compliance", title: "Compliance", order: 2 },
@@ -17,62 +17,68 @@ export function buildDefaultBusinessKycFormV1(): BusinessKycFormV1 {
     ],
     fields: [
       {
-        id: "company_type",
-        label: "Company type",
+        id: "businessCategory",
+        label: "Business category",
         type: "select",
         required: true,
         order: 1,
         section: "general",
         options: [
-          { value: "legal", label: "Legal entity" },
-          { value: "natural", label: "Natural person" },
+          { value: "construction", label: "Construction" },
+          { value: "installation", label: "Installation" },
+          { value: "plumbing", label: "Plumbing" },
+          { value: "professional_services", label: "Professional services" },
+          { value: "retail", label: "Retail" },
+          { value: "other", label: "Other" },
         ],
       },
       {
-        id: "company_name",
-        label: "Company name",
-        type: "text",
+        id: "entityType",
+        label: "Entity type",
+        type: "select",
         required: true,
         order: 2,
         section: "general",
-        regex: "^.{2,120}$",
-        regexErrorMessage: "Between 2 and 120 characters",
+        options: [
+          { value: "sole_proprietorship", label: "Sole proprietorship" },
+          { value: "partnership", label: "Partnership" },
+          { value: "corporation", label: "Corporation" },
+          { value: "cooperative", label: "Cooperative" },
+          { value: "non_profit", label: "Non-profit" },
+        ],
       },
       {
-        id: "registration_number",
-        label: "Registration number",
-        type: "text",
+        id: "jurisdiction",
+        label: "Registration jurisdiction",
+        type: "select",
         required: true,
         order: 3,
         section: "general",
-        regex: "^\\d{6,16}$",
-        regexErrorMessage: "6–16 digits",
+        options: ["FEDERAL", "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"].map((value) => ({ value, label: value })),
       },
       {
-        id: "license_number",
-        label: "License number",
+        id: "businessNumber",
+        label: "Federal Business Number",
         type: "text",
         required: true,
         order: 4,
         section: "general",
-        regex: "^[A-Z0-9-]{4,32}$",
-        regexErrorMessage: "4–32 uppercase letters, digits, or hyphens",
-        inquiry: {
-          providerKey: "mock-license-registry",
-          payloadFields: ["license_number", "license_expiry"],
-        },
+        regex: "^\\d{9}$",
+        regexErrorMessage: "Business Number must be exactly 9 digits",
       },
       {
-        id: "license_expiry",
-        label: "License expiry",
-        type: "date",
-        required: true,
+        id: "registrationNumber",
+        label: "Corporation/registration number",
+        type: "text",
+        required: false,
         order: 5,
         section: "general",
-        expiryMinMonths: 3,
+        requiredForCategories: ["partnership", "corporation", "cooperative", "non_profit"],
+        regex: "^[A-Z0-9][A-Z0-9 -]{2,30}$",
+        regexErrorMessage: "Use the format shown on the registration document",
       },
       {
-        id: "business_address",
+        id: "businessAddress",
         label: "Business address",
         type: "address",
         required: true,
@@ -80,7 +86,7 @@ export function buildDefaultBusinessKycFormV1(): BusinessKycFormV1 {
         section: "general",
       },
       {
-        id: "business_phone",
+        id: "businessPhone",
         label: "Business phone",
         type: "phone",
         required: true,
@@ -88,52 +94,74 @@ export function buildDefaultBusinessKycFormV1(): BusinessKycFormV1 {
         section: "general",
       },
       {
-        id: "has_liability_insurance",
-        label: "Liability insurance",
-        type: "boolean",
+        id: "insuranceStatus",
+        label: "Liability insurance status",
+        type: "select",
         required: true,
         order: 8,
         section: "compliance",
-        requiredForCategories: ["construction", "installation", "plumbing"],
+        options: [
+          { value: "insured", label: "Insured" },
+          { value: "uninsured", label: "Uninsured" },
+          { value: "not_required", label: "Not required" },
+        ],
       },
       {
-        id: "insurance_expiry",
-        label: "Insurance expiry",
-        type: "date",
+        id: "insurancePolicyNumber",
+        label: "Insurance policy number",
+        type: "text",
         required: false,
         order: 9,
         section: "compliance",
-        showIf: { fieldId: "has_liability_insurance", equals: true },
-        expiryMinMonths: 3,
+        showIf: { fieldId: "insuranceStatus", equals: "insured" },
       },
       {
-        id: "insurance_document",
-        label: "Insurance document",
-        type: "file",
+        id: "insurerName",
+        label: "Insurance company",
+        type: "text",
         required: false,
         order: 10,
         section: "compliance",
-        showIf: { fieldId: "has_liability_insurance", equals: true },
+        showIf: { fieldId: "insuranceStatus", equals: "insured" },
+      },
+      {
+        id: "insuranceExpiry",
+        label: "Insurance expiry",
+        type: "date",
+        required: false,
+        order: 11,
+        section: "compliance",
+        showIf: { fieldId: "insuranceStatus", equals: "insured" },
+        expiryMinMonths: 3,
+      },
+      {
+        id: "insuranceCertificate",
+        label: "Insurance certificate",
+        type: "file",
+        required: false,
+        order: 12,
+        section: "compliance",
+        showIf: { fieldId: "insuranceStatus", equals: "insured" },
         accept: ["application/pdf", "image/*"],
         maxFileSizeMb: 10,
         maxFiles: 1,
       },
       {
-        id: "business_registration_doc",
+        id: "businessRegistrationDocument",
         label: "Business registration",
         type: "file",
         required: true,
-        order: 11,
+        order: 13,
         section: "documents",
         accept: ["application/pdf", "image/*"],
         maxFiles: 1,
       },
       {
-        id: "owner_id_doc",
+        id: "ownerIdentityDocument",
         label: "Owner ID",
         type: "file",
         required: true,
-        order: 12,
+        order: 14,
         section: "documents",
         accept: ["application/pdf", "image/*"],
         maxFiles: 1,
@@ -149,25 +177,24 @@ export async function runSeedKyc(client: PrismaClient = prisma): Promise<void> {
     data: { isActive: false },
   });
 
-  await client.businessKycFormSchema.upsert({
-    where: { version: 1 },
-    create: {
-      version: 1,
+  const existing = await client.businessKycFormSchema.findUnique({ where: { version: 2 } });
+  if (!existing) {
+    await client.businessKycFormSchema.create({ data: {
+      version: 2,
       isActive: true,
       schema: JSON.parse(JSON.stringify(defaultForm)),
-      description: "Default (seed)",
+      description: "Canada-first Level 3 (immutable seed)",
       publishedAt: new Date(),
-    },
-    update: {
+    } });
+  } else {
+    await client.businessKycFormSchema.update({
+      where: { version: 2 }, data: {
       isActive: true,
-      schema: JSON.parse(JSON.stringify(defaultForm)),
-      description: "Default (seed)",
-      publishedAt: new Date(),
-    },
-  });
+    } });
+  }
 
   await client.businessKycFormSchema.updateMany({
-    where: { version: { not: 1 } },
+    where: { version: { not: 2 } },
     data: { isActive: false },
   });
 }

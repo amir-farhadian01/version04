@@ -1,4 +1,4 @@
-import type { ServiceFieldDef, ServiceQuestionnaireV1 } from './serviceDefinitionTypes.js';
+import type { ServiceQuestionnaireV1 } from './serviceDefinitionTypes.js';
 
 export type BuilderValidation = {
   errors: string[];

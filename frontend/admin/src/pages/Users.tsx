@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../lib/api'
+import api, { getApiError } from '../lib/api'
 import { Users, Search, RefreshCw, CheckCircle2, XCircle, AlertCircle, ChevronRight } from 'lucide-react'
 
 type AdminUser = {
@@ -39,7 +39,7 @@ export default function AdminUsers() {
   const [segment, setSegment] = useState<'all' | 'clients' | 'providers'>('all')
   const [error, setError] = useState<string | null>(null)
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -48,15 +48,15 @@ export default function AdminUsers() {
       else if (segment === 'providers') endpoint = '/admin/users/providers'
       const res = await api.get<{ items: AdminUser[]; total: number }>(endpoint)
       setUsers(res.data.items ?? [])
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to load users')
+    } catch (err: unknown) {
+      setError(getApiError(err, 'Failed to load users'))
       setUsers([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [segment])
 
-  useEffect(() => { fetchUsers() }, [segment])
+  useEffect(() => { fetchUsers() }, [fetchUsers])
 
   const filtered = search
     ? users.filter((u) =>

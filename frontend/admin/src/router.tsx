@@ -1,23 +1,28 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 
 import { AdminLayout } from './components/AdminLayout'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Users from './pages/Users'
-import UserDetail from './pages/UserDetail'
-import Kyc from './pages/Kyc'
-import Orders from './pages/Orders'
-import Contracts from './pages/Contracts'
-import Payments from './pages/Payments'
-import Media from './pages/Media'
-import Settings from './pages/Settings'
-import Moderation from './pages/Moderation'
-import HomeContent from './pages/HomeContent'
-import ContentModeration from './pages/ContentModeration'
-import Analytics from './pages/Analytics'
-import FormBuilder from './pages/FormBuilder'
+
+const Login = lazy(() => import('./pages/Login'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Users = lazy(() => import('./pages/Users'))
+const UserDetail = lazy(() => import('./pages/UserDetail'))
+const Kyc = lazy(() => import('./pages/Kyc'))
+const Orders = lazy(() => import('./pages/Orders'))
+const Contracts = lazy(() => import('./pages/Contracts'))
+const Payments = lazy(() => import('./pages/Payments'))
+const Media = lazy(() => import('./pages/Media'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Moderation = lazy(() => import('./pages/Moderation'))
+const HomeContent = lazy(() => import('./pages/HomeContent'))
+const ContentModeration = lazy(() => import('./pages/ContentModeration'))
+const Analytics = lazy(() => import('./pages/Analytics'))
+const FormBuilder = lazy(() => import('./pages/FormBuilder'))
+
+function LazyPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<div role="status" className="p-8 text-center">Loading...</div>}>{children}</Suspense>
+}
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { token } = useAuthStore()
@@ -28,27 +33,27 @@ function RequireAuth({ children }: { children: ReactNode }) {
 export const router = createBrowserRouter([
   {
     path: '/login',
-    element: <Login />,
+    element: <LazyPage><Login /></LazyPage>,
   },
   {
     path: '/',
     element: <RequireAuth><AdminLayout /></RequireAuth>,
     children: [
       { index: true, element: <Navigate to="/admin" replace /> },
-      { path: 'admin', element: <Dashboard /> },
-      { path: 'admin/users', element: <Users /> },
-      { path: 'admin/users/:id', element: <UserDetail /> },
-      { path: 'admin/kyc', element: <Kyc /> },
-      { path: 'admin/orders', element: <Orders /> },
-      { path: 'admin/contracts', element: <Contracts /> },
-      { path: 'admin/payments', element: <Payments /> },
-      { path: 'admin/media', element: <Media /> },
-      { path: 'admin/settings', element: <Settings /> },
-      { path: 'admin/moderation', element: <Moderation /> },
-      { path: 'admin/home-content', element: <HomeContent /> },
-      { path: 'admin/content-moderation', element: <ContentModeration /> },
-      { path: 'admin/analytics', element: <Analytics /> },
-      { path: 'admin/services/:catalogId/form-builder', element: <FormBuilder /> },
+      { path: 'admin', element: <LazyPage><Dashboard /></LazyPage> },
+      { path: 'admin/users', element: <LazyPage><Users /></LazyPage> },
+      { path: 'admin/users/:id', element: <LazyPage><UserDetail /></LazyPage> },
+      { path: 'admin/kyc', element: <LazyPage><Kyc /></LazyPage> },
+      { path: 'admin/orders', element: <LazyPage><Orders /></LazyPage> },
+      { path: 'admin/contracts', element: <LazyPage><Contracts /></LazyPage> },
+      { path: 'admin/payments', element: <LazyPage><Payments /></LazyPage> },
+      { path: 'admin/media', element: <LazyPage><Media /></LazyPage> },
+      { path: 'admin/settings', element: <LazyPage><Settings /></LazyPage> },
+      { path: 'admin/moderation', element: <LazyPage><Moderation /></LazyPage> },
+      { path: 'admin/home-content', element: <LazyPage><HomeContent /></LazyPage> },
+      { path: 'admin/content-moderation', element: <LazyPage><ContentModeration /></LazyPage> },
+      { path: 'admin/analytics', element: <LazyPage><Analytics /></LazyPage> },
+      { path: 'admin/services/:catalogId/form-builder', element: <LazyPage><FormBuilder /></LazyPage> },
     ],
   },
 ])

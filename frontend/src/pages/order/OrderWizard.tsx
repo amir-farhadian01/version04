@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { NHCard } from '../../components/ui/NHCard.js';
 import type { OrderDraft } from '../../services/orderDraft.js';
 import { loadDraft, saveDraftLocally, startAutoSave } from '../../services/orderDraft.js';
@@ -147,7 +147,7 @@ export default function OrderWizard() {
               ...(pkg.categoryId ? { categoryId: pkg.categoryId } : {}),
               ...(pkg.categoryName ? { categoryName: pkg.categoryName } : {}),
               ...(pkg.businessId ? { businessId: pkg.businessId } : {}),
-              ...(pkg.price ? { budgetCents: pkg.price } : {}),
+              ...(pkg.price ? { budgetCents: Math.round(pkg.price * 100) } : {}), // package prices are dollars; Order.budget is stored in cents
             });
           }
         }
@@ -189,6 +189,13 @@ export default function OrderWizard() {
 
   const handleNext = () => goToStep(currentStep + 1);
   const handleBack = () => goToStep(currentStep - 1);
+
+  // Dead-end guard: the wizard requires a service/package selection to be usable. Bare /order/new
+  // (no query params, no restored draft selection) must not strand the user — send them to the
+  // service discovery surface instead. Saved drafts with a selection still resume normally.
+  if (!preselectedServiceId && !preselectedPackageId && !draft.serviceId && !draft.packageId) {
+    return <Navigate to="/explore" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-nh-bg">
@@ -233,7 +240,7 @@ export default function OrderWizard() {
               )}
               {preselectedInfo.price !== undefined && preselectedInfo.price > 0 && (
                 <div className="text-xs font-medium text-nh-primary mt-0.5">
-                  ${(preselectedInfo.price / 100).toFixed(2)}
+                  ${preselectedInfo.price}
                 </div>
               )}
             </div>

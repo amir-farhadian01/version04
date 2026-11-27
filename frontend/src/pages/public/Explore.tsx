@@ -293,8 +293,9 @@ export default function Explore() {
 
 /** Functional search box for Explore page — searches services via /api/services/search */
 function ExploreSearchBox() {
+  type SearchService = { id: string; name: string; categoryName?: string; breadcrumb?: string[] }
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<SearchService[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -313,8 +314,8 @@ function ExploreSearchBox() {
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/services/search?q=${encodeURIComponent(query)}&limit=8`)
-        const json = await res.json()
-        setResults(json?.data?.services ?? [])
+        const json = await res.json() as { data?: { services?: SearchService[] } }
+        setResults(json.data?.services ?? [])
         setShowDropdown(true)
       } catch { /* ignore */ }
       finally { setLoading(false) }
@@ -333,7 +334,7 @@ function ExploreSearchBox() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const handleSelect = useCallback((service: any) => {
+  const handleSelect = useCallback((service: SearchService) => {
     setShowDropdown(false)
     setQuery('')
     window.location.href = `/order/new?serviceId=${service.id}`
@@ -361,7 +362,7 @@ function ExploreSearchBox() {
       {/* Results dropdown */}
       {showDropdown && results.length > 0 && (
         <div className="absolute z-50 left-[10px] right-[10px] sm:left-[14px] sm:right-[14px] mt-1 rounded-xl border border-nh-border bg-nh-surface shadow-2xl max-h-[40vh] overflow-y-auto">
-          {results.map((svc: any) => (
+          {results.map((svc) => (
             <button
               key={svc.id}
               onClick={() => handleSelect(svc)}

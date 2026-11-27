@@ -12,7 +12,38 @@
  */
 
 import prisma from './db.js';
-import { getRedis, isRedisAvailable } from './redis.js';
+import { getRedis } from './redis.js';
+
+/**
+ * Best-effort Redis access helpers.
+ *
+ * Redis is an OPTIONAL service (see PORTS.md — non-fatal when down). When the
+ * Redis server is unreachable (never connected or connection closed), ioredis
+ * commands throw "Connection is closed." — these helpers turn cache failures
+ * into no-ops (writes) / fallbacks (reads) so request paths never fail because
+ * of the optional cache. Behavior when Redis IS available is unchanged.
+ */
+async function safeRedisWrite(
+  op: (redis: ReturnType<typeof getRedis>) => Promise<unknown>,
+): Promise<void> {
+  try {
+    await op(getRedis());
+  } catch (err) {
+    console.warn('[locationCache] Redis write skipped (non-fatal):', err instanceof Error ? err.message : err);
+  }
+}
+
+async function safeRedisRead<T>(
+  fallback: T,
+  op: (redis: ReturnType<typeof getRedis>) => Promise<T>,
+): Promise<T> {
+  try {
+    return await op(getRedis());
+  } catch (err) {
+    console.warn('[locationCache] Redis read skipped (non-fatal):', err instanceof Error ? err.message : err);
+    return fallback;
+  }
+}
 
 // ─── Config (from env vars with defaults) ──────────────────────────────
 
@@ -64,11 +95,10 @@ export async function setUserLocation(
   lat: number,
   lng: number,
 ): Promise<{ cached: boolean; queued: boolean; skipped: boolean }> {
-  const redis = getRedis();
   const lastKey = `user:location:last:${userId}`;
 
   // 1. Read last known position from cache
-  const lastPosStr = await redis.get(lastKey);
+  const lastPosStr = await safeRedisRead<string | null>(null, (redis) => redis.get(lastKey));
 
   if (lastPosStr) {
     const [lastLat, lastLng] = lastPosStr.split(',').map(Number);
@@ -77,23 +107,23 @@ export async function setUserLocation(
 
       // 2. If within debounce threshold, just renew TTL
       if (distance < DEBOUNCE_METERS) {
-        await redis.expire(lastKey, CACHE_TTL_SECONDS);
+        await safeRedisWrite((redis) => redis.expire(lastKey, CACHE_TTL_SECONDS));
         return { cached: true, queued: false, skipped: true };
       }
     }
   }
 
   // 3. Store new position in cache
-  await redis.set(lastKey, `${lat},${lng}`, 'EX', CACHE_TTL_SECONDS);
+  await safeRedisWrite((redis) => redis.set(lastKey, `${lat},${lng}`, 'EX', CACHE_TTL_SECONDS));
 
   // 4. Update GEO index (use 'user:locations' for all users)
-  await redis.geoadd('user:locations', lng, lat, userId);
+  await safeRedisWrite((redis) => redis.geoadd('user:locations', lng, lat, userId));
 
   // 5. Add to dirty set for async flush to PostgreSQL
-  await redis.sadd('user:location:dirty', userId);
+  await safeRedisWrite((redis) => redis.sadd('user:location:dirty', userId));
 
   // 6. Set TTL on dirty set so it doesn't accumulate if Redis crashes
-  await redis.expire('user:location:dirty', DIRTY_SET_TTL_SECONDS);
+  await safeRedisWrite((redis) => redis.expire('user:location:dirty', DIRTY_SET_TTL_SECONDS));
 
   return { cached: true, queued: true, skipped: false };
 }
@@ -106,11 +136,10 @@ export async function setUserLocation(
 export async function getUserLocation(
   userId: string,
 ): Promise<{ lat: number; lng: number } | null> {
-  const redis = getRedis();
   const lastKey = `user:location:last:${userId}`;
 
   // 1. Try cache first
-  const posStr = await redis.get(lastKey);
+  const posStr = await safeRedisRead<string | null>(null, (redis) => redis.get(lastKey));
   if (posStr) {
     const [lat, lng] = posStr.split(',').map(Number);
     if (!isNaN(lat) && !isNaN(lng)) {
@@ -128,7 +157,7 @@ export async function getUserLocation(
     if (user?.locationLat != null && user?.locationLng != null) {
       const result = { lat: user.locationLat, lng: user.locationLng };
       // Warm the cache
-      await redis.set(lastKey, `${result.lat},${result.lng}`, 'EX', CACHE_TTL_SECONDS);
+      await safeRedisWrite((redis) => redis.set(lastKey, `${result.lat},${result.lng}`, 'EX', CACHE_TTL_SECONDS));
       return result;
     }
 
@@ -137,7 +166,7 @@ export async function getUserLocation(
       try {
         const parsed = JSON.parse(user.location) as { lat: number; lng: number };
         if (typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
-          await redis.set(lastKey, `${parsed.lat},${parsed.lng}`, 'EX', CACHE_TTL_SECONDS);
+          await safeRedisWrite((redis) => redis.set(lastKey, `${parsed.lat},${parsed.lng}`, 'EX', CACHE_TTL_SECONDS));
           return parsed;
         }
       } catch {
@@ -189,7 +218,7 @@ export async function getNearbyProviders(
 
   // 1. Check cache for this query
   const cacheKey = `provider:nearby:${lat.toFixed(4)}:${lng.toFixed(4)}:${safeLimit}:${radiusKm}`;
-  const cached = await redis.get(cacheKey);
+  const cached = await safeRedisRead<string | null>(null, (r) => r.get(cacheKey));
   if (cached) {
     try {
       return JSON.parse(cached) as typeof result;
@@ -319,7 +348,7 @@ export async function getNearbyProviders(
   });
 
   // 5. Cache the result for 60 seconds
-  await redis.set(cacheKey, JSON.stringify(result), 'EX', GEO_CACHE_TTL_SECONDS);
+  await safeRedisWrite((redis) => redis.set(cacheKey, JSON.stringify(result), 'EX', GEO_CACHE_TTL_SECONDS));
 
   return result;
 }
@@ -334,9 +363,8 @@ export async function cacheReverseGeocode(
   lng: number,
   data: Record<string, unknown>,
 ): Promise<void> {
-  const redis = getRedis();
   const key = `geocode:reverse:${lat.toFixed(4)}:${lng.toFixed(4)}`;
-  await redis.set(key, JSON.stringify(data), 'EX', REVERSE_GEO_TTL_SECONDS);
+  await safeRedisWrite((redis) => redis.set(key, JSON.stringify(data), 'EX', REVERSE_GEO_TTL_SECONDS));
 }
 
 /**
@@ -346,9 +374,8 @@ export async function getCachedReverseGeocode(
   lat: number,
   lng: number,
 ): Promise<Record<string, unknown> | null> {
-  const redis = getRedis();
   const key = `geocode:reverse:${lat.toFixed(4)}:${lng.toFixed(4)}`;
-  const cached = await redis.get(key);
+  const cached = await safeRedisRead<string | null>(null, (redis) => redis.get(key));
   if (!cached) return null;
   try {
     return JSON.parse(cached) as Record<string, unknown>;
@@ -368,15 +395,16 @@ export async function setOrderLocation(
   lng: number,
   address?: string,
 ): Promise<void> {
-  const redis = getRedis();
   const key = `order:location:${orderId}`;
 
   // Store as a JSON string (Hash would be ideal but in-memory fallback may not support it)
-  await redis.set(
-    key,
-    JSON.stringify({ lat, lng, address: address || '' }),
-    'EX',
-    86400, // 24 hours max
+  await safeRedisWrite((redis) =>
+    redis.set(
+      key,
+      JSON.stringify({ lat, lng, address: address || '' }),
+      'EX',
+      86400, // 24 hours max
+    ),
   );
 }
 
@@ -386,9 +414,8 @@ export async function setOrderLocation(
 export async function getOrderLocation(
   orderId: string,
 ): Promise<{ lat: number; lng: number; address: string } | null> {
-  const redis = getRedis();
   const key = `order:location:${orderId}`;
-  const cached = await redis.get(key);
+  const cached = await safeRedisRead<string | null>(null, (redis) => redis.get(key));
   if (!cached) return null;
   try {
     return JSON.parse(cached) as { lat: number; lng: number; address: string };
@@ -401,8 +428,7 @@ export async function getOrderLocation(
  * Invalidate (delete) a cached order location.
  */
 export async function invalidateOrderLocation(orderId: string): Promise<void> {
-  const redis = getRedis();
-  await redis.del(`order:location:${orderId}`);
+  await safeRedisWrite((redis) => redis.del(`order:location:${orderId}`));
 }
 
 // ─── Workspace Location Cache ──────────────────────────────────────────
@@ -415,13 +441,12 @@ export async function setWorkspaceLocation(
   lat: number,
   lng: number,
 ): Promise<void> {
-  const redis = getRedis();
   const key = `workspace:location:${workspaceId}`;
 
-  await redis.set(key, `${lat},${lng}`, 'EX', CACHE_TTL_SECONDS);
+  await safeRedisWrite((redis) => redis.set(key, `${lat},${lng}`, 'EX', CACHE_TTL_SECONDS));
 
   // Also update the provider GEO index (workspaces are provider locations)
-  await redis.geoadd('provider:locations', lng, lat, workspaceId);
+  await safeRedisWrite((redis) => redis.geoadd('provider:locations', lng, lat, workspaceId));
 }
 
 /**
@@ -430,9 +455,8 @@ export async function setWorkspaceLocation(
 export async function getWorkspaceLocation(
   workspaceId: string,
 ): Promise<{ lat: number; lng: number } | null> {
-  const redis = getRedis();
   const key = `workspace:location:${workspaceId}`;
-  const cached = await redis.get(key);
+  const cached = await safeRedisRead<string | null>(null, (redis) => redis.get(key));
   if (!cached) return null;
   const [lat, lng] = cached.split(',').map(Number);
   if (isNaN(lat) || isNaN(lng)) return null;

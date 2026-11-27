@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import api from '../../lib/api'
 import { StatusBar } from '../../components/ui/phone/StatusBar'
 import { BottomNav, NavIcons } from '../../components/ui/phone/BottomNav'
@@ -115,15 +115,43 @@ export default function BusinessDashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [workspaces, setWorkspaces] = useState<Array<{ id: string; name: string }>>([])
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
-    if (!workspaceId) return
+    let active = true
     setLoading(true)
-    api.get(`/workspaces/${workspaceId}/dashboard/overview`)
-      .then((res) => setData(res.data))
-      .catch((err) => setError(err?.response?.data?.error ?? 'Failed to load dashboard'))
-      .finally(() => setLoading(false))
-  }, [workspaceId])
+    setError(null)
+    setData(null)
+    api.get(workspaceId ? `/workspaces/${workspaceId}/dashboard/overview` : '/workspaces/me')
+      .then((res) => {
+        if (!active) return
+        if (workspaceId) setData(res.data)
+        else setWorkspaces(res.data)
+      })
+      .catch((err) => { if (active) setError(err?.response?.data?.error ?? 'Failed to load dashboard') })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [workspaceId, retry])
+
+  if (!workspaceId) {
+    return (
+      <section className="mx-auto max-w-xl p-6 text-nh-text">
+        <h1 className="text-xl font-bold">Choose your business</h1>
+        {loading ? <p role="status" className="mt-4">Loading businesses...</p> : error ? (
+          <div className="mt-4">
+            <p role="alert">{error}</p>
+            <button type="button" onClick={() => setRetry((value) => value + 1)} className="mt-3 rounded-lg bg-nh-primary px-4 py-2 text-white">Retry</button>
+          </div>
+        ) : workspaces.length ? (
+          <ul className="mt-4 space-y-3">
+            {workspaces.map((workspace) => <li key={workspace.id}><Link className="block rounded-xl border border-nh-border p-4 hover:bg-nh-surface" to={`/business/${workspace.id}`}>{workspace.name}</Link></li>)}
+          </ul>
+        ) : <p className="mt-4">No business workspace is linked to your account. Ask your business owner to add you, or return home.</p>}
+        <Link className="mt-6 inline-block text-nh-primary underline" to="/">Return home</Link>
+      </section>
+    )
+  }
 
   const formatCurrency = (cents: number) => {
     return '$' + (cents / 100).toFixed(2)

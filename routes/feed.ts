@@ -61,9 +61,12 @@ router.get('/', optionalAuth, async (req: Request, res: Response) => {
     }
 
     // Filter by location (city)
-    if (city) {
+    if (city || neighborhood) {
       const cityLocations = await prisma.postLocation.findMany({
-        where: { city: { equals: city, mode: 'insensitive' } },
+        where: {
+          ...(city ? { city: { equals: city, mode: 'insensitive' as const } } : {}),
+          ...(neighborhood ? { name: { contains: neighborhood, mode: 'insensitive' as const } } : {}),
+        },
         select: { id: true },
       });
       if (cityLocations.length > 0) {

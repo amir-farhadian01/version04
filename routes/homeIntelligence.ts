@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../lib/db.js';
-import { verifyAccessToken, JwtPayload } from '../lib/jwt.js';
+import { verifyAccessToken } from '../lib/jwt.js';
 import { isDataSafe, anonymizeData } from '../lib/privacyThreshold.js';
 
 const router = Router();

@@ -79,7 +79,6 @@ import prisma from '../lib/db.js';
 import { publish } from '../lib/bus.js';
 import { assertWorkspaceMember, WorkspaceAccessError } from '../lib/workspaceAccess.js';
 import { phaseFromStatus } from '../lib/orderPhase.js';
-import { isWorkspaceOpenForWalkIn } from '../lib/businessHours.js';
 
 // Helper to get the mock function regardless of type
 const mockAssertWorkspaceMember = assertWorkspaceMember as unknown as {

@@ -86,23 +86,23 @@ function CommentRow({
           )}
           {/* Actions: like + reply + delete */}
           <div className="flex items-center gap-3 mt-1">
-            <div onClick={() => onToggleLike(comment.id)} className={`flex items-center gap-1 text-[11px] cursor-pointer select-none ${isLiked ? 'text-nh-danger' : 'text-nh-text-muted'}`}>
+            <button type="button" onClick={() => onToggleLike(comment.id)} aria-label={isLiked ? 'Unlike comment' : 'Like comment'} aria-pressed={isLiked} className={`flex items-center gap-1 border-0 bg-transparent p-0 text-[11px] cursor-pointer select-none ${isLiked ? 'text-nh-danger' : 'text-nh-text-muted'}`}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill={isLiked ? 'var(--nh-danger)' : 'none'} stroke={isLiked ? 'var(--nh-danger)' : 'currentColor'} strokeWidth={isLiked ? 0 : 2}>
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
               {comment.likeCount > 0 && comment.likeCount}
-            </div>
-            <div onClick={() => onReply(comment.id, comment.author.displayName ?? 'User')} className="text-[11px] text-nh-text-muted cursor-pointer font-semibold">Reply</div>
+            </button>
+            <button type="button" onClick={() => onReply(comment.id, comment.author.displayName ?? 'User')} className="border-0 bg-transparent p-0 text-[11px] text-nh-text-muted cursor-pointer font-semibold">Reply</button>
             {user && user.id === comment.authorId && (
-              <div onClick={() => onDelete(comment.id)} className="text-[10px] text-nh-text-muted cursor-pointer ml-auto">🗑</div>
+              <button type="button" onClick={() => onDelete(comment.id)} aria-label="Delete comment" className="ml-auto border-0 bg-transparent p-0 text-[10px] text-nh-text-muted cursor-pointer">🗑</button>
             )}
           </div>
 
           {/* View/Hide replies */}
           {comment.replyCount > 0 && (
-            <div onClick={() => setShowReplies(!showReplies)} className="text-[11px] text-nh-text-muted font-semibold cursor-pointer mt-1.5 ml-0">
+            <button type="button" onClick={() => setShowReplies(!showReplies)} aria-expanded={showReplies} className="mt-1.5 ml-0 border-0 bg-transparent p-0 text-[11px] text-nh-text-muted font-semibold cursor-pointer">
               {showReplies ? 'Hide replies' : `View ${comment.replyCount} ${comment.replyCount === 1 ? 'reply' : 'replies'}`}
-            </div>
+            </button>
           )}
 
           {/* Replies list (indented) */}
@@ -122,15 +122,15 @@ function CommentRow({
                       <span className="text-[9px] text-nh-text-muted">{formatTimeAgo(reply.createdAt)}</span>
                     </div>
                     <div className="text-[12px] text-nh-text-secondary break-words mt-0.5">{reply.text}</div>
-                    <div onClick={() => onToggleLike(reply.id)} className={`flex items-center gap-1 text-[10px] cursor-pointer select-none mt-1 ${reply.isLiked ? 'text-nh-danger' : 'text-nh-text-muted'}`}>
+                    <button type="button" onClick={() => onToggleLike(reply.id)} aria-label={reply.isLiked ? 'Unlike reply' : 'Like reply'} aria-pressed={reply.isLiked} className={`mt-1 flex items-center gap-1 border-0 bg-transparent p-0 text-[10px] cursor-pointer select-none ${reply.isLiked ? 'text-nh-danger' : 'text-nh-text-muted'}`}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill={reply.isLiked ? 'var(--nh-danger)' : 'none'} stroke={reply.isLiked ? 'var(--nh-danger)' : 'currentColor'} strokeWidth={reply.isLiked ? 0 : 2}>
                         <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                       </svg>
                       {reply.likeCount > 0 && reply.likeCount}
-                    </div>
+                    </button>
                   </div>
                   {user && user.id === reply.authorId && (
-                    <div onClick={() => onDelete(reply.id)} className="text-[9px] text-nh-text-muted cursor-pointer self-start">🗑</div>
+                    <button type="button" onClick={() => onDelete(reply.id)} aria-label="Delete reply" className="self-start border-0 bg-transparent p-0 text-[9px] text-nh-text-muted cursor-pointer">🗑</button>
                   )}
                 </div>
               ))}
@@ -196,7 +196,7 @@ export default function CommentsSheet({ postId, onClose }: CommentsSheetProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center">
       {/* Backdrop */}
-      <div onClick={onClose} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <button type="button" onClick={onClose} aria-label="Close comments" className="absolute inset-0 border-0 bg-black/50 p-0 backdrop-blur-sm" />
 
       {/* Sheet */}
       <div className="relative w-full max-w-[600px] max-h-[80vh] bg-nh-surface rounded-t-[20px] flex flex-col overflow-hidden border border-nh-border border-b-0">
@@ -204,7 +204,7 @@ export default function CommentsSheet({ postId, onClose }: CommentsSheetProps) {
         <div className="px-4 pt-3 pb-2 border-b border-nh-border flex items-center relative">
           <div className="w-10 h-1 rounded-sm bg-nh-border mx-auto absolute left-1/2 -translate-x-1/2 top-2" />
           <span className="text-[15px] font-semibold text-nh-text flex-1 mt-1">Comments</span>
-          <div onClick={onClose} className="text-xl text-nh-text-muted cursor-pointer px-1">×</div>
+          <button type="button" onClick={onClose} aria-label="Close comments" className="border-0 bg-transparent px-1 text-xl text-nh-text-muted cursor-pointer">×</button>
         </div>
 
         {/* Comments List */}
@@ -235,7 +235,7 @@ export default function CommentsSheet({ postId, onClose }: CommentsSheetProps) {
           <div className="px-4 py-1.5 flex items-center gap-2 text-[11px] text-nh-text-muted border-t border-nh-border">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><polyline points="9 17 4 12 9 7" /><path d="M20 18v-2a4 4 0 0 0-4-4H4" /></svg>
             <span className="flex-1">Replying to {replyTo.name}</span>
-            <div onClick={cancelReply} className="cursor-pointer text-nh-danger font-semibold">Cancel</div>
+            <button type="button" onClick={cancelReply} className="border-0 bg-transparent p-0 cursor-pointer text-nh-danger font-semibold">Cancel</button>
           </div>
         )}
 
@@ -250,12 +250,12 @@ export default function CommentsSheet({ postId, onClose }: CommentsSheetProps) {
             rows={1}
             className="flex-1 bg-nh-surface border border-nh-border rounded-xl px-3 py-2 text-[13px] text-nh-text resize-none outline-none max-h-[100px] font-inherit"
           />
-          <div onClick={handleSubmit}
-            className={`rounded-lg px-[14px] py-1.5 text-xs font-semibold whitespace-nowrap ${
+          <button type="button" onClick={handleSubmit} disabled={!text.trim() || submitting}
+            className={`rounded-lg border-0 px-[14px] py-1.5 text-xs font-semibold whitespace-nowrap ${
               text.trim() ? 'bg-nh-primary text-white cursor-pointer' : 'bg-nh-border-elevated text-nh-text-muted cursor-default'
             } ${submitting ? 'opacity-60' : ''}`}>
             {submitting ? '...' : 'Post'}
-          </div>
+          </button>
         </div>
       </div>
     </div>

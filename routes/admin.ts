@@ -10,6 +10,7 @@ import {
   type DependencyCatalogV1,
 } from '../lib/dependencyCatalog.js';
 import { getAdminUsersList, getAdminUserIds } from '../lib/adminUsersList.js';
+import { toAuditLogEntry } from '../lib/adminAudit.js';
 import { fetchAdminUserFull } from '../lib/adminUserDetail.js';
 import { computeAdminOverviewStats, computeOrdersSubmittedTrend } from '../lib/adminOverviewStats.js';
 
@@ -275,11 +276,9 @@ router.post('/users/:id/reset-password-email', async (req: AuthRequest, res: Res
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Generate a real, single-use reset token and log the link. Wire a mail
-    // provider (SendGrid/Resend/SES) here to actually deliver the email.
-    const token = await createPasswordResetToken(user.id);
-    const resetLink = `${req.protocol}://${req.get('host')}/auth/reset-password?token=${token}`;
-    console.log(`[ADMIN] Password reset email for ${user.email}: ${resetLink}`);
+    // Tokens must only be delivered through a dedicated private transport.
+    // Never put the token, reset URL, or user email in application/audit logs.
+    await createPasswordResetToken(user.id);
 
     await prisma.auditLog.create({
       data: {
@@ -287,11 +286,11 @@ router.post('/users/:id/reset-password-email', async (req: AuthRequest, res: Res
         action: 'ADMIN_SEND_RESET_PASSWORD_EMAIL',
         resourceType: 'user',
         resourceId: user.id,
-        metadata: { email: user.email, message: 'Admin triggered password reset email' },
+        metadata: { message: 'Admin triggered password reset request' },
       },
     });
 
-    res.json({ success: true, message: `Password reset email sent to ${user.email}` });
+    res.json({ success: true, message: 'Password reset requested' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -345,12 +344,12 @@ router.get('/audit-log', async (req: AuthRequest, res: Response) => {
   try {
     const limitRaw = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : 10;
     const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 10));
-    const items = await prisma.auditLog.findMany({
+    const rows = await prisma.auditLog.findMany({
       include: { actor: { select: { id: true, displayName: true, email: true } } },
       orderBy: { timestamp: 'desc' },
       take: limit,
     });
-    res.json({ items });
+    res.json({ items: rows.map(toAuditLogEntry) });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -436,7 +435,9 @@ router.get('/config', async (req: AuthRequest, res: Response) => {
 // PUT /api/admin/config
 router.put('/config', async (req: AuthRequest, res: Response) => {
   try {
-    const { id: _id, key: _key, stripePublishableKey, stripeSecretKey, stripeWebhookSecret, stripeEnabled, ...rest } = req.body;
+    const { stripePublishableKey, stripeSecretKey, stripeWebhookSecret, stripeEnabled, ...rest } = req.body;
+    delete rest.id;
+    delete rest.key;
 
     // Build the integrations JSON with Stripe config
     const existing = await prisma.systemConfig.findUnique({ where: { key: 'global' } });
@@ -518,7 +519,8 @@ router.post('/pages', async (req: AuthRequest, res: Response) => {
 // PUT /api/admin/pages/:id
 router.put('/pages/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const { id: _id, ...data } = req.body;
+    const data = { ...req.body };
+    delete data.id;
     const page = await prisma.page.update({ where: { id: req.params.id }, data: { ...data, lastEdit: new Date() } });
     res.json(page);
   } catch (err: any) {

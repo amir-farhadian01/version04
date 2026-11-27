@@ -5,6 +5,7 @@ import { BottomNav, NavIcons } from '../../components/ui/phone/BottomNav'
 import api from '../../lib/api'
 import {
   startUpgrade,
+  uploadPrivateKycDocument,
   uploadDocument,
   getBusinessKycStatus,
   getTrustScore,
@@ -140,13 +141,16 @@ export default function UpgradeToBusiness() {
     setUploading(true)
     setUploadError(null)
     try {
-      const placeholderUrl = `https://media.neighborly.local/uploads/business-kyc/${Date.now()}-${file.name}`
-      await uploadDocument({ submissionId, documentType: docUploadMode, fileUrl: placeholderUrl })
-      if (docUploadMode === 'license') setLicenseFileUrl(placeholderUrl)
-      else setInsuranceFileUrl(placeholderUrl)
+      const privateReference = await uploadPrivateKycDocument(file)
+      await uploadDocument({ submissionId, documentType: docUploadMode, fileUrl: privateReference })
+      if (docUploadMode === 'license') setLicenseFileUrl(privateReference)
+      else setInsuranceFileUrl(privateReference)
       setDocUploadMode(null)
     } catch (err: unknown) {
-      setUploadError((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Upload failed')
+      setUploadError(
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+          ?? (err instanceof Error ? err.message : 'Upload failed'),
+      )
     }
     setUploading(false)
     if (fileInputRef.current) fileInputRef.current.value = ''

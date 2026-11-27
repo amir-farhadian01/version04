@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import {
   ShieldAlert, Search, Filter, ChevronDown, X, AlertTriangle,
-  CheckCircle2, Clock, MessageSquare, User, ExternalLink,
-  Eye, Ban, BellOff, FileText, ArrowUpRight,
+  CheckCircle2, Clock, MessageSquare, User,
+  Eye, Ban, BellOff,
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────

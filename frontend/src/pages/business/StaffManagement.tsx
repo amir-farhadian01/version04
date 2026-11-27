@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import api from '../../lib/api'
 
@@ -29,16 +29,17 @@ export default function StaffManagement() {
   const [inviteRole, setInviteRole] = useState('staff')
   const [inviteStaffRole, setInviteStaffRole] = useState('')
 
-  const fetchStaff = () => {
+  const fetchStaff = useCallback(() => {
     if (!workspaceId) return
     setLoading(true)
+    setError(null)
     api.get(`/staff/${workspaceId}`)
       .then((res) => setStaff(res.data.staff ?? []))
       .catch((err) => setError(err?.response?.data?.error ?? 'Failed to load staff'))
       .finally(() => setLoading(false))
-  }
+  }, [workspaceId])
 
-  useEffect(() => { fetchStaff() }, [workspaceId])
+  useEffect(() => { fetchStaff() }, [fetchStaff])
 
   const handleInvite = async () => {
     if (!workspaceId || !inviteUserId) return
@@ -103,7 +104,12 @@ export default function StaffManagement() {
   }
 
   if (error) {
-    return <div className="p-6 text-nh-danger text-center">{error}</div>
+    return (
+      <div className="p-6 text-center">
+        <p role="alert" className="text-nh-danger">{error}</p>
+        <button type="button" onClick={fetchStaff} className="mt-3 rounded-lg bg-nh-primary px-4 py-2 text-white">Retry</button>
+      </div>
+    )
   }
 
   return (

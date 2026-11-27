@@ -5,7 +5,7 @@ import { publish } from '../lib/bus.js';
 import { isWorkspaceOpenForWalkIn } from '../lib/businessHours.js';
 import { recalculateWorkspaceTrustScore } from '../lib/trustScore.js';
 import { authenticate, AuthRequest } from '../lib/auth.middleware.js';
-import { setOrderLocation, invalidateOrderLocation } from '../lib/locationCache.js';
+import { setOrderLocation } from '../lib/locationCache.js';
 import { categoryBreadcrumbs } from '../lib/categoryBreadcrumbs.js';
 import { snapshotSchemaForOrder, withOrderTraceIds } from '../lib/orderSnapshot.js';
 import { photosJsonToUploadRows } from '../lib/orderPhotosForValidate.js';
@@ -2878,7 +2878,7 @@ router.put('/:id/assign-staff', authenticate, async (req: AuthRequest, res: Resp
       });
     }
 
-    const updated = await prisma.order.update({
+    await prisma.order.update({
       where: { id },
       data: { assignedStaffId: staffId },
     });

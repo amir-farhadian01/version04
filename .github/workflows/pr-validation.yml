@@ -27,11 +27,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22.14.0'
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -41,6 +45,9 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Build admin dashboard
+        run: npm run build:admin
 
   # ── 2. Smart Code Analysis ─────────────────────────────────────────────────
   analyze:
@@ -109,13 +116,19 @@ jobs:
 
       - name: Post review comment
         uses: actions/github-script@v7
+        env:
+          PRISMA_CHANGED: ${{ steps.detect.outputs.prisma_changed }}
+          ENV_CHANGED: ${{ steps.detect.outputs.env_changed }}
+          NEW_VARS: ${{ steps.detect.outputs.new_vars }}
+          PRISMA_DIFF: ${{ steps.detect.outputs.prisma_diff }}
+          SUSPICIOUS_ROUTES: ${{ steps.auth_check.outputs.suspicious }}
         with:
           script: |
-            const prismaChanged = '${{ steps.detect.outputs.prisma_changed }}' === 'true';
-            const envChanged    = '${{ steps.detect.outputs.env_changed }}'    === 'true';
-            const newVars       = `${{ steps.detect.outputs.new_vars }}`;
-            const prismaDiff    = `${{ steps.detect.outputs.prisma_diff }}`;
-            const suspicious    = `${{ steps.auth_check.outputs.suspicious }}`;
+            const prismaChanged = process.env.PRISMA_CHANGED === 'true';
+            const envChanged    = process.env.ENV_CHANGED === 'true';
+            const newVars       = process.env.NEW_VARS ?? '';
+            const prismaDiff    = process.env.PRISMA_DIFF ?? '';
+            const suspicious    = process.env.SUSPICIOUS_ROUTES ?? '';
 
             // Post only when there is something actionable
             if (!prismaChanged && !envChanged && !suspicious.trim()) return;

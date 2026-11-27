@@ -1,0 +1,1 @@
+{"status":"degraded","checks":{"database":{"status":"up","latencyMs":2,"required":true},"redis":{"status":"down","latencyMs":0,"required":false},"nats":{"status":"down","latencyMs":0,"required":false},"storage":{"status":"up","latencyMs":0,"required":true}},"unavailableRequired":[],"unavailableOptional":["redis","nats"],"timestamp":"2026-10-06T06:26:15.252Z"}

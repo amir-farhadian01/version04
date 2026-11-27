@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import {
   Search, RefreshCw, CheckCircle, XCircle, AlertTriangle,
-  MessageSquare, User, FileText, Eye, ShieldAlert
+  MessageSquare, FileText, Eye
 } from 'lucide-react'
 
 type ModerationStatus = 'APPROVED' | 'PENDING' | 'FLAGGED' | 'REMOVED' | 'WARNED'
@@ -61,7 +61,7 @@ export default function ContentModeration() {
   const [total, setTotal] = useState(0)
   const pageSize = 20
 
-  const fetchPosts = async (p = page) => {
+  const fetchPosts = useCallback(async (p = 1) => {
     setLoading(true)
     setError(null)
     try {
@@ -77,12 +77,12 @@ export default function ContentModeration() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterStatus, search])
 
   useEffect(() => {
     fetchPosts(1)
     setPage(1)
-  }, [filterStatus, search])
+  }, [fetchPosts])
 
   const handleAction = async (id: string, action: string) => {
     try {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { NavIcons } from '../../components/ui/phone/BottomNav'
 import { useAuthStore } from '../../store/authStore'
@@ -125,6 +125,57 @@ function showSnack(msg: string) {
   setTimeout(() => el.remove(), 2500)
 }
 
+function useModalAccessibility(isOpen: boolean, onClose: () => void) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const dialog = dialogRef.current
+    const getFocusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ) ?? [])
+
+    const focusable = getFocusable()
+    ;(focusable[0] ?? dialog)?.focus()
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const items = getFocusable()
+      if (items.length === 0) {
+        event.preventDefault()
+        dialog?.focus()
+        return
+      }
+
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      previousFocus?.focus()
+    }
+  }, [isOpen, onClose])
+
+  return dialogRef
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Main Component
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -173,6 +224,17 @@ export default function Profile() {
   const [showShare, setShowShare] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  const closeEdit = useCallback(() => setEditOpen(false), [])
+  const closeShare = useCallback(() => setShowShare(false), [])
+  const closeAddress = useCallback(() => setAddrModal(null), [])
+  const closeCar = useCallback(() => setCarModal(null), [])
+  const closeClearCache = useCallback(() => setShowClearCache(false), [])
+  const editDialogRef = useModalAccessibility(editOpen, closeEdit)
+  const shareDialogRef = useModalAccessibility(showShare, closeShare)
+  const addressDialogRef = useModalAccessibility(Boolean(addrModal), closeAddress)
+  const carDialogRef = useModalAccessibility(Boolean(carModal), closeCar)
+  const clearCacheDialogRef = useModalAccessibility(showClearCache, closeClearCache)
+
   // Username editing
   const [editUsername, setEditUsername] = useState('')
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
@@ -198,7 +260,7 @@ export default function Profile() {
     return () => clearTimeout(timer)
   }, [editUsername, checkUsername])
 
-  const userData = (user as any) ?? {}
+  const userData = user
   const displayName = userData?.displayName || `${userData?.firstName ?? ''} ${userData?.lastName ?? ''}`.trim() || 'User'
   const email = userData?.email ?? ''
   const avatarUrl = userData?.avatarUrl ?? ''
@@ -439,9 +501,9 @@ export default function Profile() {
           </div>
         )}
         {addrModal && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setAddrModal(null)}>
-            <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-              <h3 className="text-nh-text font-display font-semibold text-lg mb-4">{addrModal.existing ? 'Edit Address' : 'Add Address'}</h3>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={closeAddress}>
+            <div ref={addressDialogRef} role="dialog" aria-modal="true" aria-labelledby="address-subscreen-modal-title" tabIndex={-1} className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+              <h3 id="address-subscreen-modal-title" className="text-nh-text font-display font-semibold text-lg mb-4">{addrModal.existing ? 'Edit Address' : 'Add Address'}</h3>
               <input value={addrLabel} onChange={e => setAddrLabel(e.target.value)} placeholder="Label (e.g. Home, Work)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={addrStreet} onChange={e => setAddrStreet(e.target.value)} placeholder="Street Address" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={addrCity} onChange={e => setAddrCity(e.target.value)} placeholder="City" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
@@ -449,7 +511,7 @@ export default function Profile() {
               <input value={addrPostal} onChange={e => setAddrPostal(e.target.value)} placeholder="Postal Code" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={addrCountry} onChange={e => setAddrCountry(e.target.value)} placeholder="Country (default: CA)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none" />
               <div className="flex justify-end gap-3 mt-5">
-                <button onClick={() => setAddrModal(null)} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
+                <button onClick={closeAddress} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
                 <button onClick={saveAddress} className="px-5 py-2 rounded-lg bg-nh-primary text-white text-sm font-semibold">{addrModal.existing ? 'Update' : 'Add'}</button>
               </div>
             </div>
@@ -492,9 +554,9 @@ export default function Profile() {
           </div>
         )}
         {carModal && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setCarModal(null)}>
-            <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-              <h3 className="text-nh-text font-display font-semibold text-lg mb-4">{carModal.existing ? 'Edit Car' : 'Add Car'}</h3>
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={closeCar}>
+            <div ref={carDialogRef} role="dialog" aria-modal="true" aria-labelledby="car-subscreen-modal-title" tabIndex={-1} className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+              <h3 id="car-subscreen-modal-title" className="text-nh-text font-display font-semibold text-lg mb-4">{carModal.existing ? 'Edit Car' : 'Add Car'}</h3>
               <input value={carLabel} onChange={e => setCarLabel(e.target.value)} placeholder="Label (e.g. My Civic)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={carMake} onChange={e => setCarMake(e.target.value)} placeholder="Make (e.g. Honda)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={carModel} onChange={e => setCarModel(e.target.value)} placeholder="Model (e.g. Civic)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
@@ -502,7 +564,7 @@ export default function Profile() {
               <input value={carColor} onChange={e => setCarColor(e.target.value)} placeholder="Color (optional)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
               <input value={carPlate} onChange={e => setCarPlate(e.target.value)} placeholder="License Plate (optional)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none" />
               <div className="flex justify-end gap-3 mt-5">
-                <button onClick={() => setCarModal(null)} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
+                <button onClick={closeCar} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
                 <button onClick={saveCar} className="px-5 py-2 rounded-lg bg-nh-primary text-white text-sm font-semibold">{carModal.existing ? 'Update' : 'Add'}</button>
               </div>
             </div>
@@ -643,9 +705,9 @@ export default function Profile() {
 
       {/* ── Edit Profile Modal ── */}
       {editOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setEditOpen(false)}>
-          <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-nh-text font-display font-semibold text-lg mb-4">Edit Profile</h3>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={closeEdit}>
+          <div ref={editDialogRef} role="dialog" aria-modal="true" aria-labelledby="edit-profile-title" tabIndex={-1} className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 id="edit-profile-title" className="text-nh-text font-display font-semibold text-lg mb-4">Edit Profile</h3>
             <div className="flex flex-col gap-3">
               <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Display Name"
                 className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none" />
@@ -674,7 +736,7 @@ export default function Profile() {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-5">
-              <button onClick={() => setEditOpen(false)} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
+              <button onClick={closeEdit} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
               <button onClick={saveEditProfile} className="px-5 py-2 rounded-lg bg-nh-primary text-white text-sm font-semibold">Save</button>
             </div>
           </div>
@@ -683,11 +745,11 @@ export default function Profile() {
 
       {/* ── Share Profile Dialog ── */}
       {showShare && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setShowShare(false)}>
-          <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={closeShare}>
+          <div ref={shareDialogRef} role="dialog" aria-modal="true" aria-labelledby="share-profile-title" tabIndex={-1} className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-nh-text font-display font-semibold text-lg">Share Profile</h3>
-              <button onClick={() => setShowShare(false)} className="text-nh-text-muted bg-transparent border-0 p-1 cursor-pointer">
+              <h3 id="share-profile-title" className="text-nh-text font-display font-semibold text-lg">Share Profile</h3>
+              <button onClick={closeShare} aria-label="Close share profile" className="text-nh-text-muted bg-transparent border-0 p-1 cursor-pointer">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
@@ -724,9 +786,9 @@ export default function Profile() {
 
       {/* ── Address Form Modal ── */}
       {addrModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setAddrModal(null)}>
-          <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-nh-text font-display font-semibold text-lg mb-4">{addrModal.existing ? 'Edit Address' : 'Add Address'}</h3>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={closeAddress}>
+          <div ref={addressDialogRef} role="dialog" aria-modal="true" aria-labelledby="address-modal-title" tabIndex={-1} className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 id="address-modal-title" className="text-nh-text font-display font-semibold text-lg mb-4">{addrModal.existing ? 'Edit Address' : 'Add Address'}</h3>
             <input value={addrLabel} onChange={e => setAddrLabel(e.target.value)} placeholder="Label (e.g. Home, Work)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
             <input value={addrStreet} onChange={e => setAddrStreet(e.target.value)} placeholder="Street Address" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
             <input value={addrCity} onChange={e => setAddrCity(e.target.value)} placeholder="City" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
@@ -734,7 +796,7 @@ export default function Profile() {
             <input value={addrPostal} onChange={e => setAddrPostal(e.target.value)} placeholder="Postal Code" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
             <input value={addrCountry} onChange={e => setAddrCountry(e.target.value)} placeholder="Country (default: CA)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none" />
             <div className="flex justify-end gap-3 mt-5">
-              <button onClick={() => setAddrModal(null)} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
+              <button onClick={closeAddress} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
               <button onClick={saveAddress} className="px-5 py-2 rounded-lg bg-nh-primary text-white text-sm font-semibold">{addrModal.existing ? 'Update' : 'Add'}</button>
             </div>
           </div>
@@ -743,9 +805,9 @@ export default function Profile() {
 
       {/* ── Car Form Modal ── */}
       {carModal && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setCarModal(null)}>
-          <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-nh-text font-display font-semibold text-lg mb-4">{carModal.existing ? 'Edit Car' : 'Add Car'}</h3>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={closeCar}>
+          <div ref={carDialogRef} role="dialog" aria-modal="true" aria-labelledby="car-modal-title" tabIndex={-1} className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 id="car-modal-title" className="text-nh-text font-display font-semibold text-lg mb-4">{carModal.existing ? 'Edit Car' : 'Add Car'}</h3>
             <input value={carLabel} onChange={e => setCarLabel(e.target.value)} placeholder="Label (e.g. My Civic)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
             <input value={carMake} onChange={e => setCarMake(e.target.value)} placeholder="Make (e.g. Honda)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
             <input value={carModel} onChange={e => setCarModel(e.target.value)} placeholder="Model (e.g. Civic)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
@@ -753,7 +815,7 @@ export default function Profile() {
             <input value={carColor} onChange={e => setCarColor(e.target.value)} placeholder="Color (optional)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none mb-2" />
             <input value={carPlate} onChange={e => setCarPlate(e.target.value)} placeholder="License Plate (optional)" className="w-full bg-nh-bg border border-nh-border rounded-[10px] px-4 py-2.5 text-nh-text text-sm outline-none" />
             <div className="flex justify-end gap-3 mt-5">
-              <button onClick={() => setCarModal(null)} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
+              <button onClick={closeCar} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
               <button onClick={saveCar} className="px-5 py-2 rounded-lg bg-nh-primary text-white text-sm font-semibold">{carModal.existing ? 'Update' : 'Add'}</button>
             </div>
           </div>
@@ -762,12 +824,12 @@ export default function Profile() {
 
       {/* ── Clear Cache Dialog ── */}
       {showClearCache && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={() => setShowClearCache(false)}>
-          <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-nh-text font-display font-semibold text-lg mb-4">Clear Cache</h3>
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={closeClearCache}>
+          <div ref={clearCacheDialogRef} role="dialog" aria-modal="true" aria-labelledby="clear-cache-title" tabIndex={-1} className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 id="clear-cache-title" className="text-nh-text font-display font-semibold text-lg mb-4">Clear Cache</h3>
             <p className="text-nh-text-secondary text-sm mb-4">Are you sure you want to clear the app cache?</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowClearCache(false)} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
+              <button onClick={closeClearCache} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>
               <button onClick={handleClearCache} className="px-5 py-2 rounded-lg bg-nh-danger text-white text-sm font-semibold">Clear</button>
             </div>
           </div>
@@ -850,10 +912,11 @@ function CarCard({ car, onEdit, onDelete, onSetDefault }: { car: Car; onEdit: (c
 }
 
 function ConfirmDeleteModal({ onConfirm, onCancel, label }: { onConfirm: () => void; onCancel: () => void; label: string }) {
+  const dialogRef = useModalAccessibility(true, onCancel)
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50" onClick={onCancel}>
-      <div className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
-        <h3 className="text-nh-text font-display font-semibold text-lg mb-4">Confirm Delete</h3>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="confirm-delete-title" tabIndex={-1} className="bg-nh-surface rounded-2xl w-full max-w-sm mx-4 p-6" onClick={e => e.stopPropagation()}>
+        <h3 id="confirm-delete-title" className="text-nh-text font-display font-semibold text-lg mb-4">Confirm Delete</h3>
         <p className="text-nh-text-secondary text-sm mb-4">Are you sure you want to delete <strong className="text-nh-text">{label}</strong>?</p>
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} className="px-4 py-2 rounded-lg text-nh-text-muted text-sm">Cancel</button>

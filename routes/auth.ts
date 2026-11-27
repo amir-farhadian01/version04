@@ -15,6 +15,7 @@ import { publish } from '../lib/bus.js';
 import { authLimiter } from '../lib/rateLimiter.js';
 import { blacklistToken } from '../lib/tokenBlacklist.js';
 import { createPasswordResetToken, consumePasswordResetToken } from '../lib/passwordReset.js';
+import { verifyAppleIdentityToken } from '../lib/appleIdentityToken.js';
 import {
   normalizeUsername,
   isValidUsername,
@@ -84,8 +85,39 @@ async function touchUserSessionOnAuth(req: Request, userId: string): Promise<voi
 }
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const OWNER_EMAIL = 'amirfarhadian569@gmail.com';
 const rpName = 'Neighborly App';
+const WEBAUTHN_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const WEBAUTHN_CHALLENGE_LIMIT = 10_000;
+type WebAuthnChallengePurpose = 'registration' | 'authentication';
+interface WebAuthnChallengeRecord {
+  userId: string;
+  purpose: WebAuthnChallengePurpose;
+  expiresAt: number;
+}
+const webAuthnChallenges = new Map<string, WebAuthnChallengeRecord>();
+
+function rememberWebAuthnChallenge(challenge: string, userId: string, purpose: WebAuthnChallengePurpose): void {
+  const now = Date.now();
+  for (const [key, value] of webAuthnChallenges) {
+    if (value.expiresAt <= now) webAuthnChallenges.delete(key);
+  }
+  while (webAuthnChallenges.size >= WEBAUTHN_CHALLENGE_LIMIT) {
+    const oldest = webAuthnChallenges.keys().next().value as string | undefined;
+    if (!oldest) break;
+    webAuthnChallenges.delete(oldest);
+  }
+  webAuthnChallenges.set(challenge, { userId, purpose, expiresAt: now + WEBAUTHN_CHALLENGE_TTL_MS });
+}
+
+function consumeWebAuthnChallenge(
+  challenge: string,
+  purpose: WebAuthnChallengePurpose,
+): WebAuthnChallengeRecord | null {
+  const record = webAuthnChallenges.get(challenge);
+  webAuthnChallenges.delete(challenge);
+  if (!record || record.purpose !== purpose || record.expiresAt <= Date.now()) return null;
+  return record;
+}
 
 // ─── Update Profile ─────────────────────────────────────────────────────────
 router.post('/update-profile', authenticate, async (req: AuthRequest, res: Response) => {
@@ -119,7 +151,7 @@ router.post('/update-profile', authenticate, async (req: AuthRequest, res: Respo
 
 // ─── Register ────────────────────────────────────────────────────────────────
 router.post('/register', authLimiter, async (req: Request, res: Response) => {
-  const { email, password, displayName, role = 'customer', phone, username, firstName, lastName } = req.body;
+  const { email, password, displayName, phone, username, firstName, lastName } = req.body;
   if (!email || !password || !displayName)
     return res.status(400).json({ error: 'Missing required fields' });
 
@@ -173,8 +205,6 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
     }
 
     const hashed = await bcrypt.hash(password, 12);
-    const assignedRole = email === OWNER_EMAIL ? 'owner' : role;
-
     const regIp = getRequestIp(req) ?? null;
     const user = await prisma.user.create({
       data: {
@@ -188,8 +218,8 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
         firstName: firstName || null,
         lastName: lastName || null,
         phone: phone || null,
-        role: assignedRole as any,
-        isVerified: email === OWNER_EMAIL,
+        role: 'customer',
+        isVerified: false,
         registrationIp: regIp,
       },
     });
@@ -303,13 +333,10 @@ router.post('/forgot-password', authLimiter, async (req: Request, res: Response)
       return res.json({ success: true });
     }
 
-    const token = await createPasswordResetToken(user.id);
-    const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 8080}`;
-    const resetLink = `${baseUrl}/auth/reset-password?token=${token}`;
-
-    // No email transport is configured yet — log the link and surface it in
-    // development. Wire a mail provider (SendGrid/Resend/SES) here in production.
-    console.log(`[PasswordReset] Reset link for ${user.email}: ${resetLink}`);
+    // Tokens must only be delivered through a dedicated private transport.
+    // Until one is configured, create the single-use token without exposing it
+    // through application logs or the HTTP response.
+    await createPasswordResetToken(user.id);
 
     res.json({ success: true });
   } catch (err: any) {
@@ -356,35 +383,20 @@ router.post('/apple', authLimiter, async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'identityToken is required', code: 'MISSING_IDENTITY_TOKEN' });
   }
 
+  const appleAudience = process.env.APPLE_CLIENT_ID?.trim();
+  if (!appleAudience) {
+    return res.status(503).json({ error: 'Apple authentication is not configured', code: 'APPLE_AUTH_NOT_CONFIGURED' });
+  }
+
   try {
-    // Decode the Apple identity token (base64url JWT)
-    const parts = identityToken.split('.');
-    if (parts.length !== 3) {
-      return res.status(400).json({ error: 'Invalid identity token format' });
-    }
-
-    const payloadStr = Buffer.from(parts[1]!, 'base64url').toString('utf-8');
-    const payload = JSON.parse(payloadStr) as {
-      sub: string;
-      email?: string;
-      email_verified?: string | boolean;
-      is_private_email?: string | boolean;
-      aud: string;
-      iss: string;
-      iat: number;
-      exp: number;
-    };
-
-    if (payload.iss !== 'https://appleid.apple.com') {
-      return res.status(401).json({ error: 'Invalid token issuer', code: 'INVALID_ISSUER' });
-    }
-    if (payload.exp && Date.now() > payload.exp * 1000) {
-      return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
-    }
+    const payload = await verifyAppleIdentityToken(identityToken, appleAudience);
 
     const appleSub = payload.sub;
     const appleEmail = payload.email;
-    const isPrivateEmail = payload.is_private_email === 'true' || payload.is_private_email === true;
+    const emailVerified = payload.email_verified === 'true' || payload.email_verified === true;
+    if (appleEmail && !emailVerified) {
+      return res.status(401).json({ error: 'Apple email is not verified', code: 'APPLE_EMAIL_NOT_VERIFIED' });
+    }
     const displayName = fullName
       ? [fullName.givenName, fullName.familyName].filter(Boolean).join(' ')
       : undefined;
@@ -402,15 +414,14 @@ router.post('/apple', authLimiter, async (req: Request, res: Response) => {
     if (!user) {
       const email = appleEmail || `apple_${appleSub}@neighborly.local`;
       const normalizedEmail = appleEmail ? normalizeEmail(appleEmail) : email;
-      const assignedRole = email === OWNER_EMAIL ? 'owner' : 'customer';
       user = await prisma.user.create({
         data: {
           email,
           normalizedEmail,
           displayName: displayName || `User_${appleSub.slice(0, 8)}`,
           appleId: appleSub,
-          role: assignedRole as any,
-          isVerified: email === OWNER_EMAIL || !isPrivateEmail,
+          role: 'customer',
+          isVerified: emailVerified,
           registrationIp: getRequestIp(req) ?? null,
         },
       });
@@ -512,7 +523,7 @@ router.post('/onboarding', authenticate, async (req: AuthRequest, res: Response)
 // ─── Google OAuth ─────────────────────────────────────────────────────────────
 // Accepts either an id_token (from Google One Tap) or an access_token (from OAuth flow)
 router.post('/google', authLimiter, async (req: Request, res: Response) => {
-  const { idToken, accessToken, email: directEmail, name: directName, picture } = req.body;
+  const { idToken, accessToken, name: directName, picture } = req.body;
 
   let googleEmail: string | undefined;
   let googleName: string | undefined;
@@ -537,15 +548,11 @@ router.post('/google', authLimiter, async (req: Request, res: Response) => {
       });
       if (!userInfoRes.ok) return res.status(401).json({ error: 'Invalid Google access token' });
       const userInfo = await userInfoRes.json() as any;
-      googleEmail = userInfo.email || directEmail;
+      googleEmail = userInfo.email;
       googleName = userInfo.name || directName;
       googlePicture = userInfo.picture || picture;
-    } else if (directEmail) {
-      googleEmail = directEmail;
-      googleName = directName;
-      googlePicture = picture;
     } else {
-      return res.status(400).json({ error: 'Missing token or email' });
+      return res.status(400).json({ error: 'Google idToken or accessToken is required' });
     }
 
     if (!googleEmail) return res.status(400).json({ error: 'Could not retrieve email' });
@@ -553,7 +560,6 @@ router.post('/google', authLimiter, async (req: Request, res: Response) => {
     let user = await prisma.user.findUnique({ where: { email: googleEmail } });
     if (!user) {
       const normalizedGoogleEmail = normalizeEmail(googleEmail);
-      const assignedRole = googleEmail === OWNER_EMAIL ? 'owner' : 'customer';
       user = await prisma.user.create({
         data: {
           email: googleEmail,
@@ -561,8 +567,8 @@ router.post('/google', authLimiter, async (req: Request, res: Response) => {
           displayName: googleName || googleEmail,
           avatarUrl: googlePicture,
           googleId: googleSub || undefined,
-          role: assignedRole as any,
-          isVerified: googleEmail === OWNER_EMAIL,
+          role: 'customer',
+          isVerified: false,
           registrationIp: getRequestIp(req) ?? null,
         },
       });
@@ -829,18 +835,21 @@ router.put('/me/mfa', authenticate, async (req: AuthRequest, res: Response) => {
 });
 
 // ─── WebAuthn Registration Options ───────────────────────────────────────────
-router.post('/register-options', async (req: Request, res: Response) => {
-  const { userId, email } = req.body;
+router.post('/register-options', authenticate, async (req: AuthRequest, res: Response) => {
   const rpID = (req as any).rpID;
-  if (!userId || !email) return res.status(400).json({ error: 'Missing userId or email' });
 
   try {
-    const credentials = await prisma.webAuthnCredential.findMany({ where: { userId } });
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { id: true, email: true },
+    });
+    if (!user) return res.status(401).json({ error: 'Account not found' });
+    const credentials = await prisma.webAuthnCredential.findMany({ where: { userId: user.id } });
 
     const options = await generateRegistrationOptions({
       rpName, rpID,
-      userID: Buffer.from(userId),
-      userName: email,
+      userID: Buffer.from(user.id),
+      userName: user.email,
       attestationType: 'none',
       excludeCredentials: credentials.map((c) => ({
         id: c.credentialID,
@@ -849,8 +858,12 @@ router.post('/register-options', async (req: Request, res: Response) => {
       authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
     });
 
+    rememberWebAuthnChallenge(options.challenge, user.id, 'registration');
     res.cookie('registrationChallenge', options.challenge, {
-      httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'none',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: WEBAUTHN_CHALLENGE_TTL_MS,
     });
     res.json(options);
   } catch (err: any) {
@@ -859,14 +872,20 @@ router.post('/register-options', async (req: Request, res: Response) => {
 });
 
 // ─── WebAuthn Verify Registration ─────────────────────────────────────────────
-router.post('/verify-registration', async (req: Request, res: Response) => {
-  const { userId, body } = req.body;
+router.post('/verify-registration', authenticate, async (req: AuthRequest, res: Response) => {
+  const { body } = req.body;
   const expectedChallenge = req.cookies.registrationChallenge;
   const rpID = (req as any).rpID;
   const origin = (req as any).origin;
 
-  if (!userId || !body || !expectedChallenge)
+  if (!body || !expectedChallenge)
     return res.status(400).json({ error: 'Missing data or challenge' });
+
+  res.clearCookie('registrationChallenge', { sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
+  const challenge = consumeWebAuthnChallenge(expectedChallenge, 'registration');
+  if (!challenge || challenge.userId !== req.user!.userId) {
+    return res.status(400).json({ error: 'Invalid or expired registration challenge', code: 'INVALID_CHALLENGE' });
+  }
 
   try {
     const verification = await verifyRegistrationResponse({
@@ -880,7 +899,7 @@ router.post('/verify-registration', async (req: Request, res: Response) => {
       const { credential } = verification.registrationInfo;
       await prisma.webAuthnCredential.create({
         data: {
-          userId,
+          userId: challenge.userId,
           credentialID: Buffer.from(credential.id).toString('base64'),
           credentialPublicKey: Buffer.from(credential.publicKey).toString('base64'),
           counter: BigInt(credential.counter),
@@ -919,11 +938,12 @@ router.post('/login-options', async (req: Request, res: Response) => {
       userVerification: 'preferred',
     });
 
+    rememberWebAuthnChallenge(options.challenge, user.id, 'authentication');
     res.cookie('authenticationChallenge', options.challenge, {
-      httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'none',
-    });
-    res.cookie('authUserId', user.id, {
-      httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'none',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: WEBAUTHN_CHALLENGE_TTL_MS,
     });
     res.json(options);
   } catch (err: any) {
@@ -935,18 +955,26 @@ router.post('/login-options', async (req: Request, res: Response) => {
 router.post('/verify-login', async (req: Request, res: Response) => {
   const { body } = req.body;
   const expectedChallenge = req.cookies.authenticationChallenge;
-  const userId = req.cookies.authUserId;
   const rpID = (req as any).rpID;
   const origin = (req as any).origin;
 
-  if (!body || !expectedChallenge || !userId)
+  if (!body || !expectedChallenge)
     return res.status(400).json({ error: 'Missing data or challenge' });
+
+  res.clearCookie('authenticationChallenge', { sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
+  const challenge = consumeWebAuthnChallenge(expectedChallenge, 'authentication');
+  if (!challenge) {
+    return res.status(400).json({ error: 'Invalid or expired authentication challenge', code: 'INVALID_CHALLENGE' });
+  }
 
   try {
     const credential = await prisma.webAuthnCredential.findUnique({
       where: { credentialID: body.id },
     });
     if (!credential) return res.status(400).json({ error: 'Credential not found' });
+    if (credential.userId !== challenge.userId) {
+      return res.status(401).json({ error: 'Credential does not belong to this account', code: 'CREDENTIAL_OWNER_MISMATCH' });
+    }
 
     const verification = await verifyAuthenticationResponse({
       response: body as AuthenticationResponseJSON,
@@ -966,7 +994,7 @@ router.post('/verify-login', async (req: Request, res: Response) => {
         data: { counter: BigInt(verification.authenticationInfo.newCounter) },
       });
 
-      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
       if (!user) return res.status(404).json({ error: 'User not found' });
 
       const tokens = generateTokenPair({ userId: user.id, email: user.email, role: user.role });

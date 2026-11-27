@@ -24,7 +24,7 @@ test.describe("Admin KYC Review", () => {
   })
 
   test("admin dashboard redirects unauth", async ({ page }) => {
-    await page.goto(ADMIN_URL + "/admin/dashboard", { waitUntil: "networkidle" })
+    await page.goto(ADMIN_URL + "/admin", { waitUntil: "networkidle" })
     await page.waitForURL("**/login")
     expect(page.url()).toContain("/login")
   })

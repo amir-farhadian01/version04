@@ -1,0 +1,22 @@
+{
+  "name": "neighborly-growth",
+  "version": "0.1.0",
+  "description": "Local evidence-based marketing, launch, marketplace growth, and sales strategy workflows for Neighborly.",
+  "author": {
+    "name": "Neighborly"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Neighborly Growth",
+    "shortDescription": "Plan evidence-based marketing and sales growth.",
+    "longDescription": "Routes Neighborly marketing, research, launch, SEO, acquisition, CRM, retention, analytics, and sales strategy through the canonical local GTM skills.",
+    "developerName": "Neighborly",
+    "category": "Business",
+    "capabilities": ["Read", "Plan", "Analyze"],
+    "defaultPrompt": [
+      "Build a launch strategy for one micro-market.",
+      "Create a compliant provider acquisition plan.",
+      "Audit our funnel, retention, and unit economics."
+    ]
+  }
+}

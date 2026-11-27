@@ -207,7 +207,7 @@ router.post('/:sessionId/join', authenticate, async (req: AuthRequest, res: Resp
  */
 router.delete('/:sessionId/leave', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { orderId, sessionId } = req.params;
+    const { sessionId } = req.params;
 
     const attendee = await prisma.groupSessionAttendee.findUnique({
       where: { sessionId_userId: { sessionId, userId: req.user!.id } },

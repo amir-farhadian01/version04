@@ -145,8 +145,6 @@ router.post('/:id/resolve', async (req: AuthRequest, res: Response, next: NextFu
             break;
 
           case 'split': {
-            const refundPct = customerRefundPercent ?? 50;
-            const releasePct = providerReleasePercent ?? 50;
             // In production, this would split the payment via the payment gateway
             // For now, mark as refunded to indicate the dispute is settled
             await tx.payment.update({

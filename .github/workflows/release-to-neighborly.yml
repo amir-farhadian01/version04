@@ -1,13 +1,32 @@
 name: Release to neighborly
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      confirm_release:
+        description: 'Type RELEASE after staging approval'
+        required: true
+        type: string
 
 jobs:
   validate:
     name: CI Validation
+    if: inputs.confirm_release == 'RELEASE' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: neighborly_test
+        ports:
+          - '5432:5432'
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     outputs:
       tag: ${{ steps.tag.outputs.value }}
     steps:
@@ -15,16 +34,54 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22.14.0'
           cache: 'npm'
 
-      - run: npm ci --legacy-peer-deps
+      - run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - run: npm run release:manifest-check
+
+      - run: npm run plugins:check
+
+      - name: Validate release environment contract
+        run: npm run release:env-check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MEDIA_DATABASE_URL: ${{ secrets.MEDIA_DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          MEDIA_DB_PASSWORD: ${{ secrets.MEDIA_DB_PASSWORD }}
+          MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}
+          KYC_DOCUMENT_SIGNING_SECRET: ${{ secrets.KYC_DOCUMENT_SIGNING_SECRET }}
 
       - run: npx prisma generate
 
+      - run: npm run lint
+
       - run: npx tsc --noEmit
 
+      - run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/neighborly_test
+
+      - run: npx vitest run --config vitest.backend.config.ts
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/neighborly_test
+          JWT_SECRET: ci-release-test-secret
+          JWT_REFRESH_SECRET: ci-release-test-refresh-secret
+          NODE_ENV: test
+
       - run: npm run build
+
+      - run: npm run build:admin
 
       - id: tag
         run: echo "value=v$(date +%Y.%m.%d)-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
@@ -89,7 +146,7 @@ jobs:
           fi
           SHORT_SHA=$(git -C $GITHUB_WORKSPACE rev-parse --short HEAD)
           git commit -m "release: ${TAG} (Merge@${SHORT_SHA})"
-          git push origin main --force
+          git push origin main
 
       - name: Create release
         env:
@@ -100,7 +157,7 @@ jobs:
             --repo amir-farhadian01/neighborly \
             --title "${TAG}" \
             --notes "Source: Merge@${SHORT_SHA} — deploy: git clone + cp .env.example .env + docker compose up -d" \
-            --latest || true
+            --latest
 
       - name: Summary
         run: |

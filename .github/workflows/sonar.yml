@@ -7,10 +7,21 @@ on:
 jobs:
   sonarcloud:
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: sonarsource/sonarcloud-github-action@v2
+
+      - name: SonarCloud configuration status
+        if: env.SONAR_TOKEN == ''
+        run: |
+          echo "::notice::SonarCloud scan skipped because SONAR_TOKEN is not configured."
+          echo "SonarCloud integration is intentionally skipped until the repository owner configures the SONAR_TOKEN secret. No secret value is read or printed."
+
+      - name: SonarCloud scan
+        if: env.SONAR_TOKEN != ''
+        uses: sonarsource/sonarcloud-github-action@v2
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}

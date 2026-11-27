@@ -14,7 +14,7 @@ const upgradeSchema = z.object({
 const uploadDocSchema = z.object({
   submissionId: z.string().min(1),
   documentType: z.enum(['license', 'insurance']),
-  fileUrl: z.string().url('fileUrl must be a valid URL'),
+  fileUrl: z.string().regex(/^kyc-document:\/\/[A-Za-z0-9-]+$/),
 });
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ describe('KYC Business API — Contract Validation', () => {
       const result = uploadDocSchema.safeParse({
         submissionId: 'sub_123',
         documentType: 'license',
-        fileUrl: 'https://media.example.com/doc.pdf',
+        fileUrl: 'kyc-document://doc-123',
       });
       expect(result.success).toBe(true);
     });
@@ -96,7 +96,7 @@ describe('KYC Business API — Contract Validation', () => {
     it('rejects missing submissionId', () => {
       const result = uploadDocSchema.safeParse({
         documentType: 'license',
-        fileUrl: 'https://example.com/doc.pdf',
+        fileUrl: 'kyc-document://doc-123',
       });
       expect(result.success).toBe(false);
     });
@@ -114,7 +114,7 @@ describe('KYC Business API — Contract Validation', () => {
       const result = uploadDocSchema.safeParse({
         submissionId: '',
         documentType: 'license',
-        fileUrl: 'https://example.com/doc.pdf',
+        fileUrl: 'kyc-document://doc-123',
       });
       expect(result.success).toBe(false);
     });
@@ -132,7 +132,7 @@ describe('KYC Business API — Contract Validation', () => {
       const result = uploadDocSchema.safeParse({
         submissionId: 'sub_123',
         documentType: 'insurance',
-        fileUrl: 'https://media.example.com/certificate.pdf',
+        fileUrl: 'kyc-document://doc-456',
       });
       expect(result.success).toBe(true);
     });
@@ -143,7 +143,7 @@ describe('KYC Business API — Contract Validation', () => {
       const result = uploadDocSchema.safeParse({
         submissionId: 'sub_456',
         documentType: 'insurance',
-        fileUrl: 'https://media.example.com/insurance.pdf',
+        fileUrl: 'kyc-document://doc-789',
       });
       expect(result.success).toBe(true);
     });
@@ -152,6 +152,15 @@ describe('KYC Business API — Contract Validation', () => {
       const result = uploadDocSchema.safeParse({
         submissionId: 'sub_456',
         documentType: 'insurance',
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a fabricated external document URL', () => {
+      const result = uploadDocSchema.safeParse({
+        submissionId: 'sub_456',
+        documentType: 'insurance',
+        fileUrl: 'https://attacker.example/fabricated-certificate.pdf',
       });
       expect(result.success).toBe(false);
     });

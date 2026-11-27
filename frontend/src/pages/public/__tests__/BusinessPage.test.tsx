@@ -114,7 +114,7 @@ const mockReviews = {
 
 // ── Helper to setup mock API with sequential responses ───────────────────────
 
-function setupMockApi(responses: Array<{ data?: any; error?: any }>) {
+function setupMockApi(responses: Array<{ data?: unknown; error?: unknown }>) {
   const mock = vi.fn();
   for (const r of responses) {
     if (r.error) {
@@ -123,7 +123,7 @@ function setupMockApi(responses: Array<{ data?: any; error?: any }>) {
       mock.mockResolvedValueOnce({ data: r.data });
     }
   }
-  (api.get as any) = mock;
+  api.get = mock as typeof api.get;
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -136,7 +136,7 @@ describe('BusinessPage', () => {
 
   it('renders loading state initially', () => {
     // Never-resolving promise to keep component in loading state
-    (api.get as any) = vi.fn().mockImplementation(() => new Promise(() => {}));
+    api.get = vi.fn().mockImplementation(() => new Promise(() => {})) as typeof api.get;
 
     renderPage();
 

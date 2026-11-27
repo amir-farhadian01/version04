@@ -7,6 +7,15 @@ import { isBusinessKycFormV1, type BusinessKycFormV1 } from '../lib/kycTypes.js'
 import { validateBusinessKycAnswers, type BusinessKycUploadRow } from '../lib/kycBusinessValidate.js';
 import { computeExpiryFlags } from '../lib/kycExpiryFlags.js';
 import { mirrorLegacyKycPersonalPending } from '../lib/kycLegacyPersonal.js';
+import {
+  confirmEmailVerification,
+  confirmPhoneVerification,
+  startEmailVerification,
+  startPhoneVerification,
+  KycVerificationError,
+} from '../lib/kycVerification.js';
+import { normalizeCanadianPostalCode, validateCanadaBusinessAnswers, validateCanadianAddress } from '../lib/kycCanada.js';
+import { assertKycDocumentsOwned } from './kycDocuments.js';
 
 const router = Router();
 router.use(authenticate);
@@ -27,7 +36,7 @@ async function loadLevel0(userId: string) {
   const addressStr = (profile?.address ?? user?.address ?? '').trim();
   const address = addressStr.length > 0 ? addressStr : null;
   const addressCapturedAt = profile?.addressCapturedAt ?? null;
-  const complete = emailVerified && phoneVerified && !!address;
+  const complete = emailVerified && phoneVerified;
   return { emailVerified, phoneVerified, address, addressCapturedAt, complete, user, profile };
 }
 
@@ -46,6 +55,7 @@ level0.get('/me', async (req: AuthRequest, res: Response) => {
       complete: s.complete,
     });
   } catch (err: unknown) {
+    if (err instanceof KycVerificationError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error' });
   }
 });
@@ -82,6 +92,7 @@ level0.post('/address', async (req: AuthRequest, res: Response) => {
     ]);
     res.json({ ok: true });
   } catch (err: unknown) {
+    if (err instanceof KycVerificationError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error' });
   }
 });
@@ -90,18 +101,16 @@ level0.post('/verify-email/start', async (req: AuthRequest, res: Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.userId },
-      select: { isVerified: true },
+      select: { isVerified: true, email: true },
     });
     if (user?.isVerified) {
       return res.json({ success: true, message: 'Email is already verified.', alreadyVerified: true });
     }
-    const verificationToken = `${Date.now()}-${Math.random().toString(36).substring(2)}`;
-    res.json({
-      success: true,
-      message: 'Verification started.',
-      token: process.env.NODE_ENV !== 'production' ? verificationToken : undefined,
-    });
+    if (!user?.email) return res.status(400).json({ error: 'Account email is required' });
+    await startEmailVerification(req.user!.userId, user.email);
+    res.json({ success: true, message: 'Verification started.' });
   } catch (err: unknown) {
+    if (err instanceof KycVerificationError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error' });
   }
 });
@@ -114,6 +123,8 @@ level0.post('/verify-email/confirm', async (req: AuthRequest, res: Response) => 
     }
     const userId = req.user!.userId;
     const now = new Date();
+    const valid = await confirmEmailVerification(req.user!.userId, token.trim());
+    if (!valid) return res.status(400).json({ error: 'Invalid or expired token' });
     await prisma.$transaction([
       prisma.user.update({
         where: { id: userId },
@@ -127,14 +138,19 @@ level0.post('/verify-email/confirm', async (req: AuthRequest, res: Response) => 
     ]);
     res.json({ success: true });
   } catch (err: unknown) {
+    if (err instanceof KycVerificationError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error' });
   }
 });
 
-level0.post('/verify-phone/start', async (_req: AuthRequest, res: Response) => {
+level0.post('/verify-phone/start', async (req: AuthRequest, res: Response) => {
   try {
-    res.json({ success: true, message: 'Code sent.', debugCode: '123456' });
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { phone: true } });
+    if (!user?.phone) return res.status(400).json({ error: 'Account phone is required' });
+    await startPhoneVerification(req.user!.userId, user.phone);
+    res.json({ success: true, message: 'Code sent.' });
   } catch (err: unknown) {
+    if (err instanceof KycVerificationError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error' });
   }
 });
@@ -145,11 +161,11 @@ level0.post('/verify-phone/confirm', async (req: AuthRequest, res: Response) => 
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) {
       return res.status(400).json({ error: '6-digit code required' });
     }
-    const isDev = process.env.NODE_ENV !== 'production';
-    if (!isDev && code !== '123456') {
-      return res.status(400).json({ error: 'Invalid code' });
-    }
     const userId = req.user!.userId;
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { phone: true } });
+    if (!user?.phone) return res.status(400).json({ error: 'Account phone is required' });
+    const valid = await confirmPhoneVerification(userId, user.phone, code);
+    if (!valid) return res.status(400).json({ error: 'Invalid or expired code' });
     const now = new Date();
     await prisma.kycLevel0Profile.upsert({
       where: { userId },
@@ -158,11 +174,13 @@ level0.post('/verify-phone/confirm', async (req: AuthRequest, res: Response) => 
     });
     res.json({ success: true });
   } catch (err: unknown) {
+    if (err instanceof KycVerificationError) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error' });
   }
 });
 
 router.use('/level0', level0);
+router.use('/level1', level0);
 
 // --- Personal ---
 
@@ -233,6 +251,8 @@ const DOC_TYPES = new Set(['national_id', 'passport', 'drivers_license']);
 function validatePersonalBody(body: unknown): string | null {
   if (!body || typeof body !== 'object') return 'Invalid body';
   const b = body as Record<string, unknown>;
+  const addressError = validateCanadianAddress(b.address);
+  if (addressError) return addressError;
   if (typeof b.declaredLegalName !== 'string' || b.declaredLegalName.trim().length < 2 || b.declaredLegalName.length > 120) {
     return 'declaredLegalName must be 2–120 characters';
   }
@@ -258,7 +278,6 @@ function validatePersonalBody(body: unknown): string | null {
 async function createPersonalSubmission(
   userId: string,
   body: Record<string, unknown>,
-  declaredAddress: string | null,
 ): Promise<{ id: string }> {
   const declaredLegalName = String(body.declaredLegalName).trim();
   const idDocumentType = String(body.idDocumentType);
@@ -270,6 +289,15 @@ async function createPersonalSubmission(
   const idBackUrl =
     body.idBackUrl != null && String(body.idBackUrl).trim() ? String(body.idBackUrl).trim() : null;
   const selfieUrl = String(body.selfieUrl).trim();
+  const address = body.address as Record<string, unknown>;
+  const declaredAddress = JSON.stringify({
+    line1: String(address.line1).trim(),
+    line2: typeof address.line2 === 'string' ? address.line2.trim() : '',
+    city: String(address.city).trim(),
+    province: String(address.province).trim().toUpperCase(),
+    postalCode: normalizeCanadianPostalCode(String(address.postalCode)),
+    country: 'CA',
+  });
 
   let aiAnalysis: unknown = undefined;
   if (body.aiAnalysis !== undefined) {
@@ -307,15 +335,24 @@ async function createPersonalSubmission(
   return { id: sub.id };
 }
 
+async function personalDocumentsOwned(userId: string, body: Record<string, unknown>): Promise<boolean> {
+  const references = [body.idFrontUrl, body.selfieUrl, body.idBackUrl]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+  return assertKycDocumentsOwned(userId, references);
+}
+
 personal.post('/submit', async (req: AuthRequest, res: Response) => {
   try {
     const errMsg = validatePersonalBody(req.body);
     if (errMsg) return res.status(400).json({ error: errMsg });
 
     const userId = req.user!.userId;
+    if (!await personalDocumentsOwned(userId, req.body as Record<string, unknown>)) {
+      return res.status(400).json({ error: 'All identity documents must be private KYC documents owned by the current user' });
+    }
     const l0 = await loadLevel0(userId);
     if (!l0.complete) {
-      return res.status(400).json({ error: 'Complete Level 0 before submitting personal KYC' });
+      return res.status(400).json({ error: 'Complete Level 1 before submitting Level 2 KYC' });
     }
 
     const pending = await prisma.kycPersonalSubmission.findFirst({
@@ -336,8 +373,7 @@ personal.post('/submit', async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Already approved' });
     }
 
-    const declaredAddress = l0.address;
-    const { id } = await createPersonalSubmission(userId, req.body as Record<string, unknown>, declaredAddress);
+    const { id } = await createPersonalSubmission(userId, req.body as Record<string, unknown>);
     res.status(201).json({ id, status: 'pending' });
   } catch (err: unknown) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error' });
@@ -350,9 +386,12 @@ personal.post('/resubmit', async (req: AuthRequest, res: Response) => {
     if (errMsg) return res.status(400).json({ error: errMsg });
 
     const userId = req.user!.userId;
+    if (!await personalDocumentsOwned(userId, req.body as Record<string, unknown>)) {
+      return res.status(400).json({ error: 'All identity documents must be private KYC documents owned by the current user' });
+    }
     const l0 = await loadLevel0(userId);
     if (!l0.complete) {
-      return res.status(400).json({ error: 'Complete Level 0 before submitting personal KYC' });
+      return res.status(400).json({ error: 'Complete Level 1 before submitting Level 2 KYC' });
     }
 
     const latest = await prisma.kycPersonalSubmission.findFirst({
@@ -370,8 +409,7 @@ personal.post('/resubmit', async (req: AuthRequest, res: Response) => {
       return res.status(409).json({ error: 'A submission is already pending review' });
     }
 
-    const declaredAddress = l0.address;
-    const { id } = await createPersonalSubmission(userId, req.body as Record<string, unknown>, declaredAddress);
+    const { id } = await createPersonalSubmission(userId, req.body as Record<string, unknown>);
     res.status(201).json({ id, status: 'pending' });
   } catch (err: unknown) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'Error' });
@@ -411,6 +449,7 @@ personal.get('/history', async (req: AuthRequest, res: Response) => {
 });
 
 router.use('/personal', personal);
+router.use('/level2', personal);
 
 // --- Business ---
 
@@ -419,6 +458,11 @@ async function getActiveBusinessSchemaRow() {
     where: { isActive: true },
     orderBy: { version: 'desc' },
   });
+}
+
+async function storeBusinessSchemaSnapshot(submissionId: string, schema: unknown): Promise<void> {
+  const snapshot = JSON.stringify(schema);
+  await prisma.$executeRaw`UPDATE "BusinessKycSubmission" SET "schemaSnapshot" = ${snapshot}::jsonb WHERE "id" = ${submissionId}`;
 }
 
 async function assertCompanyBizAccess(userId: string, companyId: string) {
@@ -547,6 +591,13 @@ business.post('/draft', async (req: AuthRequest, res: Response) => {
     }
 
     const userId = req.user!.userId;
+    if (!await assertKycDocumentsOwned(userId, parsed.uploads.map((upload) => upload.url))) {
+      return res.status(400).json({ error: 'All business documents must be private KYC documents owned by the current user' });
+    }
+    const level2 = await prisma.kycPersonalSubmission.findFirst({
+      where: { userId, status: KycStatus.approved }, orderBy: { submittedAt: 'desc' },
+    });
+    if (!level2) return res.status(403).json({ error: 'Approved Level 2 KYC is required' });
     const company = await assertCompanyBizAccess(userId, parsed.companyId);
     if (!company) {
       return res.status(403).json({ error: 'Not allowed for this company' });
@@ -579,6 +630,7 @@ business.post('/draft', async (req: AuthRequest, res: Response) => {
           expiryFlags: expiry,
         },
       });
+      await storeBusinessSchemaSnapshot(updated.id, active.schema);
       return res.json({
         id: updated.id,
         status: updated.status,
@@ -602,6 +654,7 @@ business.post('/draft', async (req: AuthRequest, res: Response) => {
         expiryFlags: expiry,
       },
     });
+    await storeBusinessSchemaSnapshot(created.id, active.schema);
     res.status(201).json({
       id: created.id,
       status: created.status,
@@ -624,6 +677,13 @@ business.post('/submit', async (req: AuthRequest, res: Response) => {
     }
 
     const userId = req.user!.userId;
+    if (!await assertKycDocumentsOwned(userId, parsed.uploads.map((upload) => upload.url))) {
+      return res.status(400).json({ error: 'All business documents must be private KYC documents owned by the current user' });
+    }
+    const level2 = await prisma.kycPersonalSubmission.findFirst({
+      where: { userId, status: KycStatus.approved }, orderBy: { submittedAt: 'desc' },
+    });
+    if (!level2) return res.status(403).json({ error: 'Approved Level 2 KYC is required' });
     const company = await assertCompanyBizAccess(userId, parsed.companyId);
     if (!company) {
       return res.status(403).json({ error: 'Not allowed for this company' });
@@ -634,9 +694,15 @@ business.post('/submit', async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'No active business KYC schema' });
     }
     const form: BusinessKycFormV1 = active.schema;
-    const categories = companyCategoryTags(parsed.companyId);
+    const categories = [
+      ...companyCategoryTags(parsed.companyId),
+      ...[parsed.answers.businessCategory, parsed.answers.entityType, parsed.answers.jurisdiction]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ];
 
     const vr = validateBusinessKycAnswers(form, parsed.answers, parsed.uploads, categories);
+    Object.assign(vr.errors, validateCanadaBusinessAnswers(parsed.answers, parsed.uploads));
+    vr.valid = Object.keys(vr.errors).length === 0;
     if (!vr.valid) {
       return res.status(400).json({ errors: vr.errors });
     }
@@ -679,6 +745,7 @@ business.post('/submit', async (req: AuthRequest, res: Response) => {
         },
       });
       subId = updated.id;
+      await storeBusinessSchemaSnapshot(subId, active.schema);
     } else {
       const created = await prisma.businessKycSubmission.create({
         data: {
@@ -693,6 +760,7 @@ business.post('/submit', async (req: AuthRequest, res: Response) => {
         },
       });
       subId = created.id;
+      await storeBusinessSchemaSnapshot(subId, active.schema);
     }
 
     await prisma.kycReviewAuditLog.create({
@@ -726,6 +794,13 @@ business.post('/resubmit', async (req: AuthRequest, res: Response) => {
     }
 
     const userId = req.user!.userId;
+    if (!await assertKycDocumentsOwned(userId, parsed.uploads.map((upload) => upload.url))) {
+      return res.status(400).json({ error: 'All business documents must be private KYC documents owned by the current user' });
+    }
+    const level2 = await prisma.kycPersonalSubmission.findFirst({
+      where: { userId, status: KycStatus.approved }, orderBy: { submittedAt: 'desc' },
+    });
+    if (!level2) return res.status(403).json({ error: 'Approved Level 2 KYC is required' });
     const company = await assertCompanyBizAccess(userId, parsed.companyId);
     if (!company) {
       return res.status(403).json({ error: 'Not allowed for this company' });
@@ -736,9 +811,15 @@ business.post('/resubmit', async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'No active business KYC schema' });
     }
     const form: BusinessKycFormV1 = active.schema;
-    const categories = companyCategoryTags(parsed.companyId);
+    const categories = [
+      ...companyCategoryTags(parsed.companyId),
+      ...[parsed.answers.businessCategory, parsed.answers.entityType, parsed.answers.jurisdiction]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ];
 
     const vr = validateBusinessKycAnswers(form, parsed.answers, parsed.uploads, categories);
+    Object.assign(vr.errors, validateCanadaBusinessAnswers(parsed.answers, parsed.uploads));
+    vr.valid = Object.keys(vr.errors).length === 0;
     if (!vr.valid) {
       return res.status(400).json({ errors: vr.errors });
     }
@@ -772,6 +853,7 @@ business.post('/resubmit', async (req: AuthRequest, res: Response) => {
         expiryFlags,
       },
     });
+    await storeBusinessSchemaSnapshot(created.id, active.schema);
 
     await prisma.kycReviewAuditLog.create({
       data: {

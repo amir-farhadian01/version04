@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import {
   BarChart3,
@@ -117,7 +117,6 @@ interface KycAnalytics {
 // ── Colors ──────────────────────────────────────────────────────────────────
 
 const COLORS = ['#2b6eff', '#0fc98a', '#ff4d4d', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4']
-const CHART_BG = '#0d0f1a'
 
 // ── Stat Card ──────────────────────────────────────────────────────────────
 
@@ -158,11 +157,7 @@ export default function Analytics() {
   const [kycData, setKycData] = useState<KycAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadData()
-  }, [tab])
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
       switch (tab) {
@@ -197,7 +192,11 @@ export default function Analytics() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tab])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const tabs = [
     { key: 'overview' as const, label: 'Overview', icon: BarChart3 },

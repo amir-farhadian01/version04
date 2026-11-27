@@ -19,6 +19,17 @@ let failedQueue: Array<{
   reject: (err: unknown) => void
 }> = []
 
+/**
+ * Auth endpoints must never re-enter the refresh→logout cycle. A best-effort
+ * `POST /auth/logout` fired with an expired token gets a 401; if the
+ * interceptor treated it like any other request it would call `logout()`
+ * again, which fires another logout POST — an unbounded self-DoS loop that
+ * exhausted the 10/min auth rate limiter (observed ~50 POSTs per expiry).
+ */
+export function isAuthEndpoint(url?: string): boolean {
+  return typeof url === 'string' && /\/auth\/(login|register|refresh|logout)\/?$/.test(url)
+}
+
 function processQueue(error: unknown, token: string | null = null) {
   failedQueue.forEach((p) => {
     if (error) p.reject(error)
@@ -32,7 +43,12 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
@@ -59,7 +75,11 @@ api.interceptors.response.use(
 
       processQueue(error, null)
       useAuthStore.getState().logout()
-      window.location.href = '/auth/login'
+      // Never redirect when already on an auth page — otherwise a failed
+      // refresh while on /auth/login would reload the page forever.
+      if (!window.location.pathname.startsWith('/auth/')) {
+        window.location.href = '/auth/login'
+      }
     }
 
     return Promise.reject(error)

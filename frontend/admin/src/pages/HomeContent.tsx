@@ -1,14 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import api from '../lib/api'
 import {
   Plus,
   Edit3,
   Archive,
-  Eye,
-  EyeOff,
   RefreshCw,
   Trash2,
-  RotateCcw,
   Wrench,
   Image,
   Bell,
@@ -78,18 +75,6 @@ interface UtilityLink {
   sortOrder: number
   archivedAt: string | null
   _count?: { clicks: number }
-}
-
-interface WeatherConfig {
-  id: string
-  apiKey: string | null
-  apiEndpoint: string | null
-  latitude: number | null
-  longitude: number | null
-  units: string
-  isEnabled: boolean
-  createdAt: string
-  updatedAt: string
 }
 
 interface TrafficSource {
@@ -253,7 +238,6 @@ export default function AdminHomeContent() {
   const [articles, setArticles] = useState<NewsArticle[]>([])
   const [alerts, setAlerts] = useState<SafetyAlert[]>([])
   const [links, setLinks] = useState<UtilityLink[]>([])
-  const [weatherConfig, setWeatherConfig] = useState<WeatherConfig | null>(null)
   const [trafficSources, setTrafficSources] = useState<TrafficSource[]>([])
 
   // Modal state
@@ -285,7 +269,7 @@ export default function AdminHomeContent() {
 
   // ─── Fetch Functions ─────────────────────────────────────────────────────
 
-  const fetchBanners = async () => {
+  const fetchBanners = useCallback(async () => {
     try {
       const res = await api.get('/admin/home/banners', { params: { pageSize: 50 } })
       setBanners(res.data.data ?? [])
@@ -293,9 +277,9 @@ export default function AdminHomeContent() {
       const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to fetch banners'
       setError(msg)
     }
-  }
+  }, [])
 
-  const fetchNews = async () => {
+  const fetchNews = useCallback(async () => {
     try {
       const res = await api.get('/admin/home/news', { params: { pageSize: 50 } })
       setArticles(res.data.data ?? [])
@@ -303,9 +287,9 @@ export default function AdminHomeContent() {
       const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to fetch news'
       setError(msg)
     }
-  }
+  }, [])
 
-  const fetchAlerts = async () => {
+  const fetchAlerts = useCallback(async () => {
     try {
       const res = await api.get('/admin/home/safety-alerts', { params: { pageSize: 50 } })
       setAlerts(res.data.data ?? [])
@@ -313,9 +297,9 @@ export default function AdminHomeContent() {
       const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to fetch alerts'
       setError(msg)
     }
-  }
+  }, [])
 
-  const fetchLinks = async () => {
+  const fetchLinks = useCallback(async () => {
     try {
       const res = await api.get('/admin/home/utility-links', { params: { pageSize: 50 } })
       setLinks(res.data.data ?? [])
@@ -323,12 +307,11 @@ export default function AdminHomeContent() {
       const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to fetch links'
       setError(msg)
     }
-  }
+  }, [])
 
-  const fetchWeather = async () => {
+  const fetchWeather = useCallback(async () => {
     try {
       const res = await api.get('/admin/home/weather-config')
-      setWeatherConfig(res.data.data)
       if (res.data.data) {
         setWeatherForm({
           apiKey: res.data.data.apiKey ?? '',
@@ -343,9 +326,9 @@ export default function AdminHomeContent() {
       const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to fetch weather'
       setError(msg)
     }
-  }
+  }, [])
 
-  const fetchTraffic = async () => {
+  const fetchTraffic = useCallback(async () => {
     try {
       const res = await api.get('/admin/home/traffic-sources')
       setTrafficSources(res.data.data ?? [])
@@ -353,9 +336,9 @@ export default function AdminHomeContent() {
       const msg = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ?? (err as { message?: string })?.message ?? 'Failed to fetch traffic sources'
       setError(msg)
     }
-  }
+  }, [])
 
-  const fetchTabData = async (tab: ContentTab) => {
+  const fetchTabData = useCallback(async (tab: ContentTab) => {
     setLoading(true)
     setError(null)
     try {
@@ -370,9 +353,9 @@ export default function AdminHomeContent() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [fetchAlerts, fetchBanners, fetchLinks, fetchNews, fetchTraffic, fetchWeather])
 
-  useEffect(() => { fetchTabData(activeTab) }, [activeTab])
+  useEffect(() => { fetchTabData(activeTab) }, [activeTab, fetchTabData])
 
   // ─── CRUD Operations ─────────────────────────────────────────────────────
 

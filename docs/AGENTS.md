@@ -1,6 +1,6 @@
 # Neighborly — AGENTS.md
 **Version:** 3.1.0 | **Updated:** 2026-05-23
-**STATUS: ALL THREE DASHBOARDS ARE LIVE. We are now in FEATURE ADDITION phase only.**
+**Historical status (2026-05-23):** All three dashboards were reported live. Recheck current runtime and tests before relying on that report. Current authorized feature work remains in scope.
 
 > **READ THIS FILE COMPLETELY BEFORE ANY ACTION.**
 > Then read `docs/ROADMAP.md`. Then start working.
@@ -27,7 +27,7 @@ Violation of any rule below = **task failure**. No exceptions.
 | 8 | **READ before WRITE** — read every file fully before editing |
 | 9 | **No new business logic** without explicit architect instruction |
 | 10 | **Each service = its own process** — never combine backend + frontend |
-| 11 | **Always push**: `git add -A && git commit -m "..." && git push` |
+| 11 | **Reviewed source control:** verify the exact scope and check for secrets; request scope confirmation before commit and explicit approval immediately before push or PR. Never stage all changes blindly. |
 | 12 | **English only** — all code, comments, logs, commits, docs |
 | 13 | **No `any` types** — use `unknown` and narrow with type guards. `any` = task failure |
 | 14 | **Never delete DB columns** — use `archivedAt` for soft delete |
@@ -815,3 +815,17 @@ Every PR MUST pass this pre-merge checklist. Any unchecked item = **block merge*
 
 > **Violation of any budget = task failure.** Performance regressions must be fixed before merge.
 > Run Lighthouse CI or `lighthouse-ci` in the PR pipeline to enforce these budgets automatically.
+
+---
+
+# Documentation and Marketing Memory Rules
+
+These rules apply to `docs/` and `marketing/`.
+
+- State evidence separately from hypotheses and recommendations.
+- Date evidence and link or identify its source. Record material limitations.
+- Use `STATUS: RESEARCH REQUIRED` rather than invented conclusions or numbers.
+- Never store secrets, raw identity documents, sensitive customer data, or unsuppressed contact lists in Git.
+- Market files use a geography × category unit and must identify status, owner, evidence window, metric thresholds, and gate decisions.
+- Campaign and experiment records must identify approvals. A draft is not authorization to send, publish, spend, or change production state.
+- Preserve historical scorecards and experiment outcomes; corrections should be traceable.

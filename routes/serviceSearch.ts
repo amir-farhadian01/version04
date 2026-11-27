@@ -173,7 +173,6 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
     // Map package results
     const packageResults: PackageResult[] = packages.map((p) => {
-      const owner = p.workspace?.owner;
       return {
         id: p.id,
         name: p.name,

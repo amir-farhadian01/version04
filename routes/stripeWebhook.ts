@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { getStripe, getStripeWebhookSecret } from '../lib/stripe.js';
 import { handleWebhookEvent } from '../lib/stripeService.js';
 import type Stripe from 'stripe';
+import prisma from '../lib/db.js';
 
 const router = Router();
 
@@ -35,9 +36,13 @@ router.post('/webhook', async (req: Request, res: Response) => {
   let event: Stripe.Event;
 
   try {
-    // The raw body must be available — server.ts uses express.raw() for this route
-    const rawBody = req.body instanceof Buffer ? req.body : Buffer.from(JSON.stringify(req.body));
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    if (!Buffer.isBuffer(req.body)) {
+      return res.status(400).json({
+        code: 'INVALID_WEBHOOK_BODY',
+        message: 'Stripe webhook requires an unmodified raw request body',
+      });
+    }
+    event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return res.status(400).json({
@@ -46,14 +51,36 @@ router.post('/webhook', async (req: Request, res: Response) => {
     });
   }
 
-  // Process the event asynchronously — return 200 immediately to Stripe
-  const result = await handleWebhookEvent(event);
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${event.id}))`;
+      const processed = await tx.auditLog.findFirst({
+        where: { action: 'STRIPE_WEBHOOK_PROCESSED', resourceType: 'stripe_event', resourceId: event.id },
+        select: { id: true },
+      });
+      if (processed) return { duplicate: true as const, result: null };
 
-  if (result.error) {
-    console.error(`[stripe webhook] Processing error for ${result.eventType}: ${result.error}`);
+      const handled = await handleWebhookEvent(event);
+      if (handled.action === 'ERROR') throw new Error(handled.error || 'Webhook processing failed');
+      await tx.auditLog.create({
+        data: {
+          action: 'STRIPE_WEBHOOK_PROCESSED',
+          resourceType: 'stripe_event',
+          resourceId: event.id,
+          metadata: { eventType: event.type, action: handled.action },
+        },
+      });
+      return { duplicate: false as const, result: handled };
+    });
+    if (result.duplicate) return res.status(200).json({ received: true, duplicate: true });
+    return res.status(200).json({ received: true, ...result.result });
+  } catch {
+    console.error(`[stripe webhook] Processing failed for event ${event.id}`);
+    return res.status(503).json({
+      code: 'WEBHOOK_PROCESSING_FAILED',
+      message: 'Webhook processing failed; retry is required',
+    });
   }
-
-  return res.status(200).json({ received: true, ...result });
 });
 
 export default router;

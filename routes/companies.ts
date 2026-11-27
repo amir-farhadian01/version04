@@ -10,6 +10,17 @@ import {
 
 const router = Router();
 
+async function canManageMembers(companyId: string, userId: string): Promise<boolean> {
+  const company = await prisma.company.findUnique({ where: { id: companyId }, select: { ownerId: true } });
+  if (!company) return false;
+  if (company.ownerId === userId) return true;
+  const membership = await prisma.companyUser.findUnique({
+    where: { companyId_userId: { companyId, userId } },
+    select: { role: true },
+  });
+  return membership?.role === 'owner' || membership?.role === 'admin';
+}
+
 /**
  * Masks contact fields on a company object if the viewer has no contracted order.
  * Mutates the company object in place.
@@ -152,7 +163,11 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const isAdmin = ['owner', 'platform_admin'].includes(req.user!.role);
     if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Forbidden' });
 
-    const { id: _id, ownerId: _ownerId, createdAt: _c, updatedAt: _u, ...data } = req.body;
+    const data = { ...req.body };
+    delete data.id;
+    delete data.ownerId;
+    delete data.createdAt;
+    delete data.updatedAt;
     const updated = await prisma.company.update({ where: { id: req.params.id }, data });
 
     // If location was updated, sync to Redis cache and GEO index
@@ -175,6 +190,9 @@ router.post('/:id/members', authenticate, async (req: AuthRequest, res: Response
   if (!userId) return res.status(400).json({ error: 'Missing userId' });
 
   try {
+    if (!(await canManageMembers(req.params.id, req.user!.userId))) {
+      return res.status(403).json({ code: 'FORBIDDEN', message: 'Not authorized to manage workspace members' });
+    }
     await prisma.companyUser.create({ data: { companyId: req.params.id, userId } });
     await prisma.user.update({ where: { id: userId }, data: { companyId: req.params.id } });
     res.status(201).json({ success: true });
@@ -186,6 +204,23 @@ router.post('/:id/members', authenticate, async (req: AuthRequest, res: Response
 // DELETE /api/companies/:id/members/:userId
 router.delete('/:id/members/:userId', authenticate, async (req: AuthRequest, res: Response) => {
   try {
+    if (!(await canManageMembers(req.params.id, req.user!.userId))) {
+      return res.status(403).json({ code: 'FORBIDDEN', message: 'Not authorized to manage workspace members' });
+    }
+    const company = await prisma.company.findUnique({ where: { id: req.params.id }, select: { ownerId: true } });
+    if (company?.ownerId === req.params.userId) {
+      return res.status(409).json({ code: 'OWNER_MEMBERSHIP_REQUIRED', message: 'The workspace owner cannot be removed' });
+    }
+    const liveDriverWork = await prisma.deliveryAssignment.count({
+      where: {
+        businessDriver: { companyId: req.params.id, userId: req.params.userId },
+        status: { in: ['offered', 'accepted'] },
+        fulfillment: { status: { in: ['assigned', 'accepted', 'picked_up', 'in_transit'] } },
+      },
+    });
+    if (liveDriverWork > 0) {
+      return res.status(409).json({ code: 'LIVE_DRIVER_WORK', message: 'Member has active delivery work' });
+    }
     await prisma.companyUser.delete({
       where: { companyId_userId: { companyId: req.params.id, userId: req.params.userId } },
     });

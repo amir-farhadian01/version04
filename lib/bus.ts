@@ -60,6 +60,10 @@ let natsConn: NatsConnection | null = null;
 let notificationConsumersStarted = false;
 const jsonCodec = JSONCodec();
 
+export function isNatsAvailable(): boolean {
+  return natsConn !== null && !natsConn.isClosed();
+}
+
 export async function getNats(): Promise<NatsConnection> {
   if (!natsConn) {
     const natsUrl = process.env.NATS_URL || 'nats://localhost:4222';

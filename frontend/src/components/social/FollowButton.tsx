@@ -66,17 +66,27 @@ export default function FollowButton({ userId, onFollowChange, size = 'md' }: Fo
   }
 
   return (
-    <div
+    <button
+      type="button"
+      role="button"
       onClick={handleToggle}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          void handleToggle()
+        }
+      }}
+      disabled={loading}
+      aria-pressed={isFollowing}
       className={`rounded-lg font-semibold text-center select-none transition-all duration-200 ${
         isSmall ? 'text-[11px] px-3 py-1' : 'text-xs px-4 py-1.5'
       } ${
         isFollowing
           ? 'bg-transparent text-nh-text-secondary border border-nh-border'
           : 'bg-nh-primary text-white border border-nh-primary'
-      } ${loading ? 'opacity-60 cursor-wait' : 'cursor-pointer'}`}
+      } ${loading ? 'opacity-60 cursor-wait' : 'cursor-pointer'} disabled:cursor-not-allowed`}
     >
       {loading ? '...' : isFollowing ? 'Following' : 'Follow'}
-    </div>
+    </button>
   )
 }

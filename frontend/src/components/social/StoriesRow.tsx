@@ -31,21 +31,21 @@ export default function StoriesRow({ onAddStory }: StoriesRowProps) {
       <div className="flex gap-3 px-[14px] pt-[14px] overflow-x-auto scrollbar-none min-h-[90px]">
         {/* Add Story button */}
         {onAddStory && (
-          <div onClick={onAddStory} className="flex flex-col items-center gap-1.5 shrink-0 w-16 cursor-pointer">
+          <button type="button" onClick={onAddStory} className="flex w-16 shrink-0 flex-col items-center gap-1.5 border-0 bg-transparent p-0 cursor-pointer">
             <div className="w-[58px] h-[58px] rounded-full p-0.5 bg-nh-border-elevated flex items-center justify-center">
               <div className="w-full h-full rounded-full bg-nh-surface flex items-center justify-center text-2xl text-nh-primary border-2 border-nh-surface">
                 +
               </div>
             </div>
             <span className="text-[10px] text-nh-text-secondary text-center">Your Story</span>
-          </div>
+          </button>
         )}
 
         {/* Story circles from API */}
         {(storyGroups ?? []).map((group, i) => {
           const first = group.stories[0]
           return (
-            <div key={group.author.id} onClick={() => { setViewerIndex(i); setViewerOpen(true) }} className="flex flex-col items-center gap-1.5 shrink-0 w-16 cursor-pointer">
+            <button key={group.author.id} type="button" onClick={() => { setViewerIndex(i); setViewerOpen(true) }} aria-label={`View ${group.author.displayName ?? 'user'}'s story`} className="flex w-16 shrink-0 flex-col items-center gap-1.5 border-0 bg-transparent p-0 cursor-pointer">
               <div
                 className="w-[58px] h-[58px] rounded-full p-0.5"
                 style={{ background: first?.viewed
@@ -60,7 +60,7 @@ export default function StoriesRow({ onAddStory }: StoriesRowProps) {
                 </div>
               </div>
               <span className="text-[10px] text-nh-text-secondary text-center truncate w-full">{group.author.displayName}</span>
-            </div>
+            </button>
           )
         })}
       </div>

@@ -38,7 +38,6 @@ class _CommentsScreenState extends State<CommentsScreen> {
   // Comments data
   bool _loadingComments = true;
   List<Map<String, dynamic>> _comments = [];
-  int _commentTotal = 0;
   int _commentPage = 1;
   bool _commentHasMore = false;
   String? _commentError;
@@ -84,9 +83,19 @@ class _CommentsScreenState extends State<CommentsScreen> {
     try {
       final result = await _api.getPost(widget.postId);
       final data = result['data'] as Map<String, dynamic>? ?? {};
-      if (mounted) setState(() { _post = data; _loadingPost = false; });
+      if (mounted) {
+        setState(() {
+          _post = data;
+          _loadingPost = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() { _postError = 'Could not load post'; _loadingPost = false; });
+      if (mounted) {
+        setState(() {
+          _postError = 'Could not load post';
+          _loadingPost = false;
+        });
+      }
     }
   }
 
@@ -97,19 +106,27 @@ class _CommentsScreenState extends State<CommentsScreen> {
       _commentPage = 1;
     });
     try {
-      final result = await _api.get('/social/posts/${widget.postId}/comments?page=1');
-      final data = (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+      final result = await _api.get(
+        '/social/posts/${widget.postId}/comments?page=1',
+      );
+      final data =
+          (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+          [];
       final total = result['total'] as int? ?? 0;
       if (mounted) {
         setState(() {
           _comments = data;
-          _commentTotal = total;
           _commentHasMore = _comments.length < total;
           _loadingComments = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() { _commentError = 'Could not load comments'; _loadingComments = false; });
+      if (mounted) {
+        setState(() {
+          _commentError = 'Could not load comments';
+          _loadingComments = false;
+        });
+      }
     }
   }
 
@@ -118,15 +135,18 @@ class _CommentsScreenState extends State<CommentsScreen> {
     setState(() => _loadingComments = true);
     try {
       final nextPage = _commentPage + 1;
-      final result = await _api.get('/social/posts/${widget.postId}/comments?page=$nextPage');
-      final data = (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+      final result = await _api.get(
+        '/social/posts/${widget.postId}/comments?page=$nextPage',
+      );
+      final data =
+          (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+          [];
       final total = result['total'] as int? ?? 0;
       if (mounted) {
         setState(() {
           _comments.addAll(data);
           _commentPage = nextPage;
           _commentHasMore = _comments.length < total;
-          _commentTotal = total;
           _loadingComments = false;
         });
       }
@@ -151,7 +171,10 @@ class _CommentsScreenState extends State<CommentsScreen> {
     if (state.replies.isEmpty) {
       setState(() => state.loading = true);
       try {
-        final List<Map<String, dynamic>> result = await _api.getReplies(widget.postId, commentId);
+        final List<Map<String, dynamic>> result = await _api.getReplies(
+          widget.postId,
+          commentId,
+        );
         final data = result;
         final int total = result.length;
         if (mounted) {
@@ -176,11 +199,9 @@ class _CommentsScreenState extends State<CommentsScreen> {
     if (_togglingCommentLikes.contains(commentId)) return;
     // Find comment in list or reply states
     Map<String, dynamic>? targetComment;
-    int commentIndex = -1;
     for (int i = 0; i < _comments.length; i++) {
       if (_comments[i]['id'] == commentId) {
         targetComment = _comments[i];
-        commentIndex = i;
         break;
       }
     }
@@ -235,7 +256,11 @@ class _CommentsScreenState extends State<CommentsScreen> {
     try {
       final body = <String, dynamic>{'text': text};
       if (_replyToCommentId != null) body['parentId'] = _replyToCommentId;
-      final result = await _api.addComment(widget.postId, text, parentId: _replyToCommentId);
+      final result = await _api.addComment(
+        widget.postId,
+        text,
+        parentId: _replyToCommentId,
+      );
       final newComment = result['data'] as Map<String, dynamic>? ?? {};
 
       if (_replyToCommentId != null && _replyToCommentId!.isNotEmpty) {
@@ -266,7 +291,6 @@ class _CommentsScreenState extends State<CommentsScreen> {
           'replyCount': 0,
           'attachments': [],
         });
-        _commentTotal++;
       }
 
       _cancelReply();
@@ -300,7 +324,6 @@ class _CommentsScreenState extends State<CommentsScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.bg : AppColorsLight.bg;
-    final cardBg = isDark ? AppColors.card : AppColorsLight.card;
     final border = isDark ? AppColors.border : AppColorsLight.border;
 
     return Scaffold(
@@ -313,7 +336,11 @@ class _CommentsScreenState extends State<CommentsScreen> {
         ),
         title: const Text(
           'Comments',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.text),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.text,
+          ),
         ),
         centerTitle: true,
         elevation: 0,
@@ -347,8 +374,12 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Center(
                       child: SizedBox(
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
                   ),
@@ -357,8 +388,12 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Center(
                       child: SizedBox(
-                        width: 20, height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
                   ),
@@ -392,14 +427,22 @@ class _CommentsScreenState extends State<CommentsScreen> {
             height: 280,
             width: double.infinity,
             child: CachedNetworkImage(
-              imageUrl: (media.first as Map<String, dynamic>)['url'] as String? ?? '',
+              imageUrl:
+                  (media.first as Map<String, dynamic>)['url'] as String? ?? '',
               fit: BoxFit.cover,
               cacheManager: ImageCacheConfig.manager,
               placeholder: (_, _) => const Center(
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primary,
+                ),
               ),
               errorWidget: (_, _, _) => const Center(
-                child: Icon(Icons.broken_image, size: 40, color: AppColors.text3),
+                child: Icon(
+                  Icons.broken_image,
+                  size: 40,
+                  color: AppColors.text3,
+                ),
               ),
             ),
           ),
@@ -416,14 +459,21 @@ class _CommentsScreenState extends State<CommentsScreen> {
               Row(
                 children: [
                   Container(
-                    width: 32, height: 32,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       color: AppColors.accent,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
-                      child: Text(authorInitial,
-                        style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14)),
+                      child: Text(
+                        authorInitial,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -431,28 +481,54 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(authorName,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text)),
-                        Text(timeAgo,
-                          style: const TextStyle(fontSize: 11, color: AppColors.text3)),
+                        Text(
+                          authorName,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.text,
+                          ),
+                        ),
+                        Text(
+                          timeAgo,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.text3,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   // Like count badge
                   Row(
                     children: [
-                      const Icon(Icons.favorite, size: 12, color: AppColors.red),
+                      const Icon(
+                        Icons.favorite,
+                        size: 12,
+                        color: AppColors.red,
+                      ),
                       const SizedBox(width: 4),
-                      Text('$likeCount',
-                        style: const TextStyle(fontSize: 11, color: AppColors.text2)),
+                      Text(
+                        '$likeCount',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.text2,
+                        ),
+                      ),
                     ],
                   ),
                 ],
               ),
               if (caption.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(caption,
-                  style: const TextStyle(fontSize: 13, color: AppColors.text, height: 1.5)),
+                Text(
+                  caption,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.text,
+                    height: 1.5,
+                  ),
+                ),
               ],
             ],
           ),
@@ -464,10 +540,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
   Widget _buildSkeletonMedia() {
     return Column(
       children: [
-        Container(
-          height: 280,
-          color: AppColors.border2.withValues(alpha: 0.3),
-        ),
+        Container(height: 280, color: AppColors.border2.withValues(alpha: 0.3)),
         Container(
           height: 60,
           padding: const EdgeInsets.all(14),
@@ -475,18 +548,34 @@ class _CommentsScreenState extends State<CommentsScreen> {
           child: Row(
             children: [
               Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(color: AppColors.border2, borderRadius: BorderRadius.circular(8)),
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.border2,
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   children: [
-                    Container(height: 10, width: 120,
-                      decoration: BoxDecoration(color: AppColors.border2, borderRadius: BorderRadius.circular(4))),
+                    Container(
+                      height: 10,
+                      width: 120,
+                      decoration: BoxDecoration(
+                        color: AppColors.border2,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
                     const SizedBox(height: 6),
-                    Container(height: 8, width: 80,
-                      decoration: BoxDecoration(color: AppColors.border2, borderRadius: BorderRadius.circular(4))),
+                    Container(
+                      height: 8,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.border2,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -504,11 +593,21 @@ class _CommentsScreenState extends State<CommentsScreen> {
         children: [
           const Text('😕', style: TextStyle(fontSize: 40)),
           const SizedBox(height: 8),
-          Text(msg, style: const TextStyle(fontSize: 13, color: AppColors.text2), textAlign: TextAlign.center),
+          Text(
+            msg,
+            style: const TextStyle(fontSize: 13, color: AppColors.text2),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () { _loadPost(); _loadComments(); },
-            child: const Text('Retry', style: TextStyle(color: AppColors.primary)),
+            onPressed: () {
+              _loadPost();
+              _loadComments();
+            },
+            child: const Text(
+              'Retry',
+              style: TextStyle(color: AppColors.primary),
+            ),
           ),
         ],
       ),
@@ -522,11 +621,19 @@ class _CommentsScreenState extends State<CommentsScreen> {
         children: [
           Icon(Icons.chat_bubble_outline, size: 48, color: AppColors.text3),
           SizedBox(height: 12),
-          Text('No comments yet',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text2)),
+          Text(
+            'No comments yet',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.text2,
+            ),
+          ),
           SizedBox(height: 6),
-          Text('Be the first to comment!',
-            style: TextStyle(fontSize: 12, color: AppColors.text3)),
+          Text(
+            'Be the first to comment!',
+            style: TextStyle(fontSize: 12, color: AppColors.text3),
+          ),
         ],
       ),
     );
@@ -534,28 +641,49 @@ class _CommentsScreenState extends State<CommentsScreen> {
 
   Widget _buildCommentSkeletons() {
     return Column(
-      children: List.generate(3, (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-        child: Row(
-          children: [
-            Container(width: 36, height: 36,
-              decoration: BoxDecoration(color: AppColors.border2, borderRadius: BorderRadius.circular(10))),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(height: 10, width: 100,
-                    decoration: BoxDecoration(color: AppColors.border2, borderRadius: BorderRadius.circular(4))),
-                  const SizedBox(height: 6),
-                  Container(height: 8, width: 200,
-                    decoration: BoxDecoration(color: AppColors.border2, borderRadius: BorderRadius.circular(4))),
-                ],
+      children: List.generate(
+        3,
+        (_) => Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.border2,
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 10,
+                      width: 100,
+                      decoration: BoxDecoration(
+                        color: AppColors.border2,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 8,
+                      width: 200,
+                      decoration: BoxDecoration(
+                        color: AppColors.border2,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      )),
+      ),
     );
   }
 
@@ -584,14 +712,21 @@ class _CommentsScreenState extends State<CommentsScreen> {
             children: [
               // Avatar
               Container(
-                width: 36, height: 36,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: AppColors.accent,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
-                  child: Text(authorInitial,
-                    style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 14)),
+                  child: Text(
+                    authorInitial,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -601,16 +736,33 @@ class _CommentsScreenState extends State<CommentsScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(authorName,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.text)),
+                        Text(
+                          authorName,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.text,
+                          ),
+                        ),
                         const SizedBox(width: 8),
-                        Text(timeAgo,
-                          style: const TextStyle(fontSize: 11, color: AppColors.text3)),
+                        Text(
+                          timeAgo,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.text3,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(text,
-                      style: const TextStyle(fontSize: 13, color: AppColors.text, height: 1.4)),
+                    Text(
+                      text,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.text,
+                        height: 1.4,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     // Action row: like + reply
                     Row(
@@ -621,14 +773,25 @@ class _CommentsScreenState extends State<CommentsScreen> {
                           child: Row(
                             children: [
                               Icon(
-                                isLiked ? Icons.favorite : Icons.favorite_border,
+                                isLiked
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
                                 size: 12,
-                                color: isLiked ? AppColors.red : AppColors.text3,
+                                color: isLiked
+                                    ? AppColors.red
+                                    : AppColors.text3,
                               ),
                               if (likeCount > 0) ...[
                                 const SizedBox(width: 4),
-                                Text('$likeCount',
-                                  style: TextStyle(fontSize: 11, color: isLiked ? AppColors.red : AppColors.text3)),
+                                Text(
+                                  '$likeCount',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isLiked
+                                        ? AppColors.red
+                                        : AppColors.text3,
+                                  ),
+                                ),
                               ],
                             ],
                           ),
@@ -637,8 +800,14 @@ class _CommentsScreenState extends State<CommentsScreen> {
                         // Reply button
                         GestureDetector(
                           onTap: () => _startReply(commentId, authorName),
-                          child: const Text('Reply',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.text3)),
+                          child: const Text(
+                            'Reply',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.text3,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -662,14 +831,22 @@ class _CommentsScreenState extends State<CommentsScreen> {
                       replyState.expanded
                           ? 'Hide replies'
                           : 'View ${replyCount > 0 ? '$replyCount ' : ''}replies',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.text3),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.text3,
+                      ),
                     ),
                     if (replyState.loading)
                       const Padding(
                         padding: EdgeInsets.only(left: 8),
                         child: SizedBox(
-                          width: 12, height: 12,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                   ],
@@ -709,14 +886,21 @@ class _CommentsScreenState extends State<CommentsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 24, height: 24,
+            width: 24,
+            height: 24,
             decoration: BoxDecoration(
               color: AppColors.accent,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Center(
-              child: Text(authorInitial,
-                style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 11)),
+              child: Text(
+                authorInitial,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  fontSize: 11,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -726,16 +910,33 @@ class _CommentsScreenState extends State<CommentsScreen> {
               children: [
                 Row(
                   children: [
-                    Text(authorName,
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.text)),
+                    Text(
+                      authorName,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.text,
+                      ),
+                    ),
                     const SizedBox(width: 6),
-                    Text(timeAgo,
-                      style: const TextStyle(fontSize: 10, color: AppColors.text3)),
+                    Text(
+                      timeAgo,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.text3,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 3),
-                Text(text,
-                  style: const TextStyle(fontSize: 12, color: AppColors.text, height: 1.4)),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.text,
+                    height: 1.4,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 // Like button for reply
                 GestureDetector(
@@ -749,8 +950,13 @@ class _CommentsScreenState extends State<CommentsScreen> {
                       ),
                       if (likeCount > 0) ...[
                         const SizedBox(width: 4),
-                        Text('$likeCount',
-                          style: TextStyle(fontSize: 10, color: isLiked ? AppColors.red : AppColors.text3)),
+                        Text(
+                          '$likeCount',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isLiked ? AppColors.red : AppColors.text3,
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -771,7 +977,12 @@ class _CommentsScreenState extends State<CommentsScreen> {
         color: AppColors.card,
         border: Border(top: BorderSide(color: border)),
       ),
-      padding: EdgeInsets.fromLTRB(12, 8, 12, MediaQuery.of(context).padding.bottom + 8),
+      padding: EdgeInsets.fromLTRB(
+        12,
+        8,
+        12,
+        MediaQuery.of(context).padding.bottom + 8,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -785,12 +996,21 @@ class _CommentsScreenState extends State<CommentsScreen> {
                   const Icon(Icons.reply, size: 14, color: AppColors.text3),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text('Replying to $_replyToAuthor',
-                      style: const TextStyle(fontSize: 11, color: AppColors.text3)),
+                    child: Text(
+                      'Replying to $_replyToAuthor',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.text3,
+                      ),
+                    ),
                   ),
                   GestureDetector(
                     onTap: _cancelReply,
-                    child: const Icon(Icons.close, size: 16, color: AppColors.text3),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: AppColors.text3,
+                    ),
                   ),
                 ],
               ),
@@ -812,9 +1032,17 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     minLines: 1,
                     style: const TextStyle(fontSize: 13, color: AppColors.text),
                     decoration: InputDecoration(
-                      hintText: isReplying ? 'Write a reply...' : 'Add a comment...',
-                      hintStyle: const TextStyle(fontSize: 13, color: AppColors.text3),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      hintText: isReplying
+                          ? 'Write a reply...'
+                          : 'Add a comment...',
+                      hintStyle: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.text3,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -827,15 +1055,20 @@ class _CommentsScreenState extends State<CommentsScreen> {
               GestureDetector(
                 onTap: _submitting ? null : _submitComment,
                 child: Container(
-                  width: 36, height: 36,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: _submitting ? AppColors.border2 : AppColors.primary,
                     shape: BoxShape.circle,
                   ),
                   child: _submitting
                       ? const SizedBox(
-                          width: 16, height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.send, size: 16, color: Colors.white),
                 ),

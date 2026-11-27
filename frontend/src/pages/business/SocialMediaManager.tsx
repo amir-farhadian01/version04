@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import api from '../../lib/api'
 import { StatusBar } from '../../components/ui/phone/StatusBar'
@@ -68,7 +68,7 @@ export default function SocialMediaManager() {
   const [grantUserId, setGrantUserId] = useState('')
   const [showGrantInput, setShowGrantInput] = useState(false)
 
-  const fetchPosts = () => {
+  const fetchPosts = useCallback(() => {
     if (!workspaceId) return
     setLoading(true)
     api.get('/workspace/social/posts', { params: { workspaceId, status: statusFilter, page, pageSize: 20 } })
@@ -78,28 +78,29 @@ export default function SocialMediaManager() {
       })
       .catch((err) => setError(err?.response?.data?.message ?? 'Failed to load posts'))
       .finally(() => setLoading(false))
-  }
+  }, [page, statusFilter, workspaceId])
 
-  const fetchStories = () => {
+  const fetchStories = useCallback(() => {
     if (!workspaceId) return
     api.get('/workspace/social/stories', { params: { workspaceId } })
       .then((res) => setStories(res.data.data ?? []))
       .catch(() => {})
-  }
+  }, [workspaceId])
 
-  const fetchComments = () => {
+  const fetchComments = useCallback(() => {
     if (!workspaceId) return
     api.get('/workspace/social/comments', { params: { workspaceId, page, pageSize: 20 } })
       .then((res) => setComments(res.data.data ?? []))
       .catch(() => {})
-  }
+      .finally(() => setLoading(false))
+  }, [page, workspaceId])
 
-  const fetchRoles = () => {
+  const fetchRoles = useCallback(() => {
     if (!workspaceId) return
     api.get('/workspace/social/roles', { params: { workspaceId } })
       .then((res) => setRoles(res.data.data ?? []))
       .catch(() => {})
-  }
+  }, [workspaceId])
 
   useEffect(() => {
     setLoading(true)
@@ -109,7 +110,7 @@ export default function SocialMediaManager() {
       case 'comments': fetchComments(); break
       case 'roles': fetchRoles(); setLoading(false); break
     }
-  }, [activeTab, workspaceId, page, statusFilter])
+  }, [activeTab, fetchComments, fetchPosts, fetchRoles, fetchStories])
 
   const handleArchivePost = async (postId: string) => {
     if (!workspaceId || !confirm('Archive this post?')) return

@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { getStripe, isStripeAvailable } from './stripe.js';
+import { getStripe } from './stripe.js';
 import prisma from './db.js';
 import type { Payment, PaymentStatus } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
@@ -516,7 +516,7 @@ export async function initiatePaymentForOrder(params: {
 
 /**
  * Capture payment for an order (called on transition to `paid`).
- * Non-fatal: internal payment status is updated even if Stripe capture fails.
+ * The internal status changes only after Stripe confirms capture.
  */
 export async function capturePaymentForOrder(orderId: string): Promise<{ success: boolean; error: string | null }> {
   const payment = await prisma.payment.findUnique({ where: { orderId } });
@@ -524,26 +524,31 @@ export async function capturePaymentForOrder(orderId: string): Promise<{ success
     return { success: false, error: 'No payment record found' };
   }
 
-  // Update internal status first
+  if (!payment.stripePaymentIntentId) {
+    return { success: false, error: 'No Stripe PaymentIntent found' };
+  }
+
+  // A confirmed provider capture is safe to replay. Avoid contacting Stripe
+  // again when a previous request captured funds but the order transaction had
+  // to be retried.
+  if (payment.status === 'captured') {
+    return { success: true, error: null };
+  }
+
+  const result = await capturePaymentIntent(payment.stripePaymentIntentId);
+  if (!result.success) return { success: false, error: result.error };
+
   await prisma.payment.update({
     where: { orderId },
     data: { status: 'captured' as PaymentStatus },
   });
-
-  // Best-effort: capture on Stripe
-  if (payment.stripePaymentIntentId) {
-    const result = await capturePaymentIntent(payment.stripePaymentIntentId);
-    if (!result.success) {
-      stripeLog('warn', `Stripe capture failed for order ${orderId}, but internal status updated`);
-    }
-  }
 
   return { success: true, error: null };
 }
 
 /**
  * Refund payment for an order (admin-initiated).
- * Updates internal status and attempts Stripe refund.
+ * Updates internal status only after Stripe confirms the refund.
  */
 export async function refundPaymentForOrder(params: {
   orderId: string;
@@ -560,13 +565,21 @@ export async function refundPaymentForOrder(params: {
     throw new Error('Only captured payments can be refunded');
   }
 
-  // Update internal status
+  if (!payment.stripePaymentIntentId) throw new Error('No Stripe PaymentIntent found');
+
+  const refundResult = await refundPayment({
+    paymentIntentId: payment.stripePaymentIntentId,
+    amount: params.amount,
+    reason: params.reason,
+    adminId: params.adminId,
+  });
+  if (!refundResult.success) throw new Error(refundResult.error ?? 'Stripe refund failed');
+
   const updated = await prisma.payment.update({
     where: { orderId: params.orderId },
     data: { status: 'refunded' as PaymentStatus },
   });
 
-  // Audit log
   await auditLogEntry({
     actorId: params.adminId,
     action: 'PAYMENT_REFUNDED',
@@ -576,19 +589,9 @@ export async function refundPaymentForOrder(params: {
       orderId: params.orderId,
       reason: params.reason ?? 'Admin refund',
       amount: params.amount ?? payment.amount,
+      providerRefundId: refundResult.refundId,
     },
   });
-
-  // Best-effort: Stripe refund
-  let refundResult: StripeRefundResult = { success: false, refundId: null, error: 'Stripe not configured' };
-  if (payment.stripePaymentIntentId) {
-    refundResult = await refundPayment({
-      paymentIntentId: payment.stripePaymentIntentId,
-      amount: params.amount,
-      reason: params.reason,
-      adminId: params.adminId,
-    });
-  }
 
   return { payment: updated as Payment, refundResult };
 }

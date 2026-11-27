@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:drift/drift.dart';
-import 'package:drift/web.dart';
+import 'drift_connection.dart';
 
 part 'drift_database.g.dart';
 
@@ -21,6 +21,8 @@ class CacheRow extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  AppDatabase.forTesting(super.executor);
+
   @override
   int get schemaVersion => 1;
 
@@ -28,8 +30,9 @@ class AppDatabase extends _$AppDatabase {
       into(cacheRow).insertOnConflictUpdate(row);
 
   Future<CacheRowData?> getByKey(String key) {
-    return (select(cacheRow)..where((t) => t.key.equals(key)))
-        .getSingleOrNull();
+    return (select(
+      cacheRow,
+    )..where((t) => t.key.equals(key))).getSingleOrNull();
   }
 
   Future<int> deleteByKey(String key) {
@@ -41,9 +44,9 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<int> deleteExpired() {
-    return (delete(cacheRow)
-          ..where(
-              (t) => t.expiresAt.isSmallerThanValue(DateTime.now().toUtc())))
+    return (delete(
+          cacheRow,
+        )..where((t) => t.expiresAt.isSmallerThanValue(DateTime.now().toUtc())))
         .go();
   }
 
@@ -57,5 +60,5 @@ class AppDatabase extends _$AppDatabase {
 }
 
 QueryExecutor _openConnection() {
-  return WebDatabase('neighborly_cache');
+  return openDriftConnection('neighborly_cache');
 }

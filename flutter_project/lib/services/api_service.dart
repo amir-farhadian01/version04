@@ -1,12 +1,96 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+abstract interface class KycVerificationApi {
+  Future<Map<String, dynamic>> getKycLevel1();
+  Future<Map<String, dynamic>> getKycLevel2();
+  Future<Map<String, dynamic>> startKycEmailVerification();
+  Future<Map<String, dynamic>> confirmKycEmailVerification(String token);
+  Future<Map<String, dynamic>> startKycPhoneVerification();
+  Future<Map<String, dynamic>> confirmKycPhoneVerification(String code);
+  Future<String> uploadKycDocumentBytes(String fileName, List<int> bytes);
+  Future<Map<String, dynamic>> submitKycLevel2(Map<String, dynamic> body);
+  Future<Map<String, dynamic>> resubmitKycLevel2(Map<String, dynamic> body);
+}
+
 /// Centralized API service for the Flutter app.
-/// Points to the backend at localhost:8080 (local dev).
-class ApiService {
-  // In production, this would come from environment/config.
-  // For local dev, the backend runs on port 8080.
-  static const String baseUrl = 'http://localhost:8080/api';
+class ApiService implements KycVerificationApi {
+  static const List<String> activeOrderStatuses = <String>[
+    'draft',
+    'submitted',
+    'matching',
+    'matched',
+    'contracted',
+    'paid',
+    'in_progress',
+    'disputed',
+  ];
+
+  static const List<String> completedOrderStatuses = <String>[
+    'completed',
+    'closed',
+  ];
+
+  /// Override for deployed web/device builds with:
+  /// `--dart-define=API_BASE_URL=https://api.example.com/api`.
+  /// The default keeps the existing local web/desktop development behavior.
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:8080/api',
+  );
+
+  static Uri uriFor(String path) => Uri.parse('$baseUrl$path');
+
+  static String draftSubmitPath(String orderId) =>
+      '/orders/draft/$orderId/submit';
+
+  static String myOrdersPath(List<String> statuses) {
+    return Uri(
+      path: '/orders/me',
+      queryParameters: <String, dynamic>{'status[]': statuses},
+    ).toString();
+  }
+
+  static CustomerDashboardData parseCustomerDashboard(
+    Map<String, dynamic> activeResponse,
+    Map<String, dynamic> completedResponse,
+  ) {
+    final activeItems = activeResponse['items'];
+    final activeTotal = activeResponse['total'];
+    final completedTotal = completedResponse['total'];
+    return CustomerDashboardData(
+      // The customer order API exposes these two counts. Spend and rating do
+      // not have a customer-level endpoint, so leave them null instead of
+      // presenting fabricated zero values.
+      stats: <String, dynamic>{
+        'activeOrders': activeTotal is num ? activeTotal : 0,
+        'completedOrders': completedTotal is num ? completedTotal : 0,
+        'totalSpent': null,
+        'avgRating': null,
+      },
+      activeItems: activeItems is List<dynamic>
+          ? activeItems.whereType<Map<String, dynamic>>().toList()
+          : <Map<String, dynamic>>[],
+    );
+  }
+
+  static Map<String, dynamic> draftOrderBody({
+    required String serviceCatalogId,
+    required String entryPoint,
+    required String description,
+    String? packageId,
+    Map<String, dynamic>? prefill,
+  }) {
+    return <String, dynamic>{
+      'serviceCatalogId': serviceCatalogId,
+      'entryPoint': entryPoint,
+      'prefill': <String, dynamic>{
+        'packageId': ?packageId,
+        ...?prefill,
+        'description': description,
+      },
+    };
+  }
 
   static final ApiService _instance = ApiService._();
   factory ApiService() => _instance;
@@ -21,9 +105,7 @@ class ApiService {
   String? getToken() => _accessToken;
 
   Map<String, String> get _headers {
-    final h = <String, String>{
-      'Content-Type': 'application/json',
-    };
+    final h = <String, String>{'Content-Type': 'application/json'};
     if (_accessToken != null) {
       h['Authorization'] = 'Bearer $_accessToken';
     }
@@ -31,13 +113,16 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> get(String path) async {
-    final uri = Uri.parse('$baseUrl$path');
+    final uri = uriFor(path);
     final response = await http.get(uri, headers: _headers);
     return _handleResponse(response);
   }
 
-  Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? body}) async {
-    final uri = Uri.parse('$baseUrl$path');
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    final uri = uriFor(path);
     final response = await http.post(
       uri,
       headers: _headers,
@@ -46,8 +131,11 @@ class ApiService {
     return _handleResponse(response);
   }
 
-  Future<Map<String, dynamic>> put(String path, {Map<String, dynamic>? body}) async {
-    final uri = Uri.parse('$baseUrl$path');
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    final uri = uriFor(path);
     final response = await http.put(
       uri,
       headers: _headers,
@@ -69,12 +157,17 @@ class ApiService {
 
   /// Reverse-geocode lat/lng to get a short location string (e.g. "Toronto, ON").
   /// Returns a map with: city, state, shortLocation, formattedAddress.
-  Future<Map<String, dynamic>> getCurrentLocation(double lat, double lng) async {
+  Future<Map<String, dynamic>> getCurrentLocation(
+    double lat,
+    double lng,
+  ) async {
     return await get('/places/current-location?lat=$lat&lng=$lng');
   }
 
   Map<String, dynamic> _handleResponse(http.Response response) {
-    final body = response.body.isNotEmpty ? jsonDecode(response.body) as Map<String, dynamic> : <String, dynamic>{};
+    final body = response.body.isNotEmpty
+        ? jsonDecode(response.body) as Map<String, dynamic>
+        : <String, dynamic>{};
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     }
@@ -83,10 +176,11 @@ class ApiService {
       message: body['error'] as String? ?? 'Request failed',
     );
   }
+
   /// Upload a file (image) to the server via multipart POST.
   /// Returns the URL of the uploaded file.
   Future<String> uploadFile(String filePath) async {
-    final uri = Uri.parse('$baseUrl/upload');
+    final uri = uriFor('/upload');
     final request = http.MultipartRequest('POST', uri);
     if (_accessToken != null) {
       request.headers['Authorization'] = 'Bearer $_accessToken';
@@ -94,7 +188,9 @@ class ApiService {
     request.files.add(await http.MultipartFile.fromPath('file', filePath));
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
-    final body = response.body.isNotEmpty ? jsonDecode(response.body) as Map<String, dynamic> : <String, dynamic>{};
+    final body = response.body.isNotEmpty
+        ? jsonDecode(response.body) as Map<String, dynamic>
+        : <String, dynamic>{};
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body['url'] as String? ?? body['path'] as String? ?? '';
     }
@@ -104,14 +200,65 @@ class ApiService {
     );
   }
 
+  /// Uploads a sensitive KYC document to private storage and returns an opaque reference.
+  Future<String> uploadKycDocument(String filePath) async {
+    final uri = uriFor('/kyc/v2/documents');
+    final request = http.MultipartRequest('POST', uri);
+    if (_accessToken != null) {
+      request.headers['Authorization'] = 'Bearer $_accessToken';
+    }
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+    final response = await http.Response.fromStream(await request.send());
+    final body = response.body.isNotEmpty
+        ? jsonDecode(response.body) as Map<String, dynamic>
+        : <String, dynamic>{};
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return body['reference'] as String? ?? '';
+    }
+    throw ApiException(
+      statusCode: response.statusCode,
+      message: body['error'] as String? ?? 'KYC upload failed',
+    );
+  }
+
+  @override
+  Future<String> uploadKycDocumentBytes(
+    String fileName,
+    List<int> bytes,
+  ) async {
+    final uri = uriFor('/kyc/v2/documents');
+    final request = http.MultipartRequest('POST', uri);
+    if (_accessToken != null) {
+      request.headers['Authorization'] = 'Bearer $_accessToken';
+    }
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'file',
+        bytes,
+        filename: fileName,
+        contentType: kycDocumentContentTypeForFileName(fileName),
+      ),
+    );
+    final response = await http.Response.fromStream(await request.send());
+    final body = response.body.isNotEmpty
+        ? jsonDecode(response.body) as Map<String, dynamic>
+        : <String, dynamic>{};
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return body['reference'] as String? ?? '';
+    }
+    throw ApiException(
+      statusCode: response.statusCode,
+      message: body['error'] as String? ?? 'KYC upload failed',
+    );
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // USER ADDRESSES
   // ═══════════════════════════════════════════════════════════════════════════
 
   Future<List<Map<String, dynamic>>> getAddresses() async {
     final result = await get('/user-addresses');
-    return (result['items'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
+    return (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
         [];
   }
 
@@ -120,7 +267,9 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> updateAddress(
-      String id, Map<String, dynamic> body) async {
+    String id,
+    Map<String, dynamic> body,
+  ) async {
     return await put('/user-addresses/$id', body: body);
   }
 
@@ -147,7 +296,9 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> updateCar(
-      String id, Map<String, dynamic> body) async {
+    String id,
+    Map<String, dynamic> body,
+  ) async {
     return await put('/user-cars/$id', body: body);
   }
 
@@ -191,9 +342,12 @@ class ApiService {
     if (lng != null) params['lng'] = lng.toString();
     if (city != null && city.isNotEmpty) params['city'] = city;
     if (interests != null && interests.isNotEmpty) {
-      params['interest'] = interests.first; // API accepts one interest at a time
+      params['interest'] =
+          interests.first; // API accepts one interest at a time
     }
-    final query = params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
+    final query = params.entries
+        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+        .join('&');
     return await get('/feed?$query');
   }
 
@@ -211,30 +365,36 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> getComments(String postId) async {
     final result = await get('/social/posts/$postId/comments');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   Future<Map<String, dynamic>> addComment(
-      String postId, String text, {String? parentId}) async {
+    String postId,
+    String text, {
+    String? parentId,
+  }) async {
     final body = <String, dynamic>{'text': text};
     if (parentId != null) body['parentId'] = parentId;
     return await post('/social/posts/$postId/comments', body: body);
   }
 
   Future<List<Map<String, dynamic>>> getReplies(
-      String postId, String commentId) async {
-    final result = await get('/social/posts/$postId/comments/$commentId/replies');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
+    String postId,
+    String commentId,
+  ) async {
+    final result = await get(
+      '/social/posts/$postId/comments/$commentId/replies',
+    );
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
         [];
   }
 
   Future<Map<String, dynamic>> toggleCommentLike(
-      String postId, String commentId) async {
+    String postId,
+    String commentId,
+  ) async {
     return await post('/social/posts/$postId/comments/$commentId/like');
   }
 
@@ -243,9 +403,13 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> createStory(
-      String mediaUrl, String mediaType) async {
-    return await post('/social/stories',
-        body: {'mediaUrl': mediaUrl, 'mediaType': mediaType});
+    String mediaUrl,
+    String mediaType,
+  ) async {
+    return await post(
+      '/social/stories',
+      body: {'mediaUrl': mediaUrl, 'mediaType': mediaType},
+    );
   }
 
   /// Toggle follow/unfollow for a user. Returns { following: true/false }.
@@ -266,20 +430,16 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> getFollowers(String userId) async {
     final result = await get('/follow/$userId/followers');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   Future<List<Map<String, dynamic>>> getFollowing(String userId) async {
     final result = await get('/follow/$userId/following');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   /// Get follower/following counts for a user.
@@ -291,10 +451,7 @@ class ApiService {
     ]);
     final followers = results[0];
     final following = results[1];
-    return {
-      'followers': followers.length,
-      'following': following.length,
-    };
+    return {'followers': followers.length, 'following': following.length};
   }
 
   Future<Map<String, dynamic>> getMyPosts() async {
@@ -318,14 +475,13 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getHomeNews({String? category}) async {
-    final path =
-        category != null ? '/home/news?category=$category' : '/home/news';
+    final path = category != null
+        ? '/home/news?category=$category'
+        : '/home/news';
     final result = await get(path);
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   Future<Map<String, dynamic>> getWeather() async {
@@ -334,17 +490,16 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> getActiveAlerts() async {
     final result = await get('/home/alerts');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   Future<List<Map<String, dynamic>>> getUtilityLinks(String category) async {
-    final result = await get('/home/utility-links?category=$category&pageSize=50');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
+    final result = await get(
+      '/home/utility-links?category=$category&pageSize=50',
+    );
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
         [];
   }
 
@@ -360,7 +515,9 @@ class ApiService {
     return await get('/kyc/status');
   }
 
-  Future<Map<String, dynamic>> upgradeToBusiness(Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> upgradeToBusiness(
+    Map<String, dynamic> body,
+  ) async {
     return await post('/users/me/become-provider', body: body);
   }
 
@@ -372,16 +529,20 @@ class ApiService {
   // ORDERS / CUSTOMER DASHBOARD
   // ═══════════════════════════════════════════════════════════════════════════
 
-  Future<Map<String, dynamic>> getCustomerStats() async {
-    return await get('/orders/stats');
+  Future<CustomerDashboardData> getCustomerDashboard() async {
+    final responses = await Future.wait(<Future<Map<String, dynamic>>>[
+      get(myOrdersPath(activeOrderStatuses)),
+      get(myOrdersPath(completedOrderStatuses)),
+    ]);
+    return parseCustomerDashboard(responses[0], responses[1]);
   }
 
   Future<Map<String, dynamic>> getActiveOrders() async {
-    return await get('/orders/active');
+    return await get(myOrdersPath(activeOrderStatuses));
   }
 
   Future<Map<String, dynamic>> getCompletedOrders() async {
-    return await get('/orders/completed');
+    return await get(myOrdersPath(completedOrderStatuses));
   }
 
   Future<Map<String, dynamic>> getOrderDetail(String orderId) async {
@@ -389,14 +550,19 @@ class ApiService {
   }
 
   /// Create a draft order — Phase 1 (Intent Capture)
-  /// Body: { serviceCatalogId, entryPoint, description?, address?, scheduledAt?, ... }
-  Future<Map<String, dynamic>> createDraftOrder(Map<String, dynamic> body) async {
+  /// Body: { serviceCatalogId, entryPoint, prefill: { description?, ... } }
+  Future<Map<String, dynamic>> createDraftOrder(
+    Map<String, dynamic> body,
+  ) async {
     return await post('/orders/draft', body: body);
   }
 
   /// Submit a draft order — Phase 2 (triggers matching engine)
-  Future<Map<String, dynamic>> submitDraftOrder(String orderId, Map<String, dynamic> body) async {
-    return await post('/orders/$orderId/submit-draft', body: body);
+  Future<Map<String, dynamic>> submitDraftOrder(
+    String orderId,
+    Map<String, dynamic> body,
+  ) async {
+    return await post(draftSubmitPath(orderId), body: body);
   }
 
   /// Get eligible providers preview for a draft order
@@ -406,7 +572,9 @@ class ApiService {
 
   /// Walk-in booking — Mode 5 (skip matching)
   /// Body: { providerId, serviceCatalogId, packageId?, description, addressId, urgency? }
-  Future<Map<String, dynamic>> createWalkInOrder(Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> createWalkInOrder(
+    Map<String, dynamic> body,
+  ) async {
     return await post('/orders/walk-in', body: body);
   }
 
@@ -418,8 +586,7 @@ class ApiService {
     return await get('/chat/$chatId/messages');
   }
 
-  Future<Map<String, dynamic>> sendMessage(
-      String chatId, String text) async {
+  Future<Map<String, dynamic>> sendMessage(String chatId, String text) async {
     return await post('/chat/$chatId/messages', body: {'text': text});
   }
 
@@ -432,23 +599,21 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getBusinessServices(
-      String businessId) async {
+    String businessId,
+  ) async {
     final result = await get('/business-page/$businessId/services');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   Future<List<Map<String, dynamic>>> getBusinessReviews(
-      String businessId) async {
+    String businessId,
+  ) async {
     final result = await get('/business-page/$businessId/reviews');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -459,22 +624,20 @@ class ApiService {
     return await get('/services/search?q=$query');
   }
 
-  Future<List<Map<String, dynamic>>> getServicesByCategory(String categoryId) async {
+  Future<List<Map<String, dynamic>>> getServicesByCategory(
+    String categoryId,
+  ) async {
     final result = await get('/services?categoryId=$categoryId');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   Future<List<Map<String, dynamic>>> getCategories() async {
     final result = await get('/categories');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -483,20 +646,16 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> getNews() async {
     final result = await get('/news');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   Future<List<Map<String, dynamic>>> getEvents() async {
     final result = await get('/events');
-    return (result['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ??
-        (result['items'] as List<dynamic>?)
-                ?.cast<Map<String, dynamic>>() ??
-            [];
+    return (result['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (result['items'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        [];
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -504,13 +663,16 @@ class ApiService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   Future<Map<String, dynamic>> _delete(String path) async {
-    final uri = Uri.parse('$baseUrl$path');
+    final uri = uriFor(path);
     final response = await http.delete(uri, headers: _headers);
     return _handleResponse(response);
   }
 
-  Future<Map<String, dynamic>> _patch(String path, {Map<String, dynamic>? body}) async {
-    final uri = Uri.parse('$baseUrl$path');
+  Future<Map<String, dynamic>> _patch(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    final uri = uriFor(path);
     final response = await http.patch(
       uri,
       headers: _headers,
@@ -522,7 +684,9 @@ class ApiService {
   /// Validate a username for availability.
   /// Returns { available: bool, suggestion?: string }
   Future<Map<String, dynamic>> validateUsername(String username) async {
-    return await get('/users/validate-username?username=${Uri.encodeQueryComponent(username)}');
+    return await get(
+      '/users/validate-username?username=${Uri.encodeQueryComponent(username)}',
+    );
   }
 
   /// Update the current user's username.
@@ -533,15 +697,19 @@ class ApiService {
 
   /// Upload image bytes directly.
   Future<String> uploadImageBytes(String fileName, List<int> bytes) async {
-    final uri = Uri.parse('$baseUrl/upload');
+    final uri = uriFor('/upload');
     final request = http.MultipartRequest('POST', uri);
     if (_accessToken != null) {
       request.headers['Authorization'] = 'Bearer $_accessToken';
     }
-    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+    );
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
-    final body = response.body.isNotEmpty ? jsonDecode(response.body) as Map<String, dynamic> : <String, dynamic>{};
+    final body = response.body.isNotEmpty
+        ? jsonDecode(response.body) as Map<String, dynamic>
+        : <String, dynamic>{};
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body['url'] as String? ?? body['path'] as String? ?? '';
     }
@@ -549,6 +717,53 @@ class ApiService {
       statusCode: response.statusCode,
       message: body['error'] as String? ?? 'Upload failed',
     );
+  }
+
+  @override
+  Future<Map<String, dynamic>> getKycLevel1() => get('/kyc/v2/level1/me');
+
+  @override
+  Future<Map<String, dynamic>> getKycLevel2() => get('/kyc/v2/level2/me');
+
+  @override
+  Future<Map<String, dynamic>> startKycEmailVerification() =>
+      post('/kyc/v2/level1/verify-email/start');
+
+  @override
+  Future<Map<String, dynamic>> confirmKycEmailVerification(String token) =>
+      post('/kyc/v2/level1/verify-email/confirm', body: {'token': token});
+
+  @override
+  Future<Map<String, dynamic>> startKycPhoneVerification() =>
+      post('/kyc/v2/level1/verify-phone/start');
+
+  @override
+  Future<Map<String, dynamic>> confirmKycPhoneVerification(String code) =>
+      post('/kyc/v2/level1/verify-phone/confirm', body: {'code': code});
+
+  @override
+  Future<Map<String, dynamic>> submitKycLevel2(Map<String, dynamic> body) =>
+      post('/kyc/v2/level2/submit', body: body);
+
+  @override
+  Future<Map<String, dynamic>> resubmitKycLevel2(Map<String, dynamic> body) =>
+      post('/kyc/v2/level2/resubmit', body: body);
+
+  static http.MediaType kycDocumentContentTypeForFileName(String fileName) {
+    final extension = fileName.contains('.')
+        ? fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase()
+        : '';
+    return switch (extension) {
+      'jpg' || 'jpeg' => http.MediaType('image', 'jpeg'),
+      'png' => http.MediaType('image', 'png'),
+      'webp' => http.MediaType('image', 'webp'),
+      'pdf' => http.MediaType('application', 'pdf'),
+      _ => throw ArgumentError.value(
+        fileName,
+        'fileName',
+        'KYC documents must be JPEG, PNG, WebP, or PDF files.',
+      ),
+    };
   }
 }
 
@@ -560,4 +775,11 @@ class ApiException implements Exception {
 
   @override
   String toString() => 'ApiException($statusCode): $message';
+}
+
+class CustomerDashboardData {
+  final Map<String, dynamic> stats;
+  final List<Map<String, dynamic>> activeItems;
+
+  const CustomerDashboardData({required this.stats, required this.activeItems});
 }

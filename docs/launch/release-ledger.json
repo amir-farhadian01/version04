@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "stagingBuilds": [
+    {
+      "id": "candidate-2026-10-05-g006-g007",
+      "status": "candidate",
+      "createdAt": "2026-10-05",
+      "testedShaBaseline": "f16eef174ed733ec2589de8a7e864953bc401b34",
+      "gitSha": null,
+      "gitShaReason": "Assigned by CI from the pushed commit at image-build time; a commit cannot contain its own SHA.",
+      "migrations": {
+        "latest": "20261126120000_add_custom_intake_forms_and_order_line_items",
+        "count": 68
+      },
+      "tests": {
+        "status": "pass",
+        "evidencePath": "docs/launch/evidence/2026-10-05-g006-g007-verification.md"
+      },
+      "migrationRehearsal": {
+        "freshInstall": "pass",
+        "upgradeRehearsal": "pass",
+        "driftCheck": "pass",
+        "note": "Data-preserving revision (2026-10-05): fresh deploy x2 = pass with empty drift; upgrade rehearsal from the 66-migration legacy state with legacy-shaped data (4 posts covering all moderation statuses, 3 comments with legacy userId, 3 media rows image/video, 4 reactions, 3 services incl. fractional 49.5/89.99) asserted value+relation preservation: authorId backfilled from userId before NOT NULL, moderationStatus/media type converted in place, reactions archived verbatim in _legacy_PostReaction, exact fractional prices archived in _legacy_Service_prices under the whole-dollar contract; idempotent re-run x2 = pass; drift after upgrade = the two documented tombstone tables only; an unknown moderationStatus value hard-stops the migration with data intact and is recoverable via migrate resolve --rolled-back."
+      },
+      "targetEnvironment": "staging",
+      "deployedAt": null,
+      "imageDigest": null,
+      "imageDigestReason": "No Docker image has been built or published for this candidate yet; deployment requires explicit user approval.",
+      "rollbackRehearsal": null,
+      "observed": {
+        "node": "20.20.2",
+        "npm": "10.8.2",
+        "postgresql": "16.14",
+        "prisma": "5.22.0",
+        "note": "Local WSL test environment. Required toolchain (manifest/CI/Docker) pins Node 22.14.0 and postgres:16.8-alpine; observed minor versions differ but satisfy the required major versions."
+      }
+    },
+    {
+      "id": "candidate-2026-10-06-g009-local-staging",
+      "status": "candidate",
+      "createdAt": "2026-10-06",
+      "testedShaBaseline": "11931d9fad548fe40aef90d1e469ec830f35ab95",
+      "gitSha": null,
+      "gitShaReason": "Assigned by CI from the pushed commit at image-build time; a commit cannot contain its own SHA.",
+      "migrations": {
+        "latest": "20261126120000_add_custom_intake_forms_and_order_line_items",
+        "count": 68
+      },
+      "stagingRun": {
+        "destination": "Local no-docker staging per ADR-0085: git worktree at ~/nb-staging/app, dedicated PostgreSQL 16 cluster on 127.0.0.1:55432 (new EMPTY DBs neighborly_staging + neighborly_media_staging), API APP_ENV=staging on :18080, built client on :15173 (vite preview), admin SPA on :19090. Redis/NATS/MinIO intentionally absent (optional services, in-memory fallbacks); READINESS_REQUIRED_SERVICES=database,storage.",
+        "shaEvolution": "Initial candidate 11931d9 was blocked by a Redis-less-topology defect (unguarded ioredis in lib/locationCache.ts -> 500 on order submit and workspace-location save). Approved blocking fix f7d31ba (best-effort cache writes, fallback reads, 3 new unit tests, backend suite 523/523, lint/typecheck clean). Staging re-pinned and fully re-validated on f7d31bad65ae0db0da3812e6dae66effa4afdb24.",
+        "migrations": "prisma migrate deploy on the empty staging DB: 67/67 applied and asserted (evidence/migrations.txt).",
+        "e2e": "30/30 steps PASS on synthetic data via real APIs (evidence/e2e-20261006-023252.md): customer+provider signup, role gates 403 both directions, personal KYC -> owner approval -> become-provider -> status active, workspace + location, workspace KYC verified, admin category/leaf-service creation, provider package (quote_first), order draft+submit -> matching, invite accepted, customer select-provider -> contracted, contract template draft -> send -> approve, payment session+confirm 503 PAYMENT_PROVIDER_DISABLED, complete/review attempts 400 (gates hold).",
+        "payment": "BLOCKED-BY-CONFIG (owner has no Stripe account yet; none was created): STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET intentionally empty. Payment and payment-dependent steps (paid/in_progress/completed/reviewed) are therefore unreachable without bypassing controls, which was forbidden; payment controls verified to hold. Remaining order-flow steps to re-test after owner provides sk_test_/whsec_ keys.",
+        "healthIdentity": "/api/health and /api/version report version 0.0.0, environment staging, gitSha f7d31bad65ae0db0da3812e6dae66effa4afdb24 (evidence/health.json, version.json); /api/ready degraded-only-optional (database+storage up, required=none down).",
+        "backupRestore": "pg_dump -Fc -> restore into scratch DB -> per-table count compare PASS (User 20, Order 5, Payment 0, Service 0, Company 7, AuditLog 22, OfferMatchAttempt 2, ContractVersion 1, _prisma_migrations 67=67); scratch dropped. sha256 c8cea92c05d80b8cff17bd2cc2ec6029bc8d9ed2c13c6df2aa8551f45235545c (evidence/backup-restore-20261006-023337.md).",
+        "ui": "Built client: bare /order/new routes to /explore (candidate fix verified), /auth Sign In renders, real browser login as E2E customer lands on /app/home (cookie/session/CORS verified).",
+        "defectsBacklog": "favicon.ico 404 on the client (cosmetic). Username auto-generation can 500 instead of 409 on collision with reserved history names (hit only with synthetic repeated names). Docker staging compose remains the reference for a future VM.",
+        "teardown": "bash ~/nb-staging/stop-staging.sh (keep data) | --full (drop cluster + worktree). Repo, dev DB (:5432) and PR #10 untouched throughout."
+      },
+      "tests": {
+        "status": "pass",
+        "evidencePath": "docs/launch/evidence/2026-10-06-g009-staging/e2e-20261006-023252.md"
+      },
+      "targetEnvironment": "staging",
+      "deployedAt": null,
+      "imageDigest": null,
+      "imageDigestReason": "Local no-docker staging only; no image built or published. Docker staging/production deployment requires explicit user approval.",
+      "rollbackRehearsal": "stop-staging.sh stop/start cycle exercised during the SHA re-pin; --full teardown documented and available.",
+      "observed": {
+        "node": "20.20.2",
+        "npm": "10.8.2",
+        "postgresql": "16.x (dedicated staging cluster)",
+        "prisma": "5.22.0",
+        "note": "Local WSL test environment; CI pins Node 22.14.0 and postgres:16.8-alpine."
+      }
+    }
+  ]
+}

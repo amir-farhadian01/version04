@@ -4,7 +4,7 @@ import prisma from '../lib/db.js';
 import { authenticate, AuthRequest } from '../lib/auth.middleware.js';
 import { moderateMessage } from '../lib/chatModeration.js';
 import { publish } from '../lib/bus.js';
-import { verifyAccessToken, JwtPayload } from '../lib/jwt.js';
+import { verifyAccessToken } from '../lib/jwt.js';
 
 const router = Router();
 
@@ -145,7 +145,6 @@ router.get('/posts/feed', optionalAuth, async (req: AuthRequest, res: Response) 
     }
 
     // Location filter (radius-based)
-    let locationFilter: Record<string, unknown> | undefined;
     if (query.lat !== undefined && query.lng !== undefined) {
       // Use raw SQL for geo distance or simpler city match
       const postLocations = await prisma.postLocation.findMany({
@@ -945,7 +944,7 @@ router.get('/stories/feed', optionalAuth, async (req: AuthRequest, res: Response
       }
     }
 
-    const feed = Array.from(byAuthor.entries()).map(([authorId, authorStories]) => ({
+    const feed = Array.from(byAuthor.entries()).map(([, authorStories]) => ({
       author: authorStories[0].author,
       stories: authorStories.map(s => ({
         id: s.id,

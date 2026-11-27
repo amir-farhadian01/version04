@@ -5,7 +5,7 @@
  * Used by the Customer Dashboard for live order status polling.
  */
 
-import type { OrderStatus, OrderUrgency } from '@prisma/client';
+import type { OrderUrgency } from '@prisma/client';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

@@ -28,6 +28,14 @@ When acting as **Security Team**, check specifically:
 - no secrets or credentials committed
 - least-privilege on any new infra permission
 
+## Dynamic specialist provisioning
+
+Before execution, identify whether the task needs a specialist role that does not already exist in `.agents/`. If it does, create a concise role card at `.agents/<role-name>.md` before implementation. The card must define scope, excluded work, verification evidence, authority limits, handoff format, and stop conditions.
+
+Reuse existing roles where possible. New roles may be created automatically for bounded internal work, but they may not commit, push, deploy, alter cloud permissions, install/connect a plugin, or transmit data without the human approval required by the applicable role card.
+
+For end-to-end product verification, route work across the necessary surfaces: web UI, Flutter UI, backend API, database-backed behavior, environments, and CI. Use available MCP/plugin capabilities when they are relevant; request approval before adding or authorizing an external integration.
+
 ## Escalation to the user (Human Approval Gate)
 
 Escalate immediately — don't proceed — when:

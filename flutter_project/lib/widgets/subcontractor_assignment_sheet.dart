@@ -28,7 +28,9 @@ class B2BPartner {
     return B2BPartner(
       connectionId: json['connectionId']?.toString() ?? '',
       type: json['type']?.toString() ?? 'contractor',
-      specialPrice: json['specialPrice'] is num ? (json['specialPrice'] as num).toDouble() : null,
+      specialPrice: json['specialPrice'] is num
+          ? (json['specialPrice'] as num).toDouble()
+          : null,
       id: partner['id']?.toString() ?? '',
       name: partner['name']?.toString() ?? 'Unknown',
       logoUrl: partner['logoUrl']?.toString(),
@@ -96,10 +98,12 @@ class SubcontractorAssignmentSheet extends StatefulWidget {
   }
 
   @override
-  State<SubcontractorAssignmentSheet> createState() => _SubcontractorAssignmentSheetState();
+  State<SubcontractorAssignmentSheet> createState() =>
+      _SubcontractorAssignmentSheetState();
 }
 
-class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSheet> {
+class _SubcontractorAssignmentSheetState
+    extends State<SubcontractorAssignmentSheet> {
   List<B2BPartner>? _partners;
   List<StaffMember>? _staff;
 
@@ -123,10 +127,14 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
 
   Future<void> _loadPartners() async {
     try {
-      final response = await ApiService().get('/workspaces/${widget.workspaceId}/b2b-network');
-      final items = (response['data'] as List<dynamic>?)
-          ?.map((j) => B2BPartner.fromJson(j as Map<String, dynamic>))
-          .toList() ?? [];
+      final response = await ApiService().get(
+        '/workspaces/${widget.workspaceId}/b2b-network',
+      );
+      final items =
+          (response['data'] as List<dynamic>?)
+              ?.map((j) => B2BPartner.fromJson(j as Map<String, dynamic>))
+              .toList() ??
+          [];
       if (mounted) {
         setState(() {
           _partners = items;
@@ -150,10 +158,14 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
       _selectedStaff = null;
     });
     try {
-      final response = await ApiService().get('/workspaces/$workspaceId/members');
-      final items = (response['data'] as List<dynamic>?)
-          ?.map((j) => StaffMember.fromJson(j as Map<String, dynamic>))
-          .toList() ?? [];
+      final response = await ApiService().get(
+        '/workspaces/$workspaceId/members',
+      );
+      final items =
+          (response['data'] as List<dynamic>?)
+              ?.map((j) => StaffMember.fromJson(j as Map<String, dynamic>))
+              .toList() ??
+          [];
       if (mounted) {
         setState(() {
           _staff = items;
@@ -240,9 +252,17 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildShareItem('You (${_primeShare.toInt()}%)', _formatCents(primeAmount), Colors.green),
+          _buildShareItem(
+            'You (${_primeShare.toInt()}%)',
+            _formatCents(primeAmount),
+            Colors.green,
+          ),
           const Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
-          _buildShareItem('Sub (${(100 - _primeShare).toInt()}%)', _formatCents(subAmount), Colors.blue),
+          _buildShareItem(
+            'Sub (${(100 - _primeShare).toInt()}%)',
+            _formatCents(subAmount),
+            Colors.blue,
+          ),
         ],
       ),
     );
@@ -251,9 +271,19 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
   Widget _buildShareItem(String label, String amount, Color color) {
     return Column(
       children: [
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+        ),
         const SizedBox(height: 2),
-        Text(amount, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
+        Text(
+          amount,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
       ],
     );
   }
@@ -263,7 +293,11 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
       padding: const EdgeInsets.only(bottom: 8, top: 4),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.indigo),
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Colors.indigo,
+        ),
       ),
     );
   }
@@ -276,7 +310,10 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
         borderRadius: BorderRadius.circular(12),
       ),
       child: Center(
-        child: Text(text, style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+        child: Text(
+          text,
+          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+        ),
       ),
     );
   }
@@ -304,12 +341,20 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
               CircleAvatar(
                 radius: 22,
                 backgroundColor: Colors.indigo.shade100,
-                backgroundImage: partner.logoUrl != null && partner.logoUrl!.isNotEmpty
+                backgroundImage:
+                    partner.logoUrl != null && partner.logoUrl!.isNotEmpty
                     ? NetworkImage(partner.logoUrl!)
                     : null,
                 child: partner.logoUrl == null || partner.logoUrl!.isEmpty
-                    ? Text(partner.name.isNotEmpty ? partner.name[0].toUpperCase() : '?',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo))
+                    ? Text(
+                        partner.name.isNotEmpty
+                            ? partner.name[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo,
+                        ),
+                      )
                     : null,
               ),
               const SizedBox(width: 12),
@@ -317,16 +362,29 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(partner.name,
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14,
-                            color: isSelected ? Colors.indigo.shade900 : Colors.grey.shade800)),
+                    Text(
+                      partner.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: isSelected
+                            ? Colors.indigo.shade900
+                            : Colors.grey.shade800,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(partner.workspaceType ?? partner.type,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                    Text(
+                      partner.workspaceType ?? partner.type,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              if (isSelected) const Icon(Icons.check_circle, color: Colors.indigo, size: 24),
+              if (isSelected)
+                const Icon(Icons.check_circle, color: Colors.indigo, size: 24),
             ],
           ),
         ),
@@ -340,8 +398,18 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Prime: ${_primeShare.toInt()}%', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-            Text('Sub: ${(100 - _primeShare).toInt()}%', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.blue.shade700)),
+            Text(
+              'Prime: ${_primeShare.toInt()}%',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            Text(
+              'Sub: ${(100 - _primeShare).toInt()}%',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: Colors.blue.shade700,
+              ),
+            ),
           ],
         ),
         Slider(
@@ -362,9 +430,18 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('10%', style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
-            Text('50%', style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
-            Text('90%', style: TextStyle(fontSize: 11, color: Colors.grey.shade400)),
+            Text(
+              '10%',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+            ),
+            Text(
+              '50%',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+            ),
+            Text(
+              '90%',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+            ),
           ],
         ),
       ],
@@ -374,33 +451,43 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
   Widget _buildStaffDropdown() {
     if (_staff == null || _staff!.isEmpty) return const SizedBox.shrink();
     return DropdownButtonFormField<String>(
-      value: _selectedStaff?.id,
+      initialValue: _selectedStaff?.id,
       isExpanded: true,
       hint: const Text('Select staff member'),
       decoration: InputDecoration(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         isDense: true,
       ),
-      items: _staff!.map((s) => DropdownMenuItem(
-        value: s.id,
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 14,
-              backgroundImage: s.avatarUrl != null && s.avatarUrl!.isNotEmpty
-                  ? NetworkImage(s.avatarUrl!)
-                  : null,
-              child: s.avatarUrl == null || s.avatarUrl!.isEmpty
-                  ? Text(s.firstName.isNotEmpty ? s.firstName[0] : 'S',
-                      style: const TextStyle(fontSize: 10))
-                  : null,
+      items: _staff!
+          .map(
+            (s) => DropdownMenuItem(
+              value: s.id,
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundImage:
+                        s.avatarUrl != null && s.avatarUrl!.isNotEmpty
+                        ? NetworkImage(s.avatarUrl!)
+                        : null,
+                    child: s.avatarUrl == null || s.avatarUrl!.isEmpty
+                        ? Text(
+                            s.firstName.isNotEmpty ? s.firstName[0] : 'S',
+                            style: const TextStyle(fontSize: 10),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(s.displayName, style: const TextStyle(fontSize: 14)),
+                ],
+              ),
             ),
-            const SizedBox(width: 8),
-            Text(s.displayName, style: const TextStyle(fontSize: 14)),
-          ],
-        ),
-      )).toList(),
+          )
+          .toList(),
       onChanged: (v) {
         setState(() {
           _selectedStaff = _staff!.firstWhere((s) => s.id == v);
@@ -442,7 +529,11 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Row(
               children: [
-                const Icon(Icons.people_alt_outlined, size: 24, color: Colors.indigo),
+                const Icon(
+                  Icons.people_alt_outlined,
+                  size: 24,
+                  color: Colors.indigo,
+                ),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text(
@@ -472,7 +563,12 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
                 children: [
                   const Icon(Icons.error_outline, color: Colors.red, size: 20),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13))),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -488,7 +584,13 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
                 if (_partnerError != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(_partnerError!, style: TextStyle(color: Colors.red.shade600, fontSize: 12)),
+                    child: Text(
+                      _partnerError!,
+                      style: TextStyle(
+                        color: Colors.red.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 if (_loadingPartners)
                   const Center(child: CircularProgressIndicator())
@@ -504,7 +606,13 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
                 if (_splitError != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(_splitError!, style: TextStyle(color: Colors.red.shade600, fontSize: 12)),
+                    child: Text(
+                      _splitError!,
+                      style: TextStyle(
+                        color: Colors.red.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 _buildSplitSlider(),
                 _buildBudgetPreview(),
@@ -514,14 +622,26 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
                 // Step 3: Assign Staff (optional)
                 _buildSectionHeader('3. Assign Staff (optional)'),
                 if (_selectedPartner == null)
-                  Text('Select a partner first', style: TextStyle(fontSize: 13, color: Colors.grey.shade500))
+                  Text(
+                    'Select a partner first',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                  )
                 else if (_loadingStaff)
-                  const Center(child: Padding(
-                    padding: EdgeInsets.all(8),
-                    child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                  ))
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(8),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  )
                 else if (_staff == null || _staff!.isEmpty)
-                  Text('No staff members in this workspace', style: TextStyle(fontSize: 13, color: Colors.grey.shade500))
+                  Text(
+                    'No staff members in this workspace',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                  )
                 else
                   _buildStaffDropdown(),
 
@@ -533,7 +653,9 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
                   maxLines: 3,
                   decoration: InputDecoration(
                     hintText: 'Add any notes for the subcontractor...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     contentPadding: const EdgeInsets.all(12),
                     isDense: true,
                   ),
@@ -551,13 +673,27 @@ class _SubcontractorAssignmentSheetState extends State<SubcontractorAssignmentSh
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.indigo,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       elevation: 0,
                     ),
                     child: _submitting
                         ? const SizedBox(
-                            width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Send Proposal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Send Proposal',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
                   ),
                 ),
               ],

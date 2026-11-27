@@ -46,16 +46,21 @@ router.get(
       const toDate = parseISODate(to);
 
       // Security: user can only view their own availability, or workspace member can view their staff
-      const requestingUserId = (req as unknown as { user: { id: string } }).user?.id;
+      const requestingUserId = (req as unknown as { user: { userId: string } }).user?.userId;
       const isSelf = requestingUserId === staffId;
       if (!isSelf) {
-        // Check if requester shares any workspace with the staff member
+        // Managers may see that a shared staff member is busy, but never which
+        // other workspace or order caused the block.
         const staffWorkspaces = await prisma.companyUser.findMany({ where: { userId: staffId }, select: { companyId: true } });
         const companyIds = staffWorkspaces.map((w) => w.companyId);
         const sharedWorkspace = await prisma.companyUser.findFirst({
-          where: { userId: requestingUserId, companyId: { in: companyIds } },
+          where: { userId: requestingUserId, companyId: { in: companyIds }, role: { in: ['owner', 'admin'] } },
         });
-        if (!sharedWorkspace) {
+        const ownedWorkspace = await prisma.company.findFirst({
+          where: { ownerId: requestingUserId, id: { in: companyIds } },
+          select: { id: true },
+        });
+        if (!sharedWorkspace && !ownedWorkspace) {
           res.status(403).json({ code: 'FORBIDDEN', message: 'Not authorized to view this staff availability' });
           return;
         }
@@ -67,9 +72,6 @@ router.get(
           staffId,
           startAt: { lt: toDate },
           endAt: { gt: fromDate },
-        },
-        include: {
-          workspace: { select: { id: true, name: true, logoUrl: true } },
         },
         orderBy: { startAt: 'asc' },
       });
@@ -89,16 +91,14 @@ router.get(
             id: b.id,
             startAt: b.startAt,
             endAt: b.endAt,
-            reason: b.reason,
-            orderId: b.orderId,
-            workspace: b.workspace,
+            ...(isSelf ? { reason: b.reason, orderId: b.orderId, workspaceId: b.workspaceId } : {}),
           })),
-          workspaces: workspaces.map((w) => ({
+          workspaces: isSelf ? workspaces.map((w) => ({
             id: w.company.id,
             name: w.company.name,
             logoUrl: w.company.logoUrl,
             role: w.role,
-          })),
+          })) : [],
         },
       });
     } catch (error) {
@@ -117,14 +117,16 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { workspaceId, staffId } = req.params as { workspaceId: string; staffId: string };
-      const requestingUserId = (req as unknown as { user: { id: string } }).user?.id;
+      const requestingUserId = (req as unknown as { user: { userId: string } }).user?.userId;
       const input = BlockSlotSchema.parse(req.body);
 
       // Verify requester belongs to workspace
-      const requesterMember = await prisma.companyUser.findUnique({
+      const [workspace, requesterMember] = await Promise.all([prisma.company.findUnique({
+        where: { id: workspaceId }, select: { ownerId: true },
+      }), prisma.companyUser.findUnique({
         where: { companyId_userId: { companyId: workspaceId, userId: requestingUserId } },
-      });
-      if (!requesterMember || !['owner', 'admin', 'member'].includes(requesterMember.role)) {
+      })]);
+      if (!workspace || (workspace.ownerId !== requestingUserId && (!requesterMember || !['owner', 'admin'].includes(requesterMember.role)))) {
         res.status(403).json({ code: 'FORBIDDEN', message: 'Not authorized in this workspace' });
         return;
       }
@@ -153,13 +155,12 @@ router.post(
           startAt: { lt: endAt },
           endAt: { gt: startAt },
         },
-        include: { workspace: { select: { name: true } } },
       });
 
       if (overlap) {
         res.status(409).json({
           code: 'SLOT_CONFLICT',
-          message: `Staff member already has a slot block from ${overlap.startAt.toISOString()} to ${overlap.endAt.toISOString()} in workspace: ${overlap.workspace.name}`,
+          message: `Staff member is busy from ${overlap.startAt.toISOString()} to ${overlap.endAt.toISOString()}`,
         });
         return;
       }
@@ -192,13 +193,15 @@ router.delete(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { workspaceId, staffId, blockId } = req.params as { workspaceId: string; staffId: string; blockId: string };
-      const requestingUserId = (req as unknown as { user: { id: string } }).user?.id;
+      const requestingUserId = (req as unknown as { user: { userId: string } }).user?.userId;
 
       // Verify requester belongs to workspace
-      const requesterMember = await prisma.companyUser.findUnique({
+      const [workspace, requesterMember] = await Promise.all([prisma.company.findUnique({
+        where: { id: workspaceId }, select: { ownerId: true },
+      }), prisma.companyUser.findUnique({
         where: { companyId_userId: { companyId: workspaceId, userId: requestingUserId } },
-      });
-      if (!requesterMember) {
+      })]);
+      if (!workspace || (workspace.ownerId !== requestingUserId && (!requesterMember || !['owner', 'admin'].includes(requesterMember.role)))) {
         res.status(403).json({ code: 'FORBIDDEN', message: 'Not authorized in this workspace' });
         return;
       }
@@ -236,12 +239,14 @@ router.get(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { workspaceId } = req.params as { workspaceId: string };
-      const requestingUserId = (req as unknown as { user: { id: string } }).user?.id;
+      const requestingUserId = (req as unknown as { user: { userId: string } }).user?.userId;
 
-      const member = await prisma.companyUser.findUnique({
+      const [workspace, member] = await Promise.all([prisma.company.findUnique({
+        where: { id: workspaceId }, select: { ownerId: true },
+      }), prisma.companyUser.findUnique({
         where: { companyId_userId: { companyId: workspaceId, userId: requestingUserId } },
-      });
-      if (!member) {
+      })]);
+      if (!workspace || (workspace.ownerId !== requestingUserId && (!member || !['owner', 'admin'].includes(member.role)))) {
         res.status(403).json({ code: 'FORBIDDEN', message: 'Not a member of this workspace' });
         return;
       }
@@ -267,7 +272,7 @@ router.get(
               startAt: { lt: nextWeek },
               endAt: { gt: now },
             },
-            include: { workspace: { select: { id: true, name: true } } },
+            select: { id: true, startAt: true, endAt: true },
             orderBy: { startAt: 'asc' },
           });
           return {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import api from '../../lib/api.js';
 import { NHCard } from '../../components/ui/NHCard.js';
 import { NHButton } from '../../components/ui/NHButton.js';
@@ -9,6 +9,16 @@ import type { OrderDetailData } from '../../services/orders.js';
 import OrderDetailsTab from './tabs/OrderDetailsTab.js';
 import OrderContractTab from './tabs/OrderContractTab.js';
 import OrderChatTab from './tabs/OrderChatTab.js';
+import { useAuthStore } from '../../store/authStore.js';
+
+type ProviderCandidate = {
+  attemptId: string;
+  providerName: string;
+  workspaceName: string;
+  packageName: string;
+  packageFinalPrice: number;
+  packageCurrency: string;
+};
 
 type TabKey = 'details' | 'contract' | 'chat';
 
@@ -47,10 +57,11 @@ const STATUS_COLORS: Record<string, string> = {
 export default function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const userId = useAuthStore((state) => state.user?.id);
   const [activeTab, setActiveTab] = useState<TabKey>('details');
 
-  const { data, isLoading, error } = useQuery<OrderDetailData>({
-    queryKey: ['order', id],
+  const { data, isLoading, error, refetch } = useQuery<OrderDetailData>({
+    queryKey: ['order', id, userId],
     queryFn: async () => {
       const res = await api.get(`/orders/${id}`);
       return res.data;
@@ -58,6 +69,25 @@ export default function OrderDetail() {
     enabled: Boolean(id),
     retry: false,
     staleTime: 15_000,
+  });
+
+  const canSelectProvider = Boolean(userId && data?.customerId === userId && data.status === 'matching');
+  const candidates = useQuery<ProviderCandidate[]>({
+    queryKey: ['order-candidates', id, userId],
+    queryFn: async () => {
+      const { data } = await api.get<{ candidates: ProviderCandidate[] }>(`/orders/${id}/candidates`);
+      return data.candidates;
+    },
+    enabled: canSelectProvider,
+    retry: false,
+  });
+  const selection = useMutation({
+    mutationFn: async (attemptId: string) => {
+      await api.post(`/orders/${id}/select-provider`, { attemptId });
+    },
+    onSuccess: async () => {
+      await Promise.all([refetch(), candidates.refetch()]);
+    },
   });
 
   if (isLoading) {
@@ -121,6 +151,35 @@ export default function OrderDetail() {
           {statusLabel}
         </span>
       </div>
+
+      {canSelectProvider && (
+        <NHCard className="p-4 space-y-3">
+          <h2 className="text-nh-text font-semibold">Provider offers</h2>
+          {candidates.isLoading && <p role="status">Loading offers…</p>}
+          {candidates.isError && (
+            <div role="alert">
+              <p>Could not load offers.</p>
+              <NHButton variant="secondary" onClick={() => void candidates.refetch()}>Retry</NHButton>
+            </div>
+          )}
+          {!candidates.isError && candidates.data?.length === 0 && (
+            <p className="text-nh-muted">No providers have accepted your request yet.</p>
+          )}
+          {!candidates.isError && candidates.data?.map((candidate) => (
+            <div key={candidate.attemptId} className="flex flex-wrap items-center justify-between gap-3 border-t border-nh-border pt-3">
+              <div>
+                <p className="font-semibold">{candidate.providerName} · {candidate.workspaceName}</p>
+                <p className="text-sm text-nh-muted">{candidate.packageName} · {candidate.packageCurrency} {candidate.packageFinalPrice.toFixed(2)}</p>
+              </div>
+              <NHButton disabled={selection.isPending} onClick={() => selection.mutate(candidate.attemptId)}>
+                Select Provider
+              </NHButton>
+            </div>
+          ))}
+          {selection.isError && <p role="alert">Could not select this offer. Check the latest offers and try again.</p>}
+          {selection.isSuccess && <p role="status">Provider selected. The order has been refreshed.</p>}
+        </NHCard>
+      )}
 
       {/* Provider info */}
       {order.matchedSummary && (

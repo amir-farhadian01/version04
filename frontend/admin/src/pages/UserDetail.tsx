@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import api from '../lib/api'
+import api, { getApiError } from '../lib/api'
 import {
   ArrowLeft,
   User,
@@ -70,12 +70,12 @@ type AdminUserFull = {
 
 type UserDetailResponse = {
   user: AdminUserFull
-  kycRecord: any
-  auditLogs: any[]
-  transactions: any[]
-  contracts: any[]
-  requests: any[]
-  ordersSummary: any
+  kycRecord: unknown
+  auditLogs: Array<{ id: string; action: string; timestamp: string; actor?: { displayName?: string; email?: string } }>
+  transactions: unknown[]
+  contracts: unknown[]
+  requests: unknown[]
+  ordersSummary: { total: number; asCustomer: number; asMatchedProvider: number; byStatus: Record<string, number>; recent: Array<{ id: string; serviceName?: string; relation: string; status: string; phase?: string; createdAt: string }> }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -228,8 +228,8 @@ export default function AdminUserDetail() {
         bio: u.bio ?? '',
         isVerified: String(u.isVerified),
       })
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Failed to load user')
+    } catch (err: unknown) {
+      setError(getApiError(err, 'Failed to load user'))
     } finally {
       setLoading(false)
     }
@@ -262,8 +262,8 @@ export default function AdminUserDetail() {
       setSaveMessage({ type: 'success', text: 'User updated successfully' })
       setEditing(false)
       fetchUser()
-    } catch (err: any) {
-      setSaveMessage({ type: 'error', text: err?.response?.data?.error ?? err.message ?? 'Failed to save' })
+    } catch (err: unknown) {
+      setSaveMessage({ type: 'error', text: getApiError(err, 'Failed to save') })
     } finally {
       setSaving(false)
     }
@@ -285,8 +285,8 @@ export default function AdminUserDetail() {
       setPasswordMessage({ type: 'success', text: 'Password changed successfully' })
       setNewPassword('')
       setShowPassword(false)
-    } catch (err: any) {
-      setPasswordMessage({ type: 'error', text: err?.response?.data?.error ?? err.message ?? 'Failed to change password' })
+    } catch (err: unknown) {
+      setPasswordMessage({ type: 'error', text: getApiError(err, 'Failed to change password') })
     } finally {
       setChangingPassword(false)
     }
@@ -299,8 +299,8 @@ export default function AdminUserDetail() {
     try {
       const res = await api.post(`/admin/users/${id}/reset-password-email`)
       setResetEmailMessage({ type: 'success', text: res.data.message ?? 'Reset email sent' })
-    } catch (err: any) {
-      setResetEmailMessage({ type: 'error', text: err?.response?.data?.error ?? err.message ?? 'Failed to send email' })
+    } catch (err: unknown) {
+      setResetEmailMessage({ type: 'error', text: getApiError(err, 'Failed to send email') })
     } finally {
       setSendingResetEmail(false)
     }
@@ -765,7 +765,7 @@ export default function AdminUserDetail() {
               <p className="text-sm text-nh-admin-text-secondary">No audit logs found</p>
             ) : (
               <div className="space-y-2">
-                {data.auditLogs.slice(0, 10).map((log: any) => (
+                {data.auditLogs.slice(0, 10).map((log) => (
                   <div key={log.id} className="flex items-start gap-3 rounded-xl border border-nh-admin-border bg-nh-admin-surface-elevated p-3">
                     <Activity className="mt-0.5 h-4 w-4 text-nh-admin-text-muted" />
                     <div className="min-w-0 flex-1">
@@ -823,7 +823,7 @@ export default function AdminUserDetail() {
             <div className="rounded-2xl border border-nh-admin-border bg-nh-admin-surface p-6">
               <h3 className="mb-4 text-sm font-bold text-nh-admin-text">Recent Orders</h3>
               <div className="space-y-2">
-                {data.ordersSummary.recent.slice(0, 10).map((order: any) => (
+                {data.ordersSummary.recent.slice(0, 10).map((order) => (
                   <div key={order.id} className="flex items-center justify-between rounded-xl border border-nh-admin-border bg-nh-admin-surface-elevated p-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-nh-admin-text">{order.serviceName ?? 'Order'}</p>

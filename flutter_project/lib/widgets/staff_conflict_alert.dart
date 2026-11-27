@@ -31,8 +31,9 @@ class StaffConflictAlert extends StatelessWidget {
         }
 
         final data = snapshot.data!;
-        final conflicts = (data['data'] as List<dynamic>?)
-            ?.cast<Map<String, dynamic>>() ?? [];
+        final conflicts =
+            (data['data'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+            [];
 
         if (conflicts.isEmpty) return const SizedBox.shrink();
 
@@ -64,7 +65,10 @@ class _ConflictBannerState extends State<_ConflictBanner> {
 
   @override
   Widget build(BuildContext context) {
-    final totalConflicts = widget.conflicts.fold<int>(0, (sum, c) => sum + ((c['conflictCount'] as num?)?.toInt() ?? 0));
+    final totalConflicts = widget.conflicts.fold<int>(
+      0,
+      (sum, c) => sum + ((c['conflictCount'] as num?)?.toInt() ?? 0),
+    );
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -89,7 +93,11 @@ class _ConflictBannerState extends State<_ConflictBanner> {
                       color: Colors.orange.shade100,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.warning_amber_rounded, size: 20, color: Colors.orange.shade800),
+                    child: Icon(
+                      Icons.warning_amber_rounded,
+                      size: 20,
+                      color: Colors.orange.shade800,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -106,7 +114,10 @@ class _ConflictBannerState extends State<_ConflictBanner> {
                         ),
                         Text(
                           '$totalConflicts overlapping blocks this week',
-                          style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange.shade700,
+                          ),
                         ),
                       ],
                     ),
@@ -131,24 +142,32 @@ class _ConflictBannerState extends State<_ConflictBanner> {
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 itemCount: widget.conflicts.length,
-                separatorBuilder: (_, __) => Divider(height: 1, indent: 16, endIndent: 16, color: Colors.orange.shade100),
+                separatorBuilder: (_, _) => Divider(
+                  height: 1,
+                  indent: 16,
+                  endIndent: 16,
+                  color: Colors.orange.shade100,
+                ),
                 itemBuilder: (context, index) {
                   final c = widget.conflicts[index];
                   final staff = c['staff'] as Map<String, dynamic>? ?? {};
                   final staffId = staff['id']?.toString() ?? '';
-                  final staffName = [
-                    staff['firstName'],
-                    staff['lastName'],
-                  ].where((s) => s != null && s.toString().isNotEmpty).join(' ');
-                  final conflictCount = (c['conflictCount'] as num?)?.toInt() ?? 0;
-                  final nextConflict = c['nextConflict'] as Map<String, dynamic>?;
+                  final staffName = [staff['firstName'], staff['lastName']]
+                      .where((s) => s != null && s.toString().isNotEmpty)
+                      .join(' ');
+                  final conflictCount =
+                      (c['conflictCount'] as num?)?.toInt() ?? 0;
+                  final nextConflict =
+                      c['nextConflict'] as Map<String, dynamic>?;
 
                   return ListTile(
                     dense: true,
                     leading: CircleAvatar(
                       radius: 16,
                       backgroundColor: Colors.orange.shade100,
-                      backgroundImage: staff['avatarUrl'] != null && staff['avatarUrl'].toString().isNotEmpty
+                      backgroundImage:
+                          staff['avatarUrl'] != null &&
+                              staff['avatarUrl'].toString().isNotEmpty
                           ? NetworkImage(staff['avatarUrl'].toString())
                           : null,
                       child: staff['avatarUrl'] == null
@@ -156,26 +175,42 @@ class _ConflictBannerState extends State<_ConflictBanner> {
                               staff['firstName']?.toString().isNotEmpty == true
                                   ? staff['firstName'].toString()[0]
                                   : '?',
-                              style: TextStyle(fontSize: 12, color: Colors.orange.shade700),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange.shade700,
+                              ),
                             )
                           : null,
                     ),
                     title: Text(
                       staffName.isNotEmpty ? staffName : 'Unknown Staff',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     subtitle: nextConflict != null
                         ? Text(
                             _formatConflict(nextConflict),
-                            style: TextStyle(fontSize: 11, color: Colors.orange.shade700),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.orange.shade700,
+                            ),
                           )
                         : Text(
                             '$conflictCount blocks in other workspaces',
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
                           ),
                     trailing: TextButton(
-                      onPressed: () => widget.onViewSchedule?.call(staffId, staffName),
-                      child: const Text('View Schedule', style: TextStyle(fontSize: 12)),
+                      onPressed: () =>
+                          widget.onViewSchedule?.call(staffId, staffName),
+                      child: const Text(
+                        'View Schedule',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                   );
                 },
@@ -196,7 +231,8 @@ class _ConflictBannerState extends State<_ConflictBanner> {
       final local = dt.toLocal();
       final weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       final day = weekdays[local.weekday % 7];
-      final time = '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+      final time =
+          '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
       return '$day $time — $wsName';
     } catch (_) {
       return 'In $wsName';

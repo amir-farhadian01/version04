@@ -89,8 +89,13 @@ async function resolveParticipantRole(
       await assertWorkspaceMember(uid, order.matchedWorkspaceId);
       return 'provider';
     } catch (e) {
-      if (e instanceof WorkspaceAccessError && e.statusCode === 404) {
-        // fall through — user may still be an invited workspace on another attempt
+      if (e instanceof WorkspaceAccessError) {
+        if (e.statusCode === 403) return 'forbidden';
+        if (e.statusCode === 404) {
+          // Fall through — the user may still be an invited workspace on another attempt.
+        } else {
+          throw e;
+        }
       } else {
         throw e;
       }

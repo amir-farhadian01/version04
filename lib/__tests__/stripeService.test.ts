@@ -1,10 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  type StripePaymentResult,
-  type StripeRefundResult,
-  type StripePayoutResult,
-  type WebhookProcessingResult,
-} from '../stripeService.js';
 import type Stripe from 'stripe';
 
 // ── Mock Prisma ──────────────────────────────────────────────────────────────
@@ -511,25 +505,55 @@ describe('Stripe Service — Integration Helpers', () => {
     (getStripe as ReturnType<typeof vi.fn>).mockReturnValue(mockStripeClient);
   });
 
-  it('capturePaymentForOrder updates internal status even without Stripe PI', async () => {
+  it('capturePaymentForOrder does not update internal status without Stripe PI', async () => {
     mockPrisma.payment.findUnique.mockResolvedValueOnce({
       orderId: 'order-1',
       status: 'pending',
       stripePaymentIntentId: null,
     });
-    mockPrisma.payment.update.mockResolvedValueOnce({});
-
     const { capturePaymentForOrder } = await import('../stripeService.js');
     const result = await capturePaymentForOrder('order-1');
 
-    expect(result.success).toBe(true);
-    expect(result.error).toBeNull();
-    expect(mockPrisma.payment.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { orderId: 'order-1' },
-        data: { status: 'captured' },
-      }),
-    );
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('No Stripe PaymentIntent found');
+    expect(mockPrisma.payment.update).not.toHaveBeenCalled();
+  });
+
+  it('capturePaymentForOrder updates status only after provider success', async () => {
+    mockPrisma.payment.findUnique.mockResolvedValueOnce({
+      orderId: 'order-1', status: 'pending', stripePaymentIntentId: 'pi_123',
+    });
+    mockStripeClient.paymentIntents.capture.mockResolvedValueOnce({
+      id: 'pi_123', status: 'succeeded', client_secret: null,
+    });
+    mockPrisma.payment.update.mockResolvedValueOnce({});
+
+    const { capturePaymentForOrder } = await import('../stripeService.js');
+    expect(await capturePaymentForOrder('order-1')).toEqual({ success: true, error: null });
+    expect(mockPrisma.payment.update).toHaveBeenCalledWith({
+      where: { orderId: 'order-1' }, data: { status: 'captured' },
+    });
+  });
+
+  it('capturePaymentForOrder treats an already captured provider payment as an idempotent success', async () => {
+    mockPrisma.payment.findUnique.mockResolvedValueOnce({
+      orderId: 'order-1', status: 'captured', stripePaymentIntentId: 'pi_123',
+    });
+    const { capturePaymentForOrder } = await import('../stripeService.js');
+    expect(await capturePaymentForOrder('order-1')).toEqual({ success: true, error: null });
+    expect(mockStripeClient.paymentIntents.capture).not.toHaveBeenCalled();
+    expect(mockPrisma.payment.update).not.toHaveBeenCalled();
+  });
+
+  it('capturePaymentForOrder preserves status when provider fails', async () => {
+    mockPrisma.payment.findUnique.mockResolvedValueOnce({
+      orderId: 'order-1', status: 'pending', stripePaymentIntentId: 'pi_123',
+    });
+    mockStripeClient.paymentIntents.capture.mockRejectedValueOnce(new Error('provider failure'));
+
+    const { capturePaymentForOrder } = await import('../stripeService.js');
+    expect(await capturePaymentForOrder('order-1')).toEqual({ success: false, error: 'provider failure' });
+    expect(mockPrisma.payment.update).not.toHaveBeenCalled();
   });
 
   it('capturePaymentForOrder fails gracefully when no payment record exists', async () => {
@@ -586,6 +610,20 @@ describe('Stripe Service — Integration Helpers', () => {
     expect(result.refundResult.success).toBe(true);
     expect(result.refundResult.refundId).toBe('re_789');
     expect(mockPrisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  it('refundPaymentForOrder preserves captured status when provider fails', async () => {
+    mockPrisma.payment.findUnique.mockResolvedValueOnce({
+      id: 'pay-1', orderId: 'order-1', status: 'captured', amount: 5000,
+      deduction: 4250, commission: 750, stripePaymentIntentId: 'pi_123',
+    });
+    mockStripeClient.refunds.create.mockRejectedValueOnce(new Error('provider failure'));
+
+    const { refundPaymentForOrder } = await import('../stripeService.js');
+    await expect(refundPaymentForOrder({ orderId: 'order-1', adminId: 'admin-1' }))
+      .rejects.toThrow('provider failure');
+    expect(mockPrisma.payment.update).not.toHaveBeenCalled();
+    expect(mockPrisma.auditLog.create).not.toHaveBeenCalled();
   });
 
   it('initiatePaymentForOrder creates Payment record and Stripe PI', async () => {

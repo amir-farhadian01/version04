@@ -36,10 +36,6 @@ const replyCommentSchema = z.object({
   text: z.string().min(1).max(1000),
 });
 
-const roleSchema = z.object({
-  userId: z.string().min(1),
-});
-
 // ─── Workspace Access Verification ──────────────────────────────────────────
 
 async function verifyWorkspaceSocialAccess(

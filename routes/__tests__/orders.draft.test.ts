@@ -1,5 +1,19 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 import request from 'supertest';
+
+vi.mock('../../lib/auth.middleware.js', () => ({
+  authenticate: vi.fn((req: any, res: any, next: any) => {
+    if (!req.headers.authorization?.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'No token provided' });
+      return;
+    }
+    req.user = { userId: 'customer-1', role: 'customer' };
+    next();
+  }),
+  requireRole: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+  isAdmin: vi.fn((_req: any, _res: any, next: any) => next()),
+}));
+
 import { createApp } from '../../test-helpers/app.js';
 import type { Express } from 'express';
 
@@ -9,23 +23,7 @@ let customerToken: string;
 beforeAll(async () => {
   const setup = await createApp();
   app = setup.app;
-  // Register + login as customer
-  const email = `draft-test-${Date.now()}@test.com`;
-  await request(app).post('/api/auth/register').send({
-    email,
-    password: 'TestPass123!',
-    displayName: 'Draft Tester',
-    role: 'customer',
-  });
-  const loginRes = await request(app).post('/api/auth/login').send({
-    login: email,
-    password: 'TestPass123!',
-  });
-  customerToken = loginRes.body.accessToken;
-});
-
-afterAll(async () => {
-  // Cleanup handled by test helpers
+  customerToken = 'test-customer-token';
 });
 
 describe('POST /api/orders/draft', () => {
@@ -34,18 +32,16 @@ describe('POST /api/orders/draft', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 400 when description < 20 chars', async () => {
-    // The draft endpoint validates via prefill.description length
-    // This test confirms the endpoint returns appropriate validation errors
+  it('returns 400 for an invalid entryPoint before querying the database', async () => {
     const res = await request(app)
       .post('/api/orders/draft')
       .set('Authorization', `Bearer ${customerToken}`)
       .send({
         serviceCatalogId: 'nonexistent-id',
-        entryPoint: 'wizard',
+        entryPoint: 'invalid',
       });
-    // Should return 404 (service not found) or 400 — either way not 201
-    expect(res.status).not.toBe(201);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('entryPoint');
   });
 
   it('returns 400 when serviceCatalogId is missing', async () => {

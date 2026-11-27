@@ -53,7 +53,7 @@ export default function MyPostsPage() {
   const renderPostList = (posts: FeedPost[], loading: boolean, error: boolean, emptyMessage: string, showDelete: boolean = false) => {
     if (loading) {
       return (
-        <div className="px-[14px] py-5">
+        <div role="status" aria-live="polite" aria-label="Loading posts" className="px-[14px] py-5">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-nh-surface rounded-xl p-3 my-2 flex gap-3 border border-nh-border">
               <div className="w-16 h-16 rounded-[10px] bg-nh-border-elevated shrink-0" />
@@ -71,7 +71,7 @@ export default function MyPostsPage() {
       return (
         <div className="px-[14px] py-10 text-center">
           <div className="text-sm text-nh-text-muted mb-3">Failed to load</div>
-          <div onClick={() => activeTab === 'saved' ? refetchSaved() : refetchMy()} className="inline-block px-5 py-2 bg-nh-primary text-white rounded-lg text-[13px] font-semibold cursor-pointer">Retry</div>
+          <button type="button" onClick={() => activeTab === 'saved' ? refetchSaved() : refetchMy()} className="inline-block rounded-lg border-0 bg-nh-primary px-5 py-2 text-[13px] font-semibold text-white cursor-pointer">Retry</button>
         </div>
       )
     }
@@ -114,7 +114,7 @@ export default function MyPostsPage() {
               </div>
             </div>
             {showDelete && !(viewMode === 'grid') && (
-              <div onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }} className="text-sm text-nh-text-muted hover:text-nh-danger cursor-pointer p-1" title="Delete post">🗑</div>
+              <button type="button" onClick={(e) => { e.stopPropagation(); handleDelete(post.id); }} aria-label="Delete post" className="border-0 bg-transparent p-1 text-sm text-nh-text-muted hover:text-nh-danger cursor-pointer">🗑</button>
             )}
           </div>
         ))}

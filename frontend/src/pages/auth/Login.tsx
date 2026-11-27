@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore.js'
 
 /** Role-ordered route priority for post-login redirect */
@@ -82,9 +82,10 @@ export default function Login() {
 
         {/* Email */}
         <div className="mb-4">
-          <div className="text-xs font-semibold text-nh-text-secondary mb-1.5">Email</div>
+          <label htmlFor="login-email" className="text-xs font-semibold text-nh-text-secondary mb-1.5 block">Email</label>
           <div className={`w-full bg-nh-bg border rounded-xl px-4 py-3 text-[15px] text-nh-text flex items-center gap-2.5 ${email ? 'border-nh-success' : 'border-nh-border-elevated'}`}>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -96,9 +97,10 @@ export default function Login() {
 
         {/* Password */}
         <div className="mb-4">
-          <div className="text-xs font-semibold text-nh-text-secondary mb-1.5">Password</div>
+          <label htmlFor="login-password" className="text-xs font-semibold text-nh-text-secondary mb-1.5 block">Password</label>
           <div className={`w-full bg-nh-bg border rounded-xl px-4 py-3 text-[15px] text-nh-text flex items-center gap-2.5 ${password ? 'border-nh-success' : 'border-nh-border-elevated'}`}>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -110,7 +112,7 @@ export default function Login() {
 
         {/* Error */}
         {error && (
-          <p className="text-[13px] text-nh-danger text-center mb-2">
+          <p role="alert" className="text-[13px] text-nh-danger text-center mb-2">
             {error}
           </p>
         )}
@@ -126,6 +128,8 @@ export default function Login() {
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
+
+        <p className="mt-5 text-sm text-nh-text-secondary">New to Neighborly? <Link to="/auth/register" className="text-nh-primary underline">Create account</Link></p>
 
       </div>
     </div>

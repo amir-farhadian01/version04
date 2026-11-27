@@ -102,13 +102,15 @@ class _PhotoScreenState extends State<PhotoScreen> {
                   shape: BoxShape.circle,
                   color: AppColors.card,
                   border: Border.all(
-                    color: _imageUrl != null ? AppColors.primary : AppColors.border2,
+                    color: _imageUrl != null
+                        ? AppColors.primary
+                        : AppColors.border2,
                     width: _imageUrl != null ? 3 : 1,
                   ),
                   boxShadow: _imageUrl != null
                       ? [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
+                            color: AppColors.primary.withValues(alpha: 0.3),
                             blurRadius: 16,
                             offset: const Offset(0, 4),
                           ),
@@ -117,25 +119,34 @@ class _PhotoScreenState extends State<PhotoScreen> {
                 ),
                 child: _isPicking
                     ? const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
                       )
                     : _imageUrl != null
-                        ? const Icon(Icons.check_circle, color: AppColors.secondary, size: 48)
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.camera_alt_outlined,
-                                  color: AppColors.text3, size: 36),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Add photo',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.text3,
-                                ),
-                              ),
-                            ],
+                    ? const Icon(
+                        Icons.check_circle,
+                        color: AppColors.secondary,
+                        size: 48,
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.camera_alt_outlined,
+                            color: AppColors.text3,
+                            size: 36,
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Add photo',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.text3,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
           ),
@@ -152,7 +163,9 @@ class _PhotoScreenState extends State<PhotoScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.text,
                     side: const BorderSide(color: AppColors.border2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
@@ -166,7 +179,9 @@ class _PhotoScreenState extends State<PhotoScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.text,
                     side: const BorderSide(color: AppColors.border2),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
@@ -199,12 +214,20 @@ class _PhotoScreenState extends State<PhotoScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: AppColors.text3, size: 18),
+                const Icon(
+                  Icons.info_outline,
+                  color: AppColors.text3,
+                  size: 18,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Your photo helps build trust with providers. You can always update it later.',
-                    style: TextStyle(fontSize: 12, color: AppColors.text3, height: 1.4),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.text3,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],

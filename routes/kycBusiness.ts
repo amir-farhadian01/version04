@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { KycStatus } from '@prisma/client';
 import prisma from '../lib/db.js';
 import { authenticate, AuthRequest } from '../lib/auth.middleware.js';
+import { assertKycDocumentsOwned } from './kycDocuments.js';
 import { z } from 'zod';
 
 const router = Router();
@@ -17,7 +18,7 @@ const upgradeSchema = z.object({
 const uploadDocSchema = z.object({
   submissionId: z.string().min(1),
   documentType: z.enum(['license', 'insurance']),
-  fileUrl: z.string().url('fileUrl must be a valid URL'),
+  fileUrl: z.string().regex(/^kyc-document:\/\/[A-Za-z0-9-]+$/, 'fileUrl must be a private KYC document reference'),
 });
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -35,16 +36,6 @@ async function assertCompanyAccess(userId: string, companyId: string) {
     return { company: owned, role: 'owner' };
   }
   return membership;
-}
-
-function normalizeEmail(email: string): string {
-  const [local, domain] = email.toLowerCase().trim().split('@');
-  if (!domain) return email.toLowerCase().trim();
-  // Gmail: strip dots and +alias
-  if (domain === 'gmail.com' || domain === 'googlemail.com') {
-    return local.replace(/\./g, '').split('+')[0] + '@' + domain;
-  }
-  return local + '@' + domain;
 }
 
 // ─── POST /api/kyc/business/upgrade — Start business upgrade flow ──────────
@@ -146,6 +137,9 @@ router.post('/upload-license', async (req: AuthRequest, res: Response) => {
 
     const { submissionId, fileUrl } = parsed.data;
     const userId = req.user!.userId;
+    if (!await assertKycDocumentsOwned(userId, [fileUrl])) {
+      return res.status(400).json({ error: 'License document must be owned by the current user' });
+    }
 
     const submission = await prisma.businessKycSubmission.findUnique({
       where: { id: submissionId },
@@ -212,6 +206,9 @@ router.post('/upload-insurance', async (req: AuthRequest, res: Response) => {
 
     const { submissionId, fileUrl } = parsed.data;
     const userId = req.user!.userId;
+    if (!await assertKycDocumentsOwned(userId, [fileUrl])) {
+      return res.status(400).json({ error: 'Insurance document must be owned by the current user' });
+    }
 
     const submission = await prisma.businessKycSubmission.findUnique({
       where: { id: submissionId },

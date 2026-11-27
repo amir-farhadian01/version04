@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { StatusBar } from '../../components/ui/phone/StatusBar'
 import { BottomNav, NavIcons } from '../../components/ui/phone/BottomNav'
 import { useAuthStore } from '../../store/authStore'
+import { apiErrorMessage } from '../../lib/apiError'
 import StoriesRow from '../../components/social/StoriesRow'
 import SearchBox from '../../components/home/SearchBox'
 
@@ -58,8 +59,8 @@ export default function HomeScreen() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: HomeData = await res.json()
       setHomeData(data)
-    } catch (err: any) {
-      setError(err.message ?? 'Failed to load home data')
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err, 'Failed to load home data'))
     } finally {
       setLoading(false)
     }

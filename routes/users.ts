@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcrypt';
 import prisma from '../lib/db.js';
-import { authenticate, requireRole, AuthRequest } from '../lib/auth.middleware.js';
+import { authenticate, AuthRequest } from '../lib/auth.middleware.js';
 import { setUserLocation } from '../lib/locationCache.js';
 import {
   normalizeUsername,

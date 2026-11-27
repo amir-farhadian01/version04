@@ -21,6 +21,9 @@
  * DELETE /:id/service-packages/:pkgId
  * GET|POST /:id/service-packages/:pkgId/bom …
  * GET    /:id/inbox | /:id/inbox-attempts — list offer match attempts (same handler)
+ * GET    /:id/dashboard/overview — dashboard summary (legacy 5-field stats) + rich payload
+ *          (activeOrders, pendingQuotes, todayAppointments, revenueThisMonth,
+ *           upcomingAppointments, recentOrders, staff, pipeline, topCustomers, recentActivity)
  * GET    /:id/finance — read-only provider finance snapshot (orders + internal transactions; no gateway)
  */
 import { Router, Response } from 'express';
@@ -275,8 +278,26 @@ router.get('/:id/dashboard/overview', async (req: AuthRequest, res: Response) =>
       OrderStatus.disputed,
     ];
     const completedStatuses: OrderStatus[] = [OrderStatus.completed, OrderStatus.closed];
+    const activeStatuses: OrderStatus[] = [OrderStatus.contracted, OrderStatus.paid, OrderStatus.in_progress];
 
-    const [totalOrders, pendingOrders, completedOrders, activeStaff, completedRows] = await Promise.all([
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      totalOrders,
+      pendingOrders,
+      completedOrders,
+      activeStaff,
+      completedRows,
+      pendingQuotes,
+      todayAppointments,
+      upcomingRows,
+      orderRows,
+      staffRows,
+      quoteRows,
+    ] = await Promise.all([
       prisma.order.count({
         where: {
           matchedWorkspaceId: workspaceId,
@@ -310,6 +331,71 @@ router.get('/:id/dashboard/overview', async (req: AuthRequest, res: Response) =>
           },
         },
       }),
+      prisma.quote.count({ where: { workspaceId, status: 'SENT' } }),
+      prisma.order.count({
+        where: {
+          matchedWorkspaceId: workspaceId,
+          scheduledAt: { gte: startOfToday, lt: endOfToday },
+          status: { in: activeStatuses },
+        },
+      }),
+      prisma.order.findMany({
+        where: {
+          matchedWorkspaceId: workspaceId,
+          scheduledAt: { gte: now },
+          status: { in: activeStatuses },
+        },
+        orderBy: { scheduledAt: 'asc' },
+        take: 5,
+        select: {
+          id: true,
+          scheduledAt: true,
+          status: true,
+          serviceCatalog: { select: { name: true } },
+          customer: { select: { displayName: true, firstName: true, lastName: true } },
+        },
+      }),
+      prisma.order.findMany({
+        where: {
+          matchedWorkspaceId: workspaceId,
+          NOT: { status: OrderStatus.draft },
+        },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          status: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+          serviceCatalog: { select: { name: true } },
+          customer: { select: { id: true, displayName: true, firstName: true, lastName: true } },
+          matchedPackage: { select: { name: true, finalPrice: true, currency: true } },
+          orderContract: { select: { currentVersion: { select: { amount: true, currency: true } } } },
+        },
+      }),
+      prisma.companyUser.findMany({
+        where: { companyId: workspaceId },
+        select: {
+          userId: true,
+          role: true,
+          staffRole: true,
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              firstName: true,
+              lastName: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      }),
+      prisma.quote.findMany({
+        where: { workspaceId },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: { id: true, title: true, status: true, createdAt: true },
+      }),
     ]);
 
     const totalEarnings = completedRows.reduce((sum, row) => {
@@ -317,12 +403,114 @@ router.get('/:id/dashboard/overview', async (req: AuthRequest, res: Response) =>
       return sum + (row.matchedPackage?.finalPrice ?? 0);
     }, 0);
 
+    type OrderRow = (typeof orderRows)[number];
+    const amountOf = (o: OrderRow): number =>
+      o.orderContract?.currentVersion?.amount ?? o.matchedPackage?.finalPrice ?? 0;
+    const currencyOf = (o: OrderRow): string =>
+      o.orderContract?.currentVersion?.currency ?? o.matchedPackage?.currency ?? 'CAD';
+    const customerNameOf = (c: { displayName: string | null; firstName: string | null; lastName: string | null }): string =>
+      (c.displayName ?? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim()) || 'Unknown';
+
+    // Pipeline: per-status count + volume (canonical status order first)
+    const canonicalStatuses: string[] = [
+      'submitted', 'matching', 'matched', 'contracted', 'paid',
+      'in_progress', 'completed', 'disputed', 'closed',
+    ];
+    const pipelineMap = new Map<string, { count: number; total: number }>();
+    for (const o of orderRows) {
+      const entry = pipelineMap.get(o.status) ?? { count: 0, total: 0 };
+      entry.count += 1;
+      entry.total += amountOf(o);
+      pipelineMap.set(o.status, entry);
+    }
+    const pipeline = [
+      ...canonicalStatuses.filter((s) => pipelineMap.has(s)),
+      ...Array.from(pipelineMap.keys()).filter((s) => !canonicalStatuses.includes(s)),
+    ].map((status) => ({ status, ...(pipelineMap.get(status) as { count: number; total: number }) }));
+
+    const revenueThisMonth = orderRows
+      .filter((o) => completedStatuses.includes(o.status) && currencyOf(o) === 'CAD' && o.updatedAt >= startOfMonth)
+      .reduce((sum, o) => sum + amountOf(o), 0);
+
+    const recentOrders = orderRows.slice(0, 8).map((o) => ({
+      id: o.id,
+      title: o.serviceCatalog.name,
+      description: o.description,
+      total: amountOf(o),
+      status: o.status,
+      createdAt: o.createdAt.toISOString(),
+    }));
+
+    const upcomingAppointments = upcomingRows.map((a) => ({
+      id: a.id,
+      title: a.serviceCatalog.name,
+      customerName: customerNameOf(a.customer),
+      scheduledAt: a.scheduledAt?.toISOString() ?? '',
+      status: a.status,
+    }));
+
+    const staff = staffRows.map((s) => ({
+      id: s.userId,
+      displayName: s.user.displayName,
+      firstName: s.user.firstName,
+      lastName: s.user.lastName,
+      avatarUrl: s.user.avatarUrl,
+      role: s.staffRole ?? s.role,
+      active: true,
+    }));
+
+    const customerMap = new Map<string, { userId: string; displayName: string | null; totalSpent: number; orderCount: number }>();
+    for (const o of orderRows) {
+      if (!o.customer?.id) continue;
+      const entry = customerMap.get(o.customer.id) ?? {
+        userId: o.customer.id,
+        displayName: o.customer.displayName,
+        totalSpent: 0,
+        orderCount: 0,
+      };
+      entry.totalSpent += amountOf(o);
+      entry.orderCount += 1;
+      customerMap.set(o.customer.id, entry);
+    }
+    const topCustomers = Array.from(customerMap.values())
+      .sort((a, b) => b.totalSpent - a.totalSpent)
+      .slice(0, 5);
+
+    const recentActivity = [
+      ...orderRows.slice(0, 5).map((o) => ({
+        id: o.id,
+        type: 'order',
+        message: `Order: ${o.serviceCatalog.name} — ${String(o.status).replace(/_/g, ' ')}`,
+        createdAt: o.createdAt.toISOString(),
+      })),
+      ...quoteRows.map((q) => ({
+        id: q.id,
+        type: 'quote',
+        message: `Quote: ${q.title}`,
+        createdAt: q.createdAt.toISOString(),
+      })),
+    ]
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      .slice(0, 10);
+
     res.json({
+      // legacy summary fields (getWorkspaceStats consumers)
       totalOrders,
       pendingOrders,
       completedOrders,
       totalEarnings,
       activeStaff,
+      // rich dashboard fields (BusinessDashboard page contract)
+      activeOrders: orderRows.filter((o) => activeStatuses.includes(o.status)).length,
+      pendingQuotes,
+      todayAppointments,
+      revenueThisMonth,
+      upcomingAppointments,
+      recentOrders,
+      staff,
+      pipeline,
+      topCustomers,
+      recentActivity,
     });
   } catch (err: unknown) {
     if (isWorkspaceAccessError(err)) {

@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import {
   LogOut,
   Home,
-  Bell,
   Menu,
   X,
   LayoutDashboard,
@@ -18,7 +17,6 @@ import {
   ShieldAlert,
   Newspaper,
   BarChart3,
-  Wrench,
 } from 'lucide-react'
 import { cn } from '../lib/cn'
 import { motion, AnimatePresence } from 'motion/react'
@@ -35,7 +33,6 @@ const SIDEBAR_LINKS = [
   { label: 'Home Content', icon: Newspaper, path: '/admin/home-content' },
   { label: 'Moderation', icon: ShieldAlert, path: '/admin/moderation' },
   { label: 'Analytics', icon: BarChart3, path: '/admin/analytics' },
-  { label: 'Services', icon: Wrench, path: '/admin/orders' },
   { label: 'Settings', icon: Settings, path: '/admin/settings' },
 ]
 
@@ -44,17 +41,54 @@ export function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
 
-  const isActive = (path: string) => {
-    const base = '/admin'
-    if (!path) return location.pathname === base
-    return location.pathname === `${base}/${path}`
-  }
+  const isActive = (path: string) =>
+    location.pathname === path || (path !== '/admin' && location.pathname.startsWith(`${path}/`))
+
+  const closeSidebar = useCallback(() => {
+    setSidebarOpen(false)
+    requestAnimationFrame(() => toggleRef.current?.focus())
+  }, [])
+
+  useEffect(() => {
+    if (!sidebarOpen) return
+
+    closeRef.current?.focus()
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeSidebar()
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const focusable = sidebarRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )
+      if (!focusable?.length) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', trapFocus)
+    return () => document.removeEventListener('keydown', trapFocus)
+  }, [sidebarOpen, closeSidebar])
 
   return (
     <div className="min-h-screen bg-nh-admin-bg font-sans text-nh-admin-text flex flex-col">
@@ -77,22 +111,15 @@ export function AdminLayout() {
                 {user.email}
               </span>
             )}
-            {user && (
-              <Link
-                to="/notifications"
-                className="relative flex h-10 w-10 items-center justify-center rounded-full border border-nh-admin-border bg-nh-admin-surface text-nh-admin-text-secondary transition hover:border-nh-admin-primary hover:text-white"
-                aria-label="Notifications"
-              >
-                <Bell className="h-5 w-5" />
-                <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-nh-admin-danger ring-2 ring-nh-admin-surface" />
-              </Link>
-            )}
             {user && <AccountAvatarBadge user={user} />}
 
             <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
+              ref={toggleRef}
+              onClick={() => sidebarOpen ? closeSidebar() : setSidebarOpen(true)}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-nh-admin-border bg-nh-admin-surface text-nh-admin-text-secondary transition hover:border-nh-admin-primary hover:text-white lg:hidden"
               aria-label="Toggle sidebar"
+              aria-controls="admin-navigation-drawer"
+              aria-expanded={sidebarOpen}
             >
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -149,10 +176,15 @@ export function AdminLayout() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setSidebarOpen(false)}
+                onClick={closeSidebar}
                 className="fixed inset-0 bg-nh-admin-backdrop-light backdrop-blur-sm z-[100] lg:hidden"
               />
               <motion.div
+                ref={sidebarRef}
+                id="admin-navigation-drawer"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Admin navigation"
                 initial={{ x: '-100%' }}
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
@@ -161,7 +193,7 @@ export function AdminLayout() {
               >
                 <div className="flex justify-between items-center mb-8">
                   <h2 className="text-xl font-black italic uppercase tracking-tight text-nh-admin-text">Admin</h2>
-                  <button onClick={() => setSidebarOpen(false)} className="rounded-full border border-nh-admin-border bg-nh-admin-surface p-2 text-nh-admin-text transition-colors hover:border-nh-admin-primary">
+                  <button ref={closeRef} type="button" onClick={closeSidebar} aria-label="Close admin navigation" className="rounded-full border border-nh-admin-border bg-nh-admin-surface p-2 text-nh-admin-text transition-colors hover:border-nh-admin-primary">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -171,7 +203,7 @@ export function AdminLayout() {
                     <Link
                       key={item.label}
                       to={item.path}
-                      onClick={() => setSidebarOpen(false)}
+                      onClick={closeSidebar}
                       className={cn(
                         "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold transition-all",
                         isActive(item.path)
@@ -188,14 +220,14 @@ export function AdminLayout() {
                 <div className="mt-auto pt-4 border-t border-nh-admin-border space-y-2">
                   <Link
                     to="/"
-                    onClick={() => setSidebarOpen(false)}
+                    onClick={closeSidebar}
                     className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-nh-admin-text-secondary transition-all hover:bg-nh-admin-surface-hover hover:text-white"
                   >
                     <Home className="h-5 w-5" />
                     Back to Site
                   </Link>
                   <button
-                    onClick={() => { setSidebarOpen(false); handleLogout() }}
+                    onClick={() => { closeSidebar(); handleLogout() }}
                     className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-nh-admin-danger transition-all hover:bg-nh-admin-danger-bg"
                   >
                     <LogOut className="h-5 w-5" />
