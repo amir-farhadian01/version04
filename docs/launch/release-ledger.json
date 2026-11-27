@@ -9,8 +9,8 @@
       "gitSha": null,
       "gitShaReason": "Assigned by CI from the pushed commit at image-build time; a commit cannot contain its own SHA.",
       "migrations": {
-        "latest": "20261004120000_align_schema_with_models",
-        "count": 67
+        "latest": "20261126120000_add_custom_intake_forms_and_order_line_items",
+        "count": 68
       },
       "tests": {
         "status": "pass",
@@ -43,8 +43,8 @@
       "gitSha": null,
       "gitShaReason": "Assigned by CI from the pushed commit at image-build time; a commit cannot contain its own SHA.",
       "migrations": {
-        "latest": "20261004120000_align_schema_with_models",
-        "count": 67
+        "latest": "20261126120000_add_custom_intake_forms_and_order_line_items",
+        "count": 68
       },
       "stagingRun": {
         "destination": "Local no-docker staging per ADR-0085: git worktree at ~/nb-staging/app, dedicated PostgreSQL 16 cluster on 127.0.0.1:55432 (new EMPTY DBs neighborly_staging + neighborly_media_staging), API APP_ENV=staging on :18080, built client on :15173 (vite preview), admin SPA on :19090. Redis/NATS/MinIO intentionally absent (optional services, in-memory fallbacks); READINESS_REQUIRED_SERVICES=database,storage.",
