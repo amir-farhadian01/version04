@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../lib/api'
 import {
@@ -161,19 +161,26 @@ export default function AdminDashboard() {
   })
   const [activities, setActivities] = useState<AuditLogEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadDashboard = useCallback(async () => {
+    setLoading(true)
+    setError(null)
     Promise.all([
-      api.get<AdminStats>('/admin/stats').catch(() => null),
-      api.get<{ items: AuditLogEntry[] }>('/admin/audit-log').catch(() => null),
+      api.get<AdminStats>('/admin/stats'),
+      api.get<{ items: AuditLogEntry[] }>('/admin/audit-log'),
     ])
       .then(([statsRes, activityRes]) => {
-        if (statsRes?.data) setStats(statsRes.data)
-        if (activityRes?.data?.items) setActivities(activityRes.data.items.slice(0, 10))
+        setStats(statsRes.data)
+        setActivities(activityRes.data.items.slice(0, 10))
       })
-      .catch(() => {})
+      .catch(() => setError('Could not load dashboard data. Please try again.'))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    void loadDashboard()
+  }, [loadDashboard])
 
   const quickActions = [
     {
@@ -267,8 +274,19 @@ export default function AdminDashboard() {
           <h2 className="text-lg font-bold text-nh-admin-text">Recent Activity</h2>
           <div className="overflow-hidden rounded-2xl border border-nh-admin-border bg-nh-admin-surface">
             {loading ? (
-              <div className="flex justify-center py-12">
+              <div role="status" className="flex justify-center py-12">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-nh-admin-border border-t-nh-admin-primary" />
+              </div>
+            ) : error ? (
+              <div role="alert" className="flex flex-col items-center gap-3 py-12 text-center">
+                <p className="text-sm text-nh-admin-text-secondary">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => void loadDashboard()}
+                  className="rounded-xl border border-nh-admin-primary px-4 py-2 text-sm font-bold text-nh-admin-primary transition hover:bg-nh-admin-primary-bg"
+                >
+                  Retry
+                </button>
               </div>
             ) : activities.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-12 text-center">
